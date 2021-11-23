@@ -54,14 +54,14 @@ void main()
     vec3 color = unpackColor(gbuf.z);
     vec3 normal = unpackColor(gbuf.r);
     normal = (normal * 2.0) - vec3(1,1,1);
-    vec3 lightdir = vec3(1,1,0);
+    vec3 lightdir = vec3(.1,-1,.5);
     normalize(lightdir);
     float diff = clamp(dot(lightdir, normal), 0, 1);
 
-    float specularStrength = 0.15;
+    float specularStrength = 0.4;
     vec3 viewDir = normalize(u_eyePos - wpos.xyz);
     vec3 reflectDir = reflect(-lightdir, normal);  
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 15);
     vec3 specular = specularStrength * spec * 1;  
 
     gl_FragColor.rgb = color * ao * (diff * 0.5 + 0.5 + specular);

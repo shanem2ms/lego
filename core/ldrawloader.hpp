@@ -40,7 +40,10 @@
 #include <unordered_set>
 #include <vector>
 
+void DbgPrint(const char* str);
+
 namespace ldr {
+
 
 struct Loader
 {
@@ -187,14 +190,19 @@ private:
 
     T& operator[](uint32_t i)
     {
-      assert(i < m_size);
-      return m_data[i];
+        if (i >= m_size)
+        { 
+            DbgPrint("bad idx wr");
+            return m_data[0]; }
+        return m_data[i];
     }
 
     const T& operator[](uint32_t i) const
     {
-        if (i >= m_size) 
-            __debugbreak();
+        if (i >= m_size)
+        {
+            DbgPrint("bad idx rd");
+            return m_data[0]; }
       return m_data[i];
     }
 

@@ -2,6 +2,7 @@
 #include "Engine.h"
 #include <bx/readerwriter.h>
 #include <bx/file.h>
+#include <bimg/bimg.h>
 #include "Hud.h"
 #include "Mesh.h"
 
@@ -151,6 +152,7 @@ namespace sam
         bgfx::setUniform(m_texelSizeRef, &texelSize);
         uint64_t state = 0
             | BGFX_STATE_WRITE_RGB
+            | BGFX_STATE_WRITE_A
             | BGFX_STATE_MSAA;
         // Set render states.l
         bgfx::setState(state);
@@ -170,6 +172,12 @@ namespace sam
         bgfx::setViewTransform(2, view.getData(), proj2.getData());
         m_root->DoDraw(dc);
         m_hud->DoDraw(dc);        
+
+        if (dc.m_frameIdx == -1)
+        {
+            bgfx::FrameBufferHandle fbh = BGFX_INVALID_HANDLE;
+            bgfx::requestScreenShot(fbh, "test.png");
+        }
     }
 
 
@@ -236,4 +244,88 @@ namespace sam
     {
         return *sEngine;
     }
+
+    struct BgfxCallback : public bgfx::CallbackI
+    {
+        virtual ~BgfxCallback()
+        {
+        }
+
+        virtual void fatal(const char* _filePath, uint16_t _line, bgfx::Fatal::Enum _code, const char* _str) override
+        {
+            BX_UNUSED(_filePath, _line);
+
+            // Something unexpected happened, inform user and bail out.
+            bx::debugPrintf("Fatal error: 0x%08x: %s", _code, _str);
+
+            // Must terminate, continuing will cause crash anyway.
+            abort();
+        }
+
+        virtual void traceVargs(const char* _filePath, uint16_t _line, const char* _format, va_list _argList) override
+        {
+            bx::debugPrintf("%s (%d): ", _filePath, _line);
+            bx::debugPrintfVargs(_format, _argList);
+        }
+
+        virtual void profilerBegin(const char* /*_name*/, uint32_t /*_abgr*/, const char* /*_filePath*/, uint16_t /*_line*/) override
+        {
+        }
+
+        virtual void profilerBeginLiteral(const char* /*_name*/, uint32_t /*_abgr*/, const char* /*_filePath*/, uint16_t /*_line*/) override
+        {
+        }
+
+        virtual void profilerEnd() override
+        {
+        }
+
+        virtual uint32_t cacheReadSize(uint64_t _id) override
+        {
+            return 0;
+        }
+
+        virtual bool cacheRead(uint64_t _id, void* _data, uint32_t _size) override
+        {
+            return false;
+        }
+
+        virtual void cacheWrite(uint64_t _id, const void* _data, uint32_t _size) override
+        {         
+        }
+
+        
+        void savePng(const char* _filePath, uint32_t _width, uint32_t _height, uint32_t _srcPitch, const void* _src, bimg::TextureFormat::Enum _format, bool _yflip)
+        {
+            bx::FileWriter writer;
+            bx::Error err;
+            if (bx::open(&writer, _filePath, false, &err))
+            {
+                bimg::imageWritePng(&writer, _width, _height, _srcPitch, _src, _format, _yflip, &err);
+                bx::close(&writer);
+            }
+        }
+        virtual void screenShot(const char* _filePath, uint32_t _width, uint32_t _height, uint32_t _pitch, const void* _data, uint32_t /*_size*/, bool _yflip) override
+        {
+            savePng(_filePath, _width, _height, _pitch, _data, bimg::TextureFormat::BGRA8, _yflip);
+        }
+
+        virtual void captureBegin(uint32_t _width, uint32_t _height, uint32_t /*_pitch*/, bgfx::TextureFormat::Enum /*_format*/, bool _yflip) override
+        {      
+        }
+
+        virtual void captureEnd() override
+        {
+        }
+
+        virtual void captureFrame(const void* _data, uint32_t /*_size*/) override
+        {
+        }
+    };
+
+    std::shared_ptr< bgfx::CallbackI> CreateCallback()
+    {
+        return std::make_shared<BgfxCallback>();
+    }
 }
+

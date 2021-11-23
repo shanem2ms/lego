@@ -33,25 +33,10 @@ namespace sam
         m_border = color;
     }
 
-    void UIControl::Update(const std::shared_ptr<SceneGroup>& group, DrawContext& ctx)
+    UIControl *UIControl::IsHit(float x, float y, int touchId)
     {
-        if (!m_isInit)
-        {
-            Initialize(group, ctx);
-            m_isInit = true;
-        }
-    }
-
-    bool UIControl::IsHit(float x, float y, int touchId)
-    {
-        return x >= m_x && x < (m_x + m_width) &&
-            y >= m_y && y < (m_y + m_height);
-    }
-
-
-    void UIManager::AddControl(std::shared_ptr<UIControl> ctrl)
-    {
-        m_controls.push_back(ctrl);
+        return (x >= m_x && x < (m_x + m_width) &&
+            y >= m_y && y < (m_y + m_height)) ? this : nullptr;
     }
 
     int g_buttonDown = 0;
@@ -62,19 +47,14 @@ namespace sam
 
         g_buttonDown = m_buttonDown = 1;
 
-        bool handled = false;
-        for (auto uictrl : m_controls)
+        UIControl* pCtrl = m_topctrl->IsHit(x, y, touchId);
+        if (pCtrl != nullptr)
         {
-            if (uictrl->IsHit(x, y, touchId) &&
-                uictrl->TouchDown(x, y, touchId))
-            {
-                m_capturedCtrl = uictrl;
-                handled = true;
-                break;
-            }
+            m_capturedCtrl = pCtrl;
+            return true;
         }
 
-        return handled;
+        return false;
     }
 
     bool UIManager::TouchDrag(float x, float y, int touchId)
@@ -83,28 +63,73 @@ namespace sam
 
         if (m_capturedCtrl != nullptr)
         {
-            m_capturedCtrl->TouchDrag(x, y, touchId);
             return true;
         }
-        return false;
+        return true;
     }
-
-    static int sButtonStates[256];
 
     void UIManager::Update(Engine& engine, int w, int h, DrawContext& ctx)
     {
-        if (m_uiGroup == nullptr)
+        if (m_topctrl == nullptr)
         {
-            memset(sButtonStates, 0, sizeof(sButtonStates));
-            m_uiGroup = std::make_shared<SceneGroup>();
-            m_uiGroup->SetOffset(Point3f(0, 0, w / 2));
-            engine.Root()->AddItem(m_uiGroup);
-        }
-        for (auto ctrl : m_controls)
-        {
-            ctrl->Update(m_uiGroup, ctx);
-        }
+            
+            const int btnSize = 150;
+            const int btnSpace = 10;
 
+            World* pWorld = ctx.m_pWorld;
+
+            std::shared_ptr<UIWindow> top = std::make_shared<UIWindow>(0, 0, 0, 0, "top", true);
+            std::shared_ptr<UIWindow> wnd = std::make_shared<UIWindow>(w - btnSize * 6, h - btnSize * 3, 0, 0, "controls", true);
+            m_topctrl = top;
+            top->AddControl(wnd);
+            wnd->AddControl(std::make_shared<UIStateBtn>(btnSize + btnSpace * 2, 0, btnSize, btnSize, ICON_FA_CHEVRON_UP,
+                [pWorld](bool isBtnDown)
+                {
+                    char key = 'W';
+                    if (isBtnDown) pWorld->KeyDown(key);
+                    else pWorld->KeyUp(key);
+                }));
+            wnd->AddControl(std::make_shared<UIStateBtn>(btnSize + btnSpace * 2, btnSize + btnSpace, btnSize, btnSize, ICON_FA_CHEVRON_DOWN,
+                [pWorld](bool isBtnDown)
+                {
+                    char key = 'S';
+                    if (isBtnDown) pWorld->KeyDown(key);
+                    else pWorld->KeyUp(key);
+                }));
+            wnd->AddControl(std::make_shared<UIStateBtn>(btnSize * 2 + btnSpace * 4, btnSize / 2, btnSize, btnSize, ICON_FA_CHEVRON_RIGHT,
+                [pWorld](bool isBtnDown)
+                {
+                    char key = 'D';
+                    if (isBtnDown) pWorld->KeyDown(key);
+                    else pWorld->KeyUp(key);
+                }));
+            wnd->AddControl(std::make_shared<UIStateBtn>(0, btnSize / 2, btnSize, btnSize, ICON_FA_CHEVRON_RIGHT,
+                [pWorld](bool isBtnDown)
+                {
+                    char key = 'A';
+                    if (isBtnDown) pWorld->KeyDown(key);
+                    else pWorld->KeyUp(key);
+                }));
+            wnd->AddControl(std::make_shared<UIStateBtn>(btnSize * 4 + btnSpace * 4, 0, btnSize, btnSize, ICON_FA_CARET_SQUARE_O_UP,
+                [pWorld](bool isBtnDown)
+                {
+                    char key = 32;
+                    if (isBtnDown) pWorld->KeyDown(key);
+                    else pWorld->KeyUp(key);
+                }));
+            wnd->AddControl(std::make_shared<UIStateBtn>(btnSize * 4 + btnSpace * 4, btnSize + btnSpace, btnSize, btnSize, ICON_FA_CARET_SQUARE_O_DOWN,
+                [pWorld](bool isBtnDown)
+                {
+                    char key = 16;
+                    if (isBtnDown) pWorld->KeyDown(key);
+                    else pWorld->KeyUp(key);
+                }));
+
+
+            std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(100, 100, 200, 200, "bricks", false);
+            top->AddControl(menu);
+
+        }
 
         imguiBeginFrame(m_touchPos[0]
             , m_touchPos[1]
@@ -116,55 +141,10 @@ namespace sam
 
         const int btnSize = 150;
         const int btnSpace = 10;
-        ImGui::SetNextWindowPos(
-            ImVec2(w - btnSize * 6, h - btnSize * 3)
-            , ImGuiCond_Always
-        );
 
-        int buttonsThisFrame[256];
-        memset(buttonsThisFrame, 0, sizeof(buttonsThisFrame));
-        ImGui::Begin("make window", nullptr,
-            ImGuiWindowFlags_NoBackground |
-            ImGuiWindowFlags_NoTitleBar |
-            ImGuiWindowFlags_NoResize |
-            ImGuiWindowFlags_NoMove);
-
-        ImGui::SetCursorPos(ImVec2(btnSize + btnSpace * 2, 0));
-        ImGui::Button(ICON_FA_CHEVRON_UP, ImVec2(btnSize, btnSize));
-        buttonsThisFrame['W'] = ImGui::IsItemActive();
-        ImGui::SetCursorPos(ImVec2(btnSize + btnSpace * 2, btnSize + btnSpace));
-        ImGui::Button(ICON_FA_CHEVRON_DOWN, ImVec2(btnSize, btnSize));
-        buttonsThisFrame['S'] = ImGui::IsItemActive();
-        ImGui::SetCursorPos(ImVec2(btnSize * 2 + btnSpace * 4, btnSize / 2));
-        ImGui::Button(ICON_FA_CHEVRON_RIGHT, ImVec2(btnSize, btnSize));
-        buttonsThisFrame['D'] = ImGui::IsItemActive();
-        ImGui::SetCursorPos(ImVec2(0, btnSize / 2));
-        ImGui::Button(ICON_FA_CHEVRON_LEFT, ImVec2(btnSize, btnSize));
-        buttonsThisFrame['A'] = ImGui::IsItemActive();
-
-        ImGui::SetCursorPos(ImVec2(btnSize * 4 + btnSpace * 4, 0));
-        ImGui::Button(ICON_FA_CARET_SQUARE_O_UP, ImVec2(btnSize, btnSize));
-        buttonsThisFrame[32] = ImGui::IsItemActive();
-
-        ImGui::SetCursorPos(ImVec2(btnSize * 4 + btnSpace * 4, btnSize + btnSpace));
-        ImGui::Button(ICON_FA_CARET_SQUARE_O_DOWN, ImVec2(btnSize, btnSize));
-        buttonsThisFrame[16] = ImGui::IsItemActive();
-
-        ImGui::End();
+        m_topctrl->DrawUI();
 
         imguiEndFrame();
-
-        for (int i = 0; i < 256; ++i)
-        {
-            if (buttonsThisFrame[i] != sButtonStates[i])
-            {
-                if (buttonsThisFrame[i] > 0)
-                    ctx.m_pWorld->KeyDown(i);
-                else
-                    ctx.m_pWorld->KeyUp(i);
-            }
-        }
-        memcpy(sButtonStates, buttonsThisFrame, sizeof(sButtonStates));
     }
 
     bool UIManager::TouchUp(int touchId)
@@ -172,65 +152,118 @@ namespace sam
         g_buttonDown = m_buttonDown = 0;
         if (m_capturedCtrl != nullptr)
         {
-            m_capturedCtrl->TouchUp(touchId);
             m_capturedCtrl = nullptr;
             return true;
         }
 
-        return false;
-    }
+        return true;
+    }    
 
-    UIButton::UIButton(const std::string& text, float x, float y, float w, float h) :
+
+    UIStateBtn::UIStateBtn(float x, float y, float w, float h, const std::string& str,
+        std::function<void(bool)> stateChanged) :
         UIControl(x, y, w, h),
-        m_text(text)
+        m_text(str),
+        m_isDown(false),
+        m_stateChanged(stateChanged)
     {
-        m_background = Vec4f(0.6f, 0.6f, 0.6f, 1.0f);
-        m_border = Vec4f(0.8f, 0.8f, 0.8f, 1.0f);
-        m_pressedColor = Vec4f(0.9f, 0.6f, 0.6f, 1.0f);
+
     }
 
-    void UIButton::Initialize(const std::shared_ptr<SceneGroup>& group, DrawContext& ctx)
+    void UIStateBtn::DrawUI()
     {
-        std::shared_ptr<SceneGroup> grp = std::make_shared<SceneGroup>();
-        Vec3f scl = Vec3f(m_width * 0.5f, m_height * 0.5f, 1);
-        grp->SetScale(scl);
-        grp->SetOffset(Point3f(m_x + scl[0], m_y + scl[1], 0));
-
-        m_rect = std::make_shared<SceneRect>();
-        m_rect->SetColor(m_background);
-        m_rect->SetStroke(m_border, 3.0f);
-        grp->AddItem(m_rect);
-        std::shared_ptr<SceneText> text = std::make_shared<SceneText>();
-        text->SetOffset(Point3f(0, 0.5f, 0));
-        text->SetText(m_text);
-        text->SetColor(Vec4f(0, 0, 0, 1));
-        text->SetFont("roboto", m_height * 0.6f);
-        grp->AddItem(text);
-
-        group->AddItem(grp);
+        ImGui::SetCursorPos(ImVec2(m_x, m_y));
+        ImGui::Button(ICON_FA_CHEVRON_UP, ImVec2(m_width, m_height));
+        bool isDown = ImGui::IsItemActive();
+        if (isDown != m_isDown)
+            m_stateChanged(isDown);
+        m_isDown = isDown;
     }
 
-    bool UIButton::TouchDown(float x, float y, int touchId)
+
+    UIWindow::UIWindow(float x, float y, float w, float h, const std::string& name,
+            bool invisible) :
+        UIGroup(x, y, w, h),
+        m_name(name),
+        m_isopen(true),
+        m_isinvisible(invisible)
     {
-        m_rect->SetColor(m_pressedColor);
-        if (m_pressed != nullptr)
-            m_pressed(touchId);
-        return true;
+
     }
 
-    bool UIButton::TouchDrag(float x, float y, int touchId)
+    UIGroup::UIGroup(float x, float y, float w, float h) :
+        UIControl(x, y, w, h)
+    {}
+
+
+    UIControl* UIGroup::IsHit(float x, float y, int touchId)
     {
-        return true;
+        float lx = x - m_x;
+        float ly = y - m_y;
+        for (const auto& ctrl : m_controls)
+        {
+            UIControl* pHit = ctrl->IsHit(lx, ly, touchId);
+            if (pHit != nullptr)
+                return pHit;
+        }
+        return nullptr;
     }
 
-    bool UIButton::TouchUp(int touchId)
+
+    void UIGroup::AddControl(std::shared_ptr<UIControl> ctrl)
     {
-        m_rect->SetColor(m_background);
-        return true;
+        m_controls.push_back(ctrl);
     }
-    void UIButton::OnPressed(const UIButton::PressedFunc& pressed)
+
+    UIControl* UIWindow::IsHit(float x, float y, int touchId)
     {
-        m_pressed = pressed;
+        UIControl *pHit = UIGroup::IsHit(x, y, touchId);
+        if (pHit != nullptr)
+            return pHit;
+
+        if (m_isinvisible)
+            return nullptr;
+
+        return (x >= m_x && x < (m_x + m_width) &&
+            y >= m_y && y < (m_y + m_height)) ? this : nullptr;
+    }
+
+    void UIWindow::DrawUI()
+    {
+        ImGui::SetNextWindowPos(
+            ImVec2(m_x, m_y), m_isinvisible ? ImGuiCond_Always : ImGuiCond_Appearing);
+
+        if (m_width > 0)
+        {
+            ImGui::SetNextWindowSize(ImVec2(m_width, m_height),
+                m_isinvisible ? ImGuiCond_Always : ImGuiCond_Appearing
+            );
+        }
+        bool isopen = m_isopen;
+        ImGui::Begin(m_name.c_str(), &isopen,
+            m_isinvisible ? (
+            ImGuiWindowFlags_NoBackground |
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove) : 0);
+        if (isopen != m_isopen && m_onOpenChangedFn != nullptr)
+            m_onOpenChangedFn(isopen);
+
+        ImVec2 pos = ImGui::GetWindowPos();
+        m_x = pos.x;
+        m_y = pos.y;
+
+        ImVec2 size = ImGui::GetWindowSize();
+        m_width = size.x;
+        m_height = size.y;
+
+        m_isopen = isopen;
+        for (const auto& control : m_controls)
+        {
+            control->DrawUI();
+        }
+
+        ImGui::End();
     }
 
 }

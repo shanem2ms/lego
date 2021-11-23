@@ -9,8 +9,6 @@
 #include "gmtl/PlaneOps.h"
 #include "LegoBrick.h"
 #include "BrickMgr.h"
-
-
 #define NOMINMAX
 
 
@@ -18,8 +16,7 @@ using namespace gmtl;
 const char* ldrpath = "C:\\ldraw";
 
 namespace sam
-{
-  
+{     
     World::World() :
         m_width(-1),
         m_height(-1),
@@ -90,6 +87,16 @@ namespace sam
     }
 
     constexpr float pi_over_two = 3.14159265358979323846f * 0.5f;
+    void World::RawMove(float dx, float dy)
+    {
+        Engine& e = Engine::Inst();
+        Camera::Fly la = e.DrawCam().GetFly();
+        la.dir[0] += dx;
+        la.dir[1] -= dy;
+        la.dir[1] = std::max(la.dir[1], -pi_over_two);
+        e.DrawCam().SetFly(la);
+    }
+
     void World::TouchDrag(float x, float y, int touchId)
     {
         if (m_activeTouch != nullptr)
@@ -118,6 +125,9 @@ namespace sam
         m_tiltVel = 0;
     }
     extern bool g_showOctBoxes;
+    
+    static int curPartIdx = 0;
+    static int prevPartIdx = -1;
 
     const int LeftShift = 16;
     const int SpaceBar = 32;
@@ -127,6 +137,7 @@ namespace sam
     const int SButton = 'S';
     const int FButton = 'F';
     bool isPaused = false;
+    int partChange = 0;
 
     int g_maxTileLod = 8;
     void World::KeyDown(int k)
@@ -165,6 +176,9 @@ namespace sam
             m_inspectmode = !m_inspectmode;
             Engine::Inst().SetDbgCam(m_inspectmode);
             break;
+        case 'N':
+            partChange = 1;
+            break;
         }
         if (k >= '1' && k <= '9')
         {
@@ -188,9 +202,13 @@ namespace sam
         case SButton:
             m_camVel[2] = 0;
             break;
+        case 'N':
+            //partChange = 0;
+            break;
         }
     }
 
+    std::string g_partName;
     Loc g_hitLoc(0, 0, 0);
     float g_hitLocArea = 0;
     float g_hitDist = 0;
@@ -230,6 +248,18 @@ namespace sam
             m_worldGroup->BeforeDraw([this](DrawContext& ctx) { ctx.m_pgm = m_shader; return true; });
 
 
+        }
+        curPartIdx += partChange;
+        if (curPartIdx != prevPartIdx)
+        {
+            if (m_legoBrick != nullptr)
+                e.Root()->RemoveItem(m_legoBrick);
+            std::string partname = m_brickManager->PartName(curPartIdx);
+            m_legoBrick = std::make_shared<LegoBrick>(m_brickManager, partname);
+            e.Root()->AddItem(m_legoBrick);
+
+            g_partName = partname;
+            prevPartIdx = curPartIdx;
         }
 
         m_frustum->SetEnabled(m_inspectmode);
@@ -350,9 +380,6 @@ namespace sam
             campos.inspectdir = dfly.dir;
             m_level.WriteCameraPos(campos);
         }
-        //fly.pos[1] = std::max(m_octTileSelection.GetGroundHeight(fly.pos), fly.pos[1]);
-
-
     }
 
     void World::Layout(int w, int h)

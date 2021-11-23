@@ -30,11 +30,11 @@
 #include <intrin.h>
 #include <stdlib.h>
 
-void DbgPrint(const char* str);
 
 namespace ldr {
 
-// ignores projective
+    static uint32_t maxedititers = 0;
+    // ignores projective
 
 inline LdrMatrix mat_identity()
 {
@@ -494,7 +494,7 @@ public:
           edgeNM.triRight = tri;
         }
         else {
-          assert(0);
+            return INVALID;
         }
 
         nonManifold = it->second;
@@ -689,9 +689,12 @@ public:
       vtxTriangles.add(idxC, t);
     }
 
-    addEdge(idxA, idxB, t, nonManifold);
-    addEdge(idxB, idxC, t, nonManifold);
-    addEdge(idxC, idxA, t, nonManifold);
+    if (addEdge(idxA, idxB, t, nonManifold) == INVALID)
+        return INVALID;
+    if (addEdge(idxB, idxC, t, nonManifold) == INVALID)
+        return INVALID;
+    if (addEdge(idxC, idxA, t, nonManifold) == INVALID)
+        return INVALID;
 
     if(triAlive.size() <= t) {
       triAlive.resize(t + 1, false);
@@ -774,7 +777,7 @@ static const uint32_t EDGE_HARD_FLOATER_BIT = 4;
 class MeshUtils
 {
 public:
-  static void initNonManifold(Mesh& mesh, Loader::BuilderPart& builder)
+  static bool initNonManifold(Mesh& mesh, Loader::BuilderPart& builder)
   {
     mesh.reserve(builder.positions.size(), builder.triangles.size() / 3, builder.triangles.data());
 
@@ -853,7 +856,7 @@ public:
     }
 
     if(!nonManifold)
-      return;
+      return true;
 
     // if nonManifold remain we test against two scenarios per edge
     //
@@ -1014,7 +1017,8 @@ public:
             }
           }
 
-          assert(triOpposite2 != Mesh::INVALID);
+          if (triOpposite2 == Mesh::INVALID)
+              return false;
 
           // rebuild local triangles
           for(uint32_t s = 0; s < 4; s++) {
@@ -1067,7 +1071,7 @@ public:
             tStart = mesh.edges[eNext].otherTri(tStart);
             eCur   = eNext;
             if(eCur == eStart)
-              return;
+              return true;
             if(tStart != Mesh::INVALID) {
               triTemps.push_back(tStart);
             }
@@ -1094,6 +1098,8 @@ public:
     for(size_t t = 0; t < triDelete.size(); t++) {
       mesh.removeTriangle(triDelete[t]);
     }
+
+    return true;
   }
 
   static void removeDeleted(Mesh& mesh, Loader::BuilderPart& builder)
@@ -1450,10 +1456,11 @@ public:
     return modified;
   }
 
-  static void fixBuilderPart(Loader::BuilderPart& builder, const Loader::Config& config)
+  static bool fixBuilderPart(Loader::BuilderPart& builder, const Loader::Config& config)
   {
     Mesh mesh;
-    MeshUtils::initNonManifold(mesh, builder);
+    if (!MeshUtils::initNonManifold(mesh, builder))
+        return false;
     MeshUtils::initEdgeLines(mesh, builder, false);
     MeshUtils::initEdgeLines(mesh, builder, true);
     if(config.partFixTjunctions) {
@@ -1462,6 +1469,7 @@ public:
     MeshUtils::storeLines(mesh, builder, false);
     MeshUtils::storeLines(mesh, builder, true);
     MeshUtils::removeDeleted(mesh, builder);
+    return true;
   }
 
   static void chamferRenderPart(MeshFull& mesh, Loader::BuilderRenderPart& builder, const LdrPart& part, const float chamferPreferred)
@@ -1731,9 +1739,9 @@ public:
     vertex.normal   = vec_normalize(inNormal);
 
     return vertex;
-  }
+  }  
 
-  static void buildRenderPart(Loader::BuilderRenderPart& builder, const LdrPart& part, const Loader::Config& config)
+  static bool buildRenderPart(Loader::BuilderRenderPart& builder, const LdrPart& part, const Loader::Config& config)
   {
     builder.bbox = part.bbox;
     builder.flag = part.flag;
@@ -1846,7 +1854,7 @@ public:
           // from the last used edge (eStart) to get clusters ordered next
           // to each other.
 
-          uint32_t startIdx;
+          uint32_t startIdx = 0;
           uint32_t startRight = 0;
           for(uint32_t e = 0; e < edgeCount * 2; e++) {
             uint32_t eWrapped = (eStart * 2 + e) % (edgeCount * 2);
@@ -1876,7 +1884,11 @@ public:
 
           auto iterateVertexEdges = [&](uint32_t edgeIdx, uint32_t tri, uint32_t triOther) {
             uint32_t nextIdx;
+            uint32_t iters = 0;
             while((nextIdx = mesh.getNextVertexSubEdge(v, edgeIdx, tri, triOther)) != edgeIdx) {
+                iters++;
+                if (iters > (1 << 10))
+                    return MeshFull::INVALID;
               const MeshFull::Edge& edgeNext                              = mesh.edges[edgeIndices[nextIdx]];
               available[nextIdx * 2 + (edgeNext.triRight == tri ? 1 : 0)] = false;
 
@@ -1891,6 +1903,7 @@ public:
                 mergeTriangle(edgeIdx, (edgeNext.triRight == tri ? 1 : 0), tri);
               }
             }
+            maxedititers = std::max(iters, maxedititers);
             return nextIdx;
           };
 
@@ -1911,6 +1924,9 @@ public:
 
           mergeTriangle(startIdx, startRight, startTri);
           uint32_t eB = iterateVertexEdges(startIdx, startTri, startEdge.otherTri(startTri));
+          if (eB == MeshFull::INVALID)
+              return false;
+
           pair.edgeB  = edgeIndices[eB];
           pair.triB   = lastTri;
 
@@ -1934,6 +1950,10 @@ public:
 
           builder.vertices.push_back(make_vertex(pos, normal));
           newVertex++;
+          if (newVertex > (1 << 18))
+          {
+              return false;
+          }
         }
       }
       else {
@@ -2238,7 +2258,7 @@ bool Loader::findLibraryFile(const char* filename, std::string& foundname, bool 
     
     FILE* f     = fopen(foundname.c_str(), "rb");
     bool  found = f != nullptr;
-    DbgPrint(foundname.c_str());
+    //DbgPrint(foundname.c_str());
     if(f) {
       fclose(f);
       isPrimitive = i < PRIMITIVE_PATHS;
@@ -2247,7 +2267,7 @@ bool Loader::findLibraryFile(const char* filename, std::string& foundname, bool 
       return true;
     }
 
-    DbgPrint("not found");
+    //DbgPrint("not found");
   }
 
   return false;
@@ -2835,8 +2855,8 @@ LdrResult Loader::loadData(LdrPart& part, LdrRenderPart& renderPart, const char*
     if((typ == 3 || typ == 4) && (!localCull || certified != BFC_TRUE)) {
       // inconsistent clipping state for this part
       builder.flag.hasNoBackFaceCulling = 1;
-    }
 
+    }
     if(!keepInvertNext) {
       invertNext = false;
     }
@@ -2850,8 +2870,15 @@ LdrResult Loader::loadData(LdrPart& part, LdrRenderPart& renderPart, const char*
   }
   compactBuilderPart(builder);
 
+  if (builder.positions.size() > (1 << 16))
+      return LDR_ERROR_RESERVED_MEMORY;
+
   if(!isPrimitive && m_config.partFixMode == LDR_PART_FIX_ONLOAD) {
-    MeshUtils::fixBuilderPart(builder, m_config);
+      if (!MeshUtils::fixBuilderPart(builder, m_config))
+      {
+          part.loadResult = LDR_ERROR_DEPENDENT_OPERATION;
+          return part.loadResult;
+      }
   }
 
   initPart(part, builder);
@@ -2866,7 +2893,8 @@ LdrResult Loader::loadData(LdrPart& part, LdrRenderPart& renderPart, const char*
     }
 
     BuilderRenderPart builderRender;
-    MeshUtils::buildRenderPart(builderRender, partTemp, m_config);
+    if (!MeshUtils::buildRenderPart(builderRender, partTemp, m_config))
+        part.loadResult = LDR_ERROR_DEPENDENT_OPERATION;
     initRenderPart(renderPart, builderRender, partTemp);
 
     if(!m_config.partFixMode == LDR_PART_FIX_ONLOAD) {

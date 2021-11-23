@@ -22,6 +22,8 @@ class Application
     int m_frameIdx;
     std::string m_documentsPath;
     std::function<bool(bool)> m_hideMouseCursorFn;
+    bool m_rawMouseMode;
+    static void (*m_dbgFunc)(const char*);
 
 public:    
     UIManager& UIMgr();
@@ -32,7 +34,7 @@ public:
     void TouchDown(float x, float y, int touchId);
     void TouchMove(float x, float y, int touchId);
     void TouchUp(int touchId);
-    void RawMouseMoved(uint32_t rx, uint32_t ry);
+    void RawMouseMoved(int32_t rx, int32_t ry);
     void KeyDown(int keyId);
     void KeyUp(int keyId);
     void Resize(int w, int h);
@@ -42,6 +44,9 @@ public:
     const std::string &Documents() const
     { return m_documentsPath; }    
     void SetHideMouseCursorFn(const std::function<bool(bool)>& fn);
+    static void SetDebugMsgFunc(void (*dbgfunc)(const char*));
+    static void DebugMsg(const std::string& str);
 };
 
+std::shared_ptr< bgfx::CallbackI> CreateCallback();
 }

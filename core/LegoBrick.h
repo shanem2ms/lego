@@ -16,6 +16,7 @@ namespace sam
         bgfx::VertexBufferHandle m_vbh;
         bgfx::IndexBufferHandle m_ibh;
         bgfxh<bgfx::UniformHandle> m_uparams;
+        std::string m_partstr;
 
     public:
         LegoBrick(std::shared_ptr<BrickManager> mgr,

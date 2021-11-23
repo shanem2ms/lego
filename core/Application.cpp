@@ -11,6 +11,17 @@
 
 namespace sam
 {
+    void (*Application::m_dbgFunc)(const char*) = nullptr;
+    void Application::SetDebugMsgFunc(void (*dbgfunc)(const char*))
+    {
+        m_dbgFunc = dbgfunc;
+    }
+    void Application::DebugMsg(const std::string& str)
+    {
+        if (m_dbgFunc != nullptr)
+            m_dbgFunc(str.c_str());
+    }
+
 #ifdef SAM_COROUTINES
     co::static_thread_pool g_threadPool(8);
 #endif
@@ -27,7 +38,8 @@ namespace sam
     Application::Application() :
         m_height(0),
         m_width(0),
-        m_frameIdx(0)
+        m_frameIdx(0),
+        m_rawMouseMode(false)
     {
         s_pInst = this;
         m_engine = std::make_unique<Engine>();
@@ -69,16 +81,25 @@ namespace sam
     {
         m_hideMouseCursorFn = fn;
     }
-
-    void Application::RawMouseMoved(uint32_t rx, uint32_t ry)
+    
+    void Application::RawMouseMoved(int32_t rx, int32_t ry)
     {
-
+        static const float mScale = 1.0f / 256.0f;
+        if (m_rawMouseMode)
+        {
+            m_world->RawMove((float)rx * mScale, (float)-ry * mScale);
+        }
     }
 
     void Application::TouchDown(float x, float y, int touchId)
     {
         if (!m_uiMgr->TouchDown(x, y, touchId))
-            m_world->TouchDown(x, y, touchId);
+        {
+            if (!m_rawMouseMode)
+                m_rawMouseMode = m_hideMouseCursorFn(true);
+            else
+                m_world->TouchDown(x, y, touchId);
+        }
     }
 
     void Application::TouchMove(float x, float y, int touchId)
@@ -95,7 +116,13 @@ namespace sam
 
     void Application::KeyDown(int keyId)
     {
-        m_world->KeyDown(keyId);
+        if (keyId == 0x1B) // Escape
+        {
+            m_hideMouseCursorFn(false);
+            m_rawMouseMode = false;
+        }
+        else
+            m_world->KeyDown(keyId);
     }
 
     void Application::KeyUp(int keyId)
@@ -110,6 +137,7 @@ namespace sam
         m_engine->Resize(w, h);
         m_world->Layout(w, h);
     }
+
     void Application::Tick(float time)
     {
         m_engine->Tick(time);

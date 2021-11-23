@@ -173,7 +173,7 @@ namespace sam
             bgfx::setIndexBuffer(Cube::ibh);
             bgfx::submit(ctx.m_curviewIdx, sBboxshader);
         }
-        else
+        else if (false)
         {
             if (!sBrickShader.isValid())
                 sBrickShader = Engine::Inst().LoadShader("vs_cubes.bin", "fs_cubes.bin");

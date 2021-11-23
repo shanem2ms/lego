@@ -38,6 +38,7 @@ namespace sam
         std::shared_ptr<SceneItem> m_targetCube;
         std::shared_ptr<SceneItem> m_frustum;
         std::shared_ptr<BrickManager> m_brickManager;
+        std::shared_ptr<SceneItem> m_legoBrick;
         Level m_level;        
 
     public:
@@ -48,6 +49,7 @@ namespace sam
         ~World();
         Level& Level() { return m_level; }
         void Update(Engine& engine, DrawContext& ctx);
+        void RawMove(float dx, float dy);
         void TouchDown(float x, float y, int touchId);
         void TouchDrag(float x, float y, int touchId);
         void TouchUp(int touchId);

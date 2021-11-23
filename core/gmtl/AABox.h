@@ -37,7 +37,15 @@ namespace gmtl
        * Creates a new empty box.
        */
       AABox()
-         : mMin(0,0,0), mMax(0,0,0), mEmpty(true)
+         : mMin(
+             std::numeric_limits<float>::max(),
+             std::numeric_limits<float>::max(),
+             std::numeric_limits<float>::max()), 
+           mMax(
+            -std::numeric_limits<float>::max(),
+            -std::numeric_limits<float>::max(),
+            -std::numeric_limits<float>::max()),
+          mEmpty(true)
       {}
 
       /**

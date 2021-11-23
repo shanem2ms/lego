@@ -12,7 +12,8 @@
 namespace sam
 {
     LegoBrick::LegoBrick(std::shared_ptr<BrickManager> mgr, const std::string &partstr) :
-        m_mgr(mgr)
+        m_mgr(mgr),
+        m_partstr(partstr)
     {
 
     }
@@ -23,7 +24,7 @@ namespace sam
         if (!bgfx::isValid(sShader))
             sShader = Engine::Inst().LoadShader("vs_cubes.bin", "fs_cubes.bin");
 
-        const BrickManager::Brick &b = m_mgr->GetBrick("91405.dat");
+        const BrickManager::Brick &b = m_mgr->GetBrick(m_partstr.c_str());
         m_vbh = b.m_vbh;
         m_ibh = b.m_ibh;
         m_uparams = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 1);
@@ -36,6 +37,8 @@ namespace sam
 
     void LegoBrick::Draw(DrawContext& ctx)
     {
+        if (!bgfx::isValid(m_vbh))
+            return;
         PosTexcoordNrmVertex::init();
         Matrix44f m = CalcMat();
         bgfx::setTransform(m.getData());

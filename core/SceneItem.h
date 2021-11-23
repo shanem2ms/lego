@@ -187,6 +187,13 @@ namespace sam
         {
             m_sceneItems.push_back(item);
         }
+        void RemoveItem(const std::shared_ptr<SceneItem>& item)
+        {
+            auto ititem = std::find(m_sceneItems.begin(),
+                m_sceneItems.end(), item);
+            if (ititem != m_sceneItems.end())
+                m_sceneItems.erase(ititem);
+        }
 
         void BeforeDraw(std::function<bool(DrawContext& ctx)> f)
         { m_beforeDraw = f; }

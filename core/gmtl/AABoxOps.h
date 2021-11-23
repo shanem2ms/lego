@@ -49,6 +49,22 @@ inline bool operator!=( const AABox<DATA_TYPE>& b1, const AABox<DATA_TYPE>& b2 )
    return (! (b1 == b2));
 }
 
+
+template< class DATA_TYPE >
+inline AABox<DATA_TYPE> &operator += (AABox<DATA_TYPE>& b1, const Point<DATA_TYPE, 3>& p)
+{
+    for (int i = 0; i < 3; ++i)
+    {
+        if (p[i] > b1.mMax[i])
+            b1.mMax[i] = p[i];
+        if (p[i] < b1.mMin[i])
+            b1.mMin[i] = p[i];
+    }
+    b1.mEmpty = false;
+    return b1;
+}
+
+
 /**
  * Compare two AABoxes to see if they are the same within the given tolerance.
  *

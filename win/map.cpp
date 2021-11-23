@@ -136,7 +136,12 @@ RECT curWindowRect;
 HWND hWnd;
 bool bgfxInit = false;
 sam::Application app;
+std::shared_ptr<bgfx::CallbackI> bgfxCallback;
 bool OnHideOrShowMouse(bool);
+void WriteDbgMessage(const char* str)
+{
+    OutputDebugString(str);
+}
 
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
@@ -173,6 +178,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     init.resolution.width = (uint32_t)curWindowRect.right;
     init.resolution.height = (uint32_t)curWindowRect.bottom;
     init.resolution.reset = BGFX_RESET_VSYNC;
+    bgfxCallback = sam::CreateCallback();
+    init.callback = bgfxCallback.get();
     if (!bgfx::init(init))
         return 1;
     bgfx::setDebug(BGFX_DEBUG_TEXT);
@@ -185,8 +192,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     CHAR my_documents[MAX_PATH];
     HRESULT result = SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, SHGFP_TYPE_CURRENT, my_documents);
 
+    app.SetDebugMsgFunc(WriteDbgMessage);
     GetCurrentDirectory(MAX_PATH, my_documents);
-    app.Initialize(my_documents);
+    app.Initialize("C:\\homep4\\lego");
     app.Resize(rect.right, rect.bottom);
     app.SetHideMouseCursorFn(OnHideOrShowMouse);
     return TRUE;
@@ -223,11 +231,15 @@ bool OnHideOrShowMouse(bool enable)
 {
     if (enable)
     {
-        RECT r{ 10, 10, 50, 50 };
+        POINT cursorPos;
+        GetCursorPos(&cursorPos);
+        RECT r{ cursorPos.x, cursorPos.y, cursorPos.x+1, cursorPos.y+1 };
+        ShowCursor(FALSE);
         return ClipCursor(&r) != 0;
     }
     else
     {
+        ShowCursor(TRUE);
         return ClipCursor(nullptr) != 0;
     }
 
