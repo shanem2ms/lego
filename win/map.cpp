@@ -173,6 +173,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     bgfx::renderFrame();
     bgfx::Init init;
+    init.type = bgfx::RendererType::Enum::Direct3D12;
     init.platformData.nwh = hWnd;
     GetClientRect(hWnd, &curWindowRect);
     init.resolution.width = (uint32_t)curWindowRect.right;

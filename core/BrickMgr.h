@@ -53,7 +53,7 @@ namespace sam
     private:
         std::map<std::string, Brick> m_bricks;
         std::shared_ptr<ldr::Loader> m_ldrLoader;
-        std::vector<std::string> m_partnames;
+        std::vector<std::pair<int, std::string>> m_partnames;
         std::filesystem::path m_cachePath;
         std::unique_ptr<BrickThreadPool> m_threadPool;
     };

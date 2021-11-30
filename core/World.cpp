@@ -32,7 +32,6 @@ namespace sam
         m_level.OpenDb(path);
     }
 
-
     class Touch
     {
         Point2f m_touch;
@@ -179,6 +178,9 @@ namespace sam
         case 'N':
             partChange = 1;
             break;
+        case 'L':
+            partChange = -1;
+            break;
         }
         if (k >= '1' && k <= '9')
         {
@@ -203,7 +205,8 @@ namespace sam
             m_camVel[2] = 0;
             break;
         case 'N':
-            //partChange = 0;
+        case 'L':
+            partChange = 0;
             break;
         }
     }
@@ -250,6 +253,8 @@ namespace sam
 
         }
         curPartIdx += partChange;
+        curPartIdx = std::max(curPartIdx, 0);
+        curPartIdx = std::min(curPartIdx, (int)m_brickManager->NumParts() - 1);
         if (curPartIdx != prevPartIdx)
         {
             if (m_legoBrick != nullptr)

@@ -3,6 +3,7 @@
 #include <bgfx/bgfx.h>
 #include "Engine.h"
 #include "UIControl.h"
+#include "LegoUI.h"
 #include "World.h"
 #include "imgui.h"
 #include <chrono>
@@ -44,7 +45,8 @@ namespace sam
         s_pInst = this;
         m_engine = std::make_unique<Engine>();
         m_world = std::make_unique<World>();
-        m_uiMgr = std::make_unique<UIManager>();
+        m_legoUI = std::make_unique<LegoUI>();
+        ActivateUI();
 #if WATCHDOGTHREAD
         sWatchdogThread = std::thread(WatchDogFunc);
 #endif
@@ -74,7 +76,17 @@ namespace sam
 
     UIManager& Application::UIMgr()
     {
-        return *m_uiMgr;
+        return *m_legoUI;
+    }
+
+    void Application::ActivateUI()
+    {
+        m_legoUI->ActivateUI([this]()
+            {
+                if (m_hideMouseCursorFn)
+                    m_hideMouseCursorFn(true);
+                m_rawMouseMode = true;
+            });
     }
 
     void Application::SetHideMouseCursorFn(const std::function<bool(bool)>& fn)
@@ -93,7 +105,7 @@ namespace sam
 
     void Application::TouchDown(float x, float y, int touchId)
     {
-        if (!m_uiMgr->TouchDown(x, y, touchId))
+        if (!m_legoUI->TouchDown(x, y, touchId))
         {
             if (!m_rawMouseMode)
                 m_rawMouseMode = m_hideMouseCursorFn(true);
@@ -104,13 +116,13 @@ namespace sam
 
     void Application::TouchMove(float x, float y, int touchId)
     {
-        if (!m_uiMgr->TouchDrag(x, y, touchId))
+        if (!m_legoUI->TouchDrag(x, y, touchId))
             m_world->TouchDrag(x, y, touchId);
     }
 
     void Application::TouchUp(int touchId)
     {
-        if (!m_uiMgr->TouchUp(touchId))
+        if (!m_legoUI->TouchUp(touchId))
             m_world->TouchUp(touchId);
     }
 
@@ -119,15 +131,21 @@ namespace sam
         if (keyId == 0x1B) // Escape
         {
             m_hideMouseCursorFn(false);
+            ActivateUI();
             m_rawMouseMode = false;
         }
+        else if (m_legoUI->IsActive())
+            m_legoUI->KeyDown(keyId);
         else
             m_world->KeyDown(keyId);
     }
 
     void Application::KeyUp(int keyId)
     {
-        m_world->KeyUp(keyId);
+        if (m_legoUI->IsActive())
+            m_legoUI->KeyUp(keyId);
+        else
+            m_world->KeyUp(keyId);
     }
 
     void Application::Resize(int w, int h)
@@ -149,7 +167,7 @@ namespace sam
         m_documentsPath = folder;
         std::string dbPath = m_documentsPath + "/testlvl";
         m_world->Open(dbPath);
-        imguiCreate();
+        imguiCreate(32.0f);
     }
 
     const float Pi = 3.1415297;
@@ -165,7 +183,7 @@ namespace sam
         ctx.m_frameIdx = m_frameIdx;
         ctx.m_pWorld = m_world.get();
         ctx.m_numGpuCalcs = 0;
-        m_uiMgr->Update(*m_engine, m_width, m_height, ctx);
+        m_legoUI->Update(*m_engine, m_width, m_height, ctx);
         m_world->Update(*m_engine, ctx);
 
         bgfx::setViewRect(0, 0, 0, uint16_t(m_width), uint16_t(m_height));

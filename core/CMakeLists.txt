@@ -27,6 +27,7 @@ set(Header_Files
     "SceneItem.h"
     "Mesh.h"
     "LegoBrick.h"
+    "LegoUI.h"
 )  
 
 source_group("Header Files" FILES ${Header_Files})
@@ -57,6 +58,7 @@ set(Source_Files
     "Mesh.cpp"
     "Level.cpp"
     "LegoBrick.cpp"
+    "LegoUI.cpp"
     "ldrawloader.cpp"
     "imgui/imgui.cpp"
     "imgui/dear-imgui/imgui.cpp"

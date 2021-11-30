@@ -66,21 +66,28 @@ namespace sam
             bool invisible);
         UIControl* IsHit(float x, float y, int touchId) override;
         void DrawUI() override;
+        void Show() { m_isopen = true; }
     };
 
     class UIManager
     {
+    protected:
         std::shared_ptr<UIControl> m_topctrl;
         UIControl *m_capturedCtrl;
         gmtl::Vec2f m_touchDown;
         gmtl::Vec2f m_touchPos;
         int m_buttonDown;
-
+        int m_width;
+        int m_height;
     public:
-        bool TouchDown(float x, float y, int touchId);
-        bool TouchDrag(float x, float y, int touchId);
-        bool TouchUp(int touchId);
+        UIManager() {}
+        virtual bool TouchDown(float x, float y, int touchId);
+        virtual bool TouchDrag(float x, float y, int touchId);
+        virtual bool TouchUp(int touchId);
+        virtual std::shared_ptr<UIControl> Build(DrawContext& ctx, int w, int h) = 0;
         void Update(Engine& engine, int w, int h, DrawContext& ctx);
+        void KeyDown(int keyId);
+        void KeyUp(int keyId);
     };
    
 }

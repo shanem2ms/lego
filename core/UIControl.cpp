@@ -41,6 +41,16 @@ namespace sam
 
     int g_buttonDown = 0;
 
+    void UIManager::KeyDown(int keyId)
+    {
+
+    }
+
+    void UIManager::KeyUp(int keyId)
+    {
+
+    }
+
     bool UIManager::TouchDown(float x, float y, int touchId)
     {
         m_touchPos = m_touchDown = gmtl::Vec2f(x, y);
@@ -66,71 +76,16 @@ namespace sam
             return true;
         }
         return true;
-    }
+    }   
 
     void UIManager::Update(Engine& engine, int w, int h, DrawContext& ctx)
     {
-        if (m_topctrl == nullptr)
+        if (w != m_width || h != m_height)
         {
-            
-            const int btnSize = 150;
-            const int btnSpace = 10;
-
-            World* pWorld = ctx.m_pWorld;
-
-            std::shared_ptr<UIWindow> top = std::make_shared<UIWindow>(0, 0, 0, 0, "top", true);
-            std::shared_ptr<UIWindow> wnd = std::make_shared<UIWindow>(w - btnSize * 6, h - btnSize * 3, 0, 0, "controls", true);
-            m_topctrl = top;
-            top->AddControl(wnd);
-            wnd->AddControl(std::make_shared<UIStateBtn>(btnSize + btnSpace * 2, 0, btnSize, btnSize, ICON_FA_CHEVRON_UP,
-                [pWorld](bool isBtnDown)
-                {
-                    char key = 'W';
-                    if (isBtnDown) pWorld->KeyDown(key);
-                    else pWorld->KeyUp(key);
-                }));
-            wnd->AddControl(std::make_shared<UIStateBtn>(btnSize + btnSpace * 2, btnSize + btnSpace, btnSize, btnSize, ICON_FA_CHEVRON_DOWN,
-                [pWorld](bool isBtnDown)
-                {
-                    char key = 'S';
-                    if (isBtnDown) pWorld->KeyDown(key);
-                    else pWorld->KeyUp(key);
-                }));
-            wnd->AddControl(std::make_shared<UIStateBtn>(btnSize * 2 + btnSpace * 4, btnSize / 2, btnSize, btnSize, ICON_FA_CHEVRON_RIGHT,
-                [pWorld](bool isBtnDown)
-                {
-                    char key = 'D';
-                    if (isBtnDown) pWorld->KeyDown(key);
-                    else pWorld->KeyUp(key);
-                }));
-            wnd->AddControl(std::make_shared<UIStateBtn>(0, btnSize / 2, btnSize, btnSize, ICON_FA_CHEVRON_RIGHT,
-                [pWorld](bool isBtnDown)
-                {
-                    char key = 'A';
-                    if (isBtnDown) pWorld->KeyDown(key);
-                    else pWorld->KeyUp(key);
-                }));
-            wnd->AddControl(std::make_shared<UIStateBtn>(btnSize * 4 + btnSpace * 4, 0, btnSize, btnSize, ICON_FA_CARET_SQUARE_O_UP,
-                [pWorld](bool isBtnDown)
-                {
-                    char key = 32;
-                    if (isBtnDown) pWorld->KeyDown(key);
-                    else pWorld->KeyUp(key);
-                }));
-            wnd->AddControl(std::make_shared<UIStateBtn>(btnSize * 4 + btnSpace * 4, btnSize + btnSpace, btnSize, btnSize, ICON_FA_CARET_SQUARE_O_DOWN,
-                [pWorld](bool isBtnDown)
-                {
-                    char key = 16;
-                    if (isBtnDown) pWorld->KeyDown(key);
-                    else pWorld->KeyUp(key);
-                }));
-
-
-            std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(100, 100, 200, 200, "bricks", false);
-            top->AddControl(menu);
-
+            m_topctrl = Build(ctx, w, h);
+            m_width = w;
+            m_height = h;
         }
-
         imguiBeginFrame(m_touchPos[0]
             , m_touchPos[1]
             , m_buttonDown
@@ -230,6 +185,9 @@ namespace sam
 
     void UIWindow::DrawUI()
     {
+        if (!m_isopen)
+            return;
+
         ImGui::SetNextWindowPos(
             ImVec2(m_x, m_y), m_isinvisible ? ImGuiCond_Always : ImGuiCond_Appearing);
 
@@ -247,7 +205,10 @@ namespace sam
             ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoMove) : 0);
         if (isopen != m_isopen && m_onOpenChangedFn != nullptr)
+        {
             m_onOpenChangedFn(isopen);
+            m_isopen = false;
+        }
 
         ImVec2 pos = ImGui::GetWindowPos();
         m_x = pos.x;
@@ -256,6 +217,42 @@ namespace sam
         ImVec2 size = ImGui::GetWindowSize();
         m_width = size.x;
         m_height = size.y;
+
+
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
+        ImGui::BeginChild("ChildR", ImVec2(0, 0), true, window_flags);
+        /*
+        if (ImGui::BeginTable("split", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings))
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                char buf[32];
+                sprintf(buf, "%03d", i);
+                if (ImGui::TableNextColumn())
+                    ImGui::Button(buf, ImVec2(-FLT_MIN, 0.0f));
+            }
+            ImGui::EndTable();
+        }
+        ImGui::EndChild();
+        */
+        ImGui::Columns(10);
+        // Also demonstrate using clipper for large vertical lists
+        int ITEMS_COUNT = 2000;
+        ImGuiListClipper clipper;
+        clipper.Begin(ITEMS_COUNT);
+        while (clipper.Step())
+        {
+            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+                for (int j = 0; j < 10; j++)
+                {
+                    ImGui::Text("[%d %d]...", i, j);
+                    ImGui::NextColumn();
+                }
+        }
+        ImGui::Columns(1);
+        ImGui::EndChild();
+        ImGui::PopStyleVar();
 
         m_isopen = isopen;
         for (const auto& control : m_controls)

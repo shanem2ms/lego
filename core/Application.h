@@ -11,12 +11,13 @@ namespace sam
 class World;
 class Engine;
 class UIManager;
+class LegoUI;
 struct DrawContext;
 class Application
 {
     std::unique_ptr<World> m_world;
     std::unique_ptr<Engine> m_engine;
-    std::unique_ptr<UIManager> m_uiMgr;
+    std::unique_ptr<LegoUI> m_legoUI;
     int m_width;
     int m_height;
     int m_frameIdx;
@@ -46,6 +47,7 @@ public:
     void SetHideMouseCursorFn(const std::function<bool(bool)>& fn);
     static void SetDebugMsgFunc(void (*dbgfunc)(const char*));
     static void DebugMsg(const std::string& str);
+    void ActivateUI();
 };
 
 std::shared_ptr< bgfx::CallbackI> CreateCallback();

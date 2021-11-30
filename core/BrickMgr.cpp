@@ -48,13 +48,14 @@ namespace sam
             for (uint32_t i = 0; i < numThreads; i++)
             {
                 threads[i] = std::thread([this]() {
-                    while (!terminate_pool)
+                    while (true)
                     {
                         std::shared_ptr<Task> task;
                         {
                             std::unique_lock<std::mutex> lock(task_mutex);
                             cv.wait(lock);
-
+                            if (terminate_pool)
+                                break;
                             task = tasks.front();
                             tasks.pop();
                         }
@@ -94,6 +95,12 @@ namespace sam
 
         ~BrickThreadPool()
         {
+            terminate_pool = true;
+            cv.notify_all();
+            for (auto& thread : threads)
+            {
+                thread.join();
+            }
         }
     };
 
@@ -101,15 +108,15 @@ namespace sam
     {
         delete ptr;
     }
-    void BrickManager::Brick::Load(ldr::Loader* pLoader, BrickThreadPool *threadPool, const std::string& name, std::filesystem::path &cachePath)
+
+    void BrickManager::Brick::Load(ldr::Loader* pLoader, BrickThreadPool* threadPool, const std::string& name, std::filesystem::path& cachePath)
     {
-        if (name == "33080.dat")
-            __debugbreak();
+        static bool sEnableDirectLoad = false;
         PosTexcoordNrmVertex::init();
         std::filesystem::path filepath = cachePath / name;
         filepath.replace_extension("mesh");
-        const bgfx::Memory* pVtx;
-        const bgfx::Memory* pIdx;
+        const bgfx::Memory* pVtx = nullptr;
+        const bgfx::Memory* pIdx = nullptr;
         if (std::filesystem::exists(filepath))
         {
             std::ifstream ifs(filepath, std::ios_base::binary);
@@ -122,7 +129,7 @@ namespace sam
             pIdx = bgfx::alloc(sizeof(uint32_t) * numidx);
             ifs.read((char*)pIdx->data, sizeof(uint32_t) * numidx);
         }
-        else
+        else if (sEnableDirectLoad)
         {
             LdrModelHDL model;
             LdrResult result = pLoader->createModel(name.c_str(), LDR_FALSE, &model);
@@ -202,6 +209,8 @@ namespace sam
             ofs.write((const char*)pIdx->data, sizeof(uint32_t) * numidx);
             ofs.close();
         }
+        else
+            return;
         m_vbh = bgfx::createVertexBuffer(pVtx, PosTexcoordNrmVertex::ms_layout);
         m_ibh = bgfx::createIndexBuffer(pIdx, BGFX_BUFFER_INDEX32);
     }
@@ -239,11 +248,14 @@ namespace sam
                 std::getline(ifs, str);
                 std::filesystem::path filepath = m_cachePath / str;
                 filepath.replace_extension("mesh");
-                if (!std::filesystem::exists(filepath))
+                char* p_end;
+                int val = std::strtol(str.data(), &p_end, 10);
+                if (std::filesystem::exists(filepath))
                 {
-                    m_partnames.push_back(str);
+                    m_partnames.push_back(std::make_pair(val, str));
                 }
             }
+            std::sort(m_partnames.begin(), m_partnames.end());
         }
         else
         {
@@ -262,7 +274,8 @@ namespace sam
                         std::getline(ifs, line);
                         if (line._Starts_with("0 ~Moved to"))
                             continue;
-                        m_partnames.push_back(name);
+                        int val = std::stoi(name);
+                        m_partnames.push_back(std::make_pair(val, name));
                         of << name << std::endl;
                     }
                 }
@@ -272,9 +285,9 @@ namespace sam
 
         m_threadPool = std::make_unique<BrickThreadPool>(
             ldrpath, m_ldrLoader.get());
-//#define AUTOLOAD 1
+        //#define AUTOLOAD 1
 #ifdef AUTOLOAD
-        
+
         for (const auto& entry : std::filesystem::directory_iterator(partspath))
         {
             std::string ext = entry.path().extension().string();
@@ -361,6 +374,6 @@ namespace sam
 
     const std::string& BrickManager::PartName(size_t idx)
     {
-        return m_partnames[idx];
+        return m_partnames[idx].second;
     }
 }
