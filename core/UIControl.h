@@ -17,7 +17,8 @@ namespace sam
         bool m_isInit;
         Vec4f m_background;
         Vec4f m_border;
-        UIControl(float x, float y, float w, float h);    gmtl::Vec2f m_touchDown;
+        UIControl(float x, float y, float w, float h);    
+        gmtl::Vec2f m_touchDown;
         gmtl::Vec2f m_touchPos;
         int m_buttonDown;
 
@@ -48,6 +49,7 @@ namespace sam
         std::vector<std::shared_ptr<UIControl>> m_controls;
         UIGroup(float x, float y, float w, float h);
         UIControl *IsHit(float x, float y, int touchId) override;
+        void DrawUI() override;
 
     public:
         void AddControl(std::shared_ptr<UIControl> ctrl);
@@ -69,6 +71,25 @@ namespace sam
         void Show() { m_isopen = true; }
     };
 
+    class UIPanel : public UIGroup
+    {
+    public:
+        UIPanel(float x = 0, float y = 0, float w = 0, float h = 0);
+        void DrawUI() override;
+    };
+
+    class UITable : public UIControl
+    {
+        int m_itemcount;
+        int m_columns;                
+        std::function<void(int, int)> m_drawItemsFn;
+    public:
+        UITable(int columns);
+        void SetItems(int count, const std::function<void(int, int)> &drawItemsFn)
+        { m_drawItemsFn = drawItemsFn; m_itemcount = count; }
+        void DrawUI() override;
+    };
+
     class UIManager
     {
     protected:
@@ -79,11 +100,13 @@ namespace sam
         int m_buttonDown;
         int m_width;
         int m_height;
+        float m_wheelDelta;
     public:
         UIManager() {}
         virtual bool TouchDown(float x, float y, int touchId);
         virtual bool TouchDrag(float x, float y, int touchId);
         virtual bool TouchUp(int touchId);
+        bool WheelScroll(float delta);
         virtual std::shared_ptr<UIControl> Build(DrawContext& ctx, int w, int h) = 0;
         void Update(Engine& engine, int w, int h, DrawContext& ctx);
         void KeyDown(int keyId);

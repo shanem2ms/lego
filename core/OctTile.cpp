@@ -139,9 +139,9 @@ namespace sam
 
         if (m_readyState == 3)
         {
-            const BrickManager::Brick& brick = BrickManager::Inst().GetBrick("91405.dat");
-            m_ibh = brick.m_ibh;
-            m_vbh = brick.m_vbh;
+            Brick *brick = BrickManager::Inst().GetBrick("91405.dat");
+            m_ibh = brick->m_ibh;
+            m_vbh = brick->m_vbh;
             m_readyState++;
         }
 

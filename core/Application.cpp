@@ -4,6 +4,7 @@
 #include "Engine.h"
 #include "UIControl.h"
 #include "LegoUI.h"
+#include "BrickMgr.h"
 #include "World.h"
 #include "imgui.h"
 #include <chrono>
@@ -45,8 +46,6 @@ namespace sam
         s_pInst = this;
         m_engine = std::make_unique<Engine>();
         m_world = std::make_unique<World>();
-        m_legoUI = std::make_unique<LegoUI>();
-        ActivateUI();
 #if WATCHDOGTHREAD
         sWatchdogThread = std::thread(WatchDogFunc);
 #endif
@@ -126,6 +125,12 @@ namespace sam
             m_world->TouchUp(touchId);
     }
 
+    void Application::WheelScroll(float delta)
+    {
+        if (!m_legoUI->WheelScroll(delta))
+            m_world->TouchUp(delta);
+    }
+
     void Application::KeyDown(int keyId)
     {
         if (keyId == 0x1B) // Escape
@@ -168,6 +173,10 @@ namespace sam
         std::string dbPath = m_documentsPath + "/testlvl";
         m_world->Open(dbPath);
         imguiCreate(32.0f);
+        m_brickManager = std::make_unique<BrickManager>("c:\\ldraw");
+        m_engine->AddExternalDraw(m_brickManager.get());
+        m_legoUI = std::make_unique<LegoUI>();
+        ActivateUI();
     }
 
     const float Pi = 3.1415297;

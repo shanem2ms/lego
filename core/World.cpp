@@ -219,7 +219,6 @@ namespace sam
     {
         if (m_worldGroup == nullptr)
         {
-            m_brickManager = std::make_shared<BrickManager>("c:\\ldraw");
             m_worldGroup = std::make_shared<SceneGroup>();
             e.Root()->AddItem(m_worldGroup);
             m_targetCube = std::make_shared<TargetCube>();
@@ -252,15 +251,16 @@ namespace sam
 
 
         }
+        auto &brickmgr = BrickManager::Inst();
         curPartIdx += partChange;
         curPartIdx = std::max(curPartIdx, 0);
-        curPartIdx = std::min(curPartIdx, (int)m_brickManager->NumParts() - 1);
+        curPartIdx = std::min(curPartIdx, (int)brickmgr.NumParts() - 1);
         if (curPartIdx != prevPartIdx)
         {
             if (m_legoBrick != nullptr)
                 e.Root()->RemoveItem(m_legoBrick);
-            std::string partname = m_brickManager->PartName(curPartIdx);
-            m_legoBrick = std::make_shared<LegoBrick>(m_brickManager, partname);
+            std::string partname = brickmgr.PartName(curPartIdx);
+            m_legoBrick = std::make_shared<LegoBrick>(&BrickManager::Inst(), partname);
             e.Root()->AddItem(m_legoBrick);
 
             g_partName = partname;

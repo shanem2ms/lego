@@ -7,6 +7,7 @@
 #include "Mesh.h"
 #include "BrickMgr.h"
 #include "ldrawloader.hpp"
+#include <bx/bx.h>
 #include <queue>
 #include <sstream>
 #include <fstream>
@@ -109,7 +110,7 @@ namespace sam
         delete ptr;
     }
 
-    void BrickManager::Brick::Load(ldr::Loader* pLoader, BrickThreadPool* threadPool, const std::string& name, std::filesystem::path& cachePath)
+    void Brick::Load(ldr::Loader* pLoader, BrickThreadPool* threadPool, const std::string& name, std::filesystem::path& cachePath)
     {
         static bool sEnableDirectLoad = false;
         PosTexcoordNrmVertex::init();
@@ -128,6 +129,15 @@ namespace sam
             ifs.read((char*)&numidx, sizeof(numidx));
             pIdx = bgfx::alloc(sizeof(uint32_t) * numidx);
             ifs.read((char*)pIdx->data, sizeof(uint32_t) * numidx);
+            PosTexcoordNrmVertex* curVtx = (PosTexcoordNrmVertex*)pVtx->data;
+            PosTexcoordNrmVertex* endVtx = curVtx + numvtx;            
+            for (; curVtx != endVtx; ++curVtx)
+            {
+                m_bounds += Point3f(curVtx->m_x, curVtx->m_y, curVtx->m_z);
+            }
+            
+            Vec3f ext = m_bounds.mMax - m_bounds.mMin;
+            m_scale = std::max(std::max(ext[0], ext[1]), ext[2]);
         }
         else if (sEnableDirectLoad)
         {
@@ -215,9 +225,12 @@ namespace sam
         m_ibh = bgfx::createIndexBuffer(pIdx, BGFX_BUFFER_INDEX32);
     }
 
+    constexpr int iconW = 256;
+    constexpr int iconH = 256;
     static BrickManager* spMgr = nullptr;
     BrickManager::BrickManager(const std::string& ldrpath) :
-        m_ldrLoader(std::make_shared<ldr::Loader>())
+        m_ldrLoader(std::make_shared<ldr::Loader>()),
+        m_mruCtr(0)
     {
         // initialize library
         LdrLoaderCreateInfo  createInfo = {};
@@ -353,6 +366,87 @@ namespace sam
 #endif
     }
 
+    static bgfx::ProgramHandle sShader(BGFX_INVALID_HANDLE);
+    void BrickManager::Draw(DrawContext& ctx)
+    {
+        if (!bgfx::isValid(sShader))
+            sShader = Engine::Inst().LoadShader("vs_cubes.bin", "fs_targetcube.bin");
+        if (!m_iconDepth.isValid())
+        {
+            m_iconDepth =
+                bgfx::createTexture2D(
+                    iconW
+                    , iconH
+                    , false
+                    , 1
+                    , bgfx::TextureFormat::D32
+                    , BGFX_TEXTURE_RT | BGFX_SAMPLER_COMPARE_LEQUAL
+                );
+        }
+        
+        PosTexcoordNrmVertex::init();
+        std::vector<Brick*> brickRenderQueue;
+        std::swap(brickRenderQueue, m_brickRenderQueue);
+        //brickRenderQueue = m_brickRenderQueue;
+        for (auto& brick : brickRenderQueue)
+        {
+            brick->m_icon =
+                bgfx::createTexture2D(
+                    iconW
+                    , iconH
+                    , false
+                    , 1
+                    , bgfx::TextureFormat::RGBA32F
+                    , BGFX_TEXTURE_RT
+                );
+            bgfx::TextureHandle fbtextures[] = {
+                brick->m_icon,
+                m_iconDepth
+            };
+            bgfxh<bgfx::FrameBufferHandle> iconFB = bgfx::createFrameBuffer(BX_COUNTOF(fbtextures), fbtextures);
+
+            int viewId = Engine::Inst().GetNextView();
+            bgfx::setViewName(viewId, "brickicons");
+            bgfx::setViewFrameBuffer(viewId, iconFB);
+            Matrix44f view, proj;
+            identity(view);
+            identity(proj);
+            bgfx::setViewRect(viewId, 0, 0, bgfx::BackbufferRatio::Equal);
+            bgfx::setViewTransform(viewId, view.getData(), proj.getData());
+            bgfx::setViewClear(viewId,
+                BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+                0x000000ff,
+                1.0f,
+                0
+            );
+
+
+            Matrix44f m;
+            m = makeTrans<Matrix44f>(Vec3f(0, 0, 0.5f)) *
+                makeRot<Matrix44f>(AxisAnglef(-gmtl::Math::PI_OVER_2, Vec3f(1, 0, 0))) *
+                makeScale<Matrix44f>(1.0f / brick->m_scale);
+            bgfx::setTransform(m.getData());
+            uint64_t state = 0
+                | BGFX_STATE_WRITE_RGB
+                | BGFX_STATE_WRITE_A
+                | BGFX_STATE_WRITE_Z
+                | BGFX_STATE_CULL_CCW
+                | BGFX_STATE_DEPTH_TEST_LESS
+                | BGFX_STATE_MSAA
+                | BGFX_STATE_BLEND_ALPHA;
+            // Set render states.l
+
+            Vec4f color = Vec4f(1.0f, 1.0f, 0.0f, 1.0f);
+
+            bgfx::setState(state);
+            bgfx::setVertexBuffer(0, brick->m_vbh);
+            bgfx::setIndexBuffer(brick->m_ibh);
+            bgfx::submit(viewId, sShader);
+
+            
+        }
+    }
+
     Vec4f BrickManager::Color(uint32_t hex)
     {
         float r = (hex & 0xFF) / 255.0f;
@@ -362,14 +456,42 @@ namespace sam
     }
 
     BrickManager& BrickManager::Inst() { return *spMgr; }
-    const BrickManager::Brick& BrickManager::GetBrick(const std::string& name)
+    Brick *BrickManager::GetBrick(const std::string& name)
     {
         Brick& b = m_bricks[name];
         if (!b.m_vbh.isValid())
         {
             b.Load(m_ldrLoader.get(), m_threadPool.get(), name, m_cachePath);
+            m_brickRenderQueue.push_back(&b);
         }
-        return b;
+        MruUpdate(&b);
+        CleanCache();
+        return &b;
+    }
+
+    void BrickManager::MruUpdate(Brick* pBrick)
+    {
+        pBrick->m_mruCtr = m_mruCtr++;
+    }
+
+    void BrickManager::CleanCache()
+    {
+        if (m_bricks.size() > 512)
+        {
+            std::vector<std::pair<size_t, std::string>> mrulist;
+            mrulist.reserve(m_bricks.size());
+            for (auto& pair : m_bricks)
+            {
+                mrulist.push_back(std::make_pair(pair.second.m_mruCtr,
+                    pair.first));
+            }
+
+            std::sort(mrulist.begin(), mrulist.end());
+            for (size_t idx = 0; idx < 64; ++idx)
+            {
+                m_bricks.erase(mrulist[idx].second);
+            }
+        }
     }
 
     const std::string& BrickManager::PartName(size_t idx)

@@ -78,6 +78,12 @@ namespace sam
         return true;
     }   
 
+    bool UIManager::WheelScroll(float delta)
+    {
+        m_wheelDelta += delta;
+        return true;
+    }
+
     void UIManager::Update(Engine& engine, int w, int h, DrawContext& ctx)
     {
         if (w != m_width || h != m_height)
@@ -89,11 +95,12 @@ namespace sam
         imguiBeginFrame(m_touchPos[0]
             , m_touchPos[1]
             , m_buttonDown
-            , 0
-            , uint16_t(w)
-            , uint16_t(h)
+            , (uint32_t)m_wheelDelta
+            , (uint16_t)w
+            , (uint16_t)h
         );
 
+        m_wheelDelta = 0;
         const int btnSize = 150;
         const int btnSpace = 10;
 
@@ -170,6 +177,14 @@ namespace sam
         m_controls.push_back(ctrl);
     }
 
+    void UIGroup::DrawUI()
+    {
+        for (const auto& control : m_controls)
+        {
+            control->DrawUI();
+        }
+    }
+
     UIControl* UIWindow::IsHit(float x, float y, int touchId)
     {
         UIControl *pHit = UIGroup::IsHit(x, y, touchId);
@@ -218,49 +233,49 @@ namespace sam
         m_width = size.x;
         m_height = size.y;
 
-
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
-        ImGui::BeginChild("ChildR", ImVec2(0, 0), true, window_flags);
-        /*
-        if (ImGui::BeginTable("split", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings))
-        {
-            for (int i = 0; i < 100; i++)
-            {
-                char buf[32];
-                sprintf(buf, "%03d", i);
-                if (ImGui::TableNextColumn())
-                    ImGui::Button(buf, ImVec2(-FLT_MIN, 0.0f));
-            }
-            ImGui::EndTable();
-        }
-        ImGui::EndChild();
-        */
-        ImGui::Columns(10);
-        // Also demonstrate using clipper for large vertical lists
-        int ITEMS_COUNT = 2000;
-        ImGuiListClipper clipper;
-        clipper.Begin(ITEMS_COUNT);
-        while (clipper.Step())
-        {
-            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
-                for (int j = 0; j < 10; j++)
-                {
-                    ImGui::Text("[%d %d]...", i, j);
-                    ImGui::NextColumn();
-                }
-        }
-        ImGui::Columns(1);
-        ImGui::EndChild();
-        ImGui::PopStyleVar();
-
         m_isopen = isopen;
-        for (const auto& control : m_controls)
-        {
-            control->DrawUI();
-        }
-
+        UIGroup::DrawUI();
         ImGui::End();
     }
 
+    UIPanel::UIPanel(float x, float y, float w, float h) :
+        UIGroup(x, y, w, h)
+    {
+
+    }
+       
+    void UIPanel::DrawUI() 
+    {
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
+        ImGui::BeginChild("ChildR", ImVec2(0, 0), true, window_flags);
+        
+        UIGroup::DrawUI();
+        ImGui::EndChild();
+        ImGui::PopStyleVar();
+    }
+
+    UITable::UITable(int columns) :
+        UIControl(0, 0, 0, 0),
+        m_columns(columns),
+        m_itemcount(0)
+    {
+
+    }
+
+    void UITable::DrawUI()
+    {
+        if (m_itemcount == 0)
+            return;
+        ImGui::Columns(m_columns);
+        ImGuiListClipper clipper;
+        clipper.Begin(m_itemcount);
+        while (clipper.Step())
+        {
+            m_drawItemsFn(clipper.DisplayStart, clipper.DisplayEnd);
+        }
+        ImGui::Columns(1);
+    }
+
+    
 }

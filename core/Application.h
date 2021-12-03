@@ -13,11 +13,13 @@ class Engine;
 class UIManager;
 class LegoUI;
 struct DrawContext;
+class BrickManager;
 class Application
 {
     std::unique_ptr<World> m_world;
     std::unique_ptr<Engine> m_engine;
     std::unique_ptr<LegoUI> m_legoUI;
+    std::unique_ptr<BrickManager> m_brickManager;
     int m_width;
     int m_height;
     int m_frameIdx;
@@ -34,6 +36,7 @@ public:
     int FrameIdx() const { return m_frameIdx; }
     void TouchDown(float x, float y, int touchId);
     void TouchMove(float x, float y, int touchId);
+    void WheelScroll(float delta);
     void TouchUp(int touchId);
     void RawMouseMoved(int32_t rx, int32_t ry);
     void KeyDown(int keyId);

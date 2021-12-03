@@ -8,6 +8,7 @@ namespace sam
     class LegoUI : public UIManager
     {
         std::shared_ptr<UIWindow> m_mainMenu;
+        std::shared_ptr<UITable> m_partsTable;
         std::function<void()> m_deactivateFn;
         bool m_isActive;
     public:

@@ -17,6 +17,12 @@ public:
     bool ProcessTick(float fullTime);
 };
 
+class IEngineDraw
+{
+public:
+    virtual void Draw(DrawContext & dc) = 0;
+};
+
 class Hud;
 class Engine
 {
@@ -41,8 +47,9 @@ class Engine
     bgfxh<bgfx::TextureHandle> m_noiseTex;
 
     std::map<std::string, bgfx::ProgramHandle> m_shaders;
+    std::vector<IEngineDraw*> m_externalDraws;
     bool m_debugCam;
-
+    std::atomic<int> m_nextView;
 
 public:
     Engine();
@@ -56,7 +63,9 @@ public:
         m_debugCamera = m_camera;
     }
     void Tick(float time);
-
+    int GetNextView() {
+        return m_nextView++;
+    }
     bgfx::ProgramHandle LoadShader(const std::string& vtx, const std::string& px);
     bgfx::ProgramHandle LoadShader(const std::string& cs);
     static DrawContext & Ctx();
@@ -64,6 +73,9 @@ public:
     void Draw(DrawContext & nvg);
     void AddAnimation(const std::shared_ptr<Animation>& anim);
     const std::shared_ptr<SceneGroup> &Root() { return m_root; }
+    void AddExternalDraw(IEngineDraw* externalDraw) {
+        m_externalDraws.push_back(externalDraw);
+    }
 };
 
 }

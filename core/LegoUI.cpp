@@ -7,6 +7,7 @@
 #include "imgui.h"
 #include "LegoUI.h"
 #include <chrono>
+#include "BrickMgr.h"
 
 namespace sam
 {
@@ -67,6 +68,34 @@ namespace sam
         std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "bricks", false);
         menu->OnOpenChanged([this](bool isopen) {
             if (!isopen) Deactivate(); });
+        
+        int padding = 10;
+        int numColumns = 1280 / (128 + padding);
+        m_partsTable = std::make_shared<UITable>(numColumns);
+        int numRows = BrickManager::Inst().NumParts() / numColumns;
+
+        m_partsTable->SetItems(numRows, [numColumns](int start, int end)
+            {
+                for (int r = start; r < end; r++)
+                {
+                    for (int c = 0; c < numColumns; c++)
+                    {
+                        int i = r * numColumns + c;
+                        const std::string& name = BrickManager::Inst().PartName(i);
+                        Brick* pBrick = BrickManager::Inst().GetBrick(name);
+                        std::string btntext = std::to_string(i) + ": " + name;
+                        if (pBrick->m_icon.isValid())
+                            ImGui::ImageButton(pBrick->m_icon, ImVec2(128, 128));
+                        else
+                            ImGui::Button(btntext.c_str());
+                        ImGui::NextColumn();
+                    }
+                }
+            });
+
+        auto panel = std::make_shared<UIPanel>(0, 0, 0, 0);
+        panel->AddControl(m_partsTable);
+        menu->AddControl(panel);
         top->AddControl(menu);
         m_mainMenu = menu;
 
@@ -78,7 +107,7 @@ namespace sam
         if (m_mainMenu)
             m_mainMenu->Show();
         m_isActive = true;
-        m_deactivateFn = deactivateFn;
+        m_deactivateFn = deactivateFn;        
     }
 
     bool LegoUI::TouchDown(float x, float y, int touchId)

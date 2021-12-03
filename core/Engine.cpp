@@ -178,6 +178,12 @@ namespace sam
             bgfx::FrameBufferHandle fbh = BGFX_INVALID_HANDLE;
             bgfx::requestScreenShot(fbh, "test.png");
         }
+
+        m_nextView = 4;
+        for (auto draw : m_externalDraws)
+        {
+            draw->Draw(dc);
+        }
     }
 
 

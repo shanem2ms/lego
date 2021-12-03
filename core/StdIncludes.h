@@ -39,10 +39,16 @@ public:
 
     }
 
-    bgfxh(T&& _t)
+    bgfxh(bgfxh<T>&& _t)
     {
         t = _t.t;
         _t.t = BGFX_INVALID_HANDLE;
+    }
+
+    bgfxh(T&& _t)
+    {
+        t = _t;
+        _t = BGFX_INVALID_HANDLE;
     }
 
     operator T() const

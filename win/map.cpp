@@ -173,7 +173,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     bgfx::renderFrame();
     bgfx::Init init;
-    init.type = bgfx::RendererType::Enum::Direct3D12;
+    //init.type = bgfx::RendererType::Enum::Direct3D12;
     init.platformData.nwh = hWnd;
     GetClientRect(hWnd, &curWindowRect);
     init.resolution.width = (uint32_t)curWindowRect.right;
@@ -299,6 +299,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_MOUSEMOVE:
         app.TouchMove((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 0);
         break;
+    case WM_MOUSEWHEEL:
+    {
+        short zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+        app.WheelScroll((float)zDelta / (float)WHEEL_DELTA);
+        break;
+    }
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
     {

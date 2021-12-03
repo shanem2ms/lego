@@ -14,7 +14,6 @@ namespace sam
     class Engine;
     class Touch;
     class TargetCube;
-    class BrickManager;
     
     class World
     {
@@ -37,7 +36,6 @@ namespace sam
         bgfx::ProgramHandle m_shader;        
         std::shared_ptr<SceneItem> m_targetCube;
         std::shared_ptr<SceneItem> m_frustum;
-        std::shared_ptr<BrickManager> m_brickManager;
         std::shared_ptr<SceneItem> m_legoBrick;
         Level m_level;        
 

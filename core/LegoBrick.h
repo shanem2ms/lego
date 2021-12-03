@@ -10,16 +10,17 @@ struct VoxCube;
 namespace sam
 {
     class BrickManager;
+    class Brick;
     class LegoBrick : public SceneItem
     {
-        std::shared_ptr<BrickManager> m_mgr;
+        BrickManager* m_mgr;
         bgfx::VertexBufferHandle m_vbh;
         bgfx::IndexBufferHandle m_ibh;
         bgfxh<bgfx::UniformHandle> m_uparams;
         std::string m_partstr;
-
+        Brick* m_pBrick;
     public:
-        LegoBrick(std::shared_ptr<BrickManager> mgr,
+        LegoBrick(BrickManager *mgr,
             const std::string& partstr);
         void Initialize(DrawContext& nvg) override;
         void Draw(DrawContext& ctx) override;
