@@ -10,6 +10,23 @@ $input v_texcoord0, v_normal
 
 void main()
 {	
-	gl_FragColor.rgb = vec3((v_normal + vec3(1,1,1)) * 0.5f);
+	vec3 col = vec3(0.7, 0.7, 0.8);
+	vec3 lightdir[4] = {
+	vec3(1,1,-1),
+	vec3(1,-1,.5),
+	vec3(-1,.5,0),
+	vec3(1,.2,-.5) };
+
+	float lval = 1;
+	for (int i = 0; i < 4; ++i)
+	{
+		normalize(lightdir[i]);
+		lval *= 1 - (1 - max(pow(dot(lightdir[i], v_normal),4), 0));
+	}
+	lval = 1 - lval;
+
+	float ambient = 0.25;
+	float lightamt = lval * (1 - ambient) + ambient;
+	gl_FragColor.rgb = col * lightamt;
 	gl_FragColor.a = 1;
 } 

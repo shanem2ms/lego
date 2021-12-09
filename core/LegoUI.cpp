@@ -68,31 +68,62 @@ namespace sam
         std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "bricks", false);
         menu->OnOpenChanged([this](bool isopen) {
             if (!isopen) Deactivate(); });
-        
-        int padding = 10;
-        int numColumns = 1280 / (128 + padding);
-        m_partsTable = std::make_shared<UITable>(numColumns);
-        int numRows = BrickManager::Inst().NumParts() / numColumns;
+        menu->SetLayout(UILayout::Horizontal);
 
-        m_partsTable->SetItems(numRows, [numColumns](int start, int end)
+        
+        auto typesTable = std::make_shared<UITable>(1);
+        int numTypes = BrickManager::Inst().NumTypes();
+        typesTable->SetItems(numTypes, [](int start, int count, UITable::TableItem items[])
             {
-                for (int r = start; r < end; r++)
+                for (int r = 0; r < count; r++)
                 {
-                    for (int c = 0; c < numColumns; c++)
-                    {
-                        int i = r * numColumns + c;
-                        const std::string& name = BrickManager::Inst().PartName(i);
-                        Brick* pBrick = BrickManager::Inst().GetBrick(name);
-                        std::string btntext = std::to_string(i) + ": " + name;
-                        if (pBrick->m_icon.isValid())
-                            ImGui::ImageButton(pBrick->m_icon, ImVec2(128, 128));
-                        else
-                            ImGui::Button(btntext.c_str());
-                        ImGui::NextColumn();
-                    }
+                    std::string typeName = 
+                        BrickManager::Inst().TypeName(r + start);
+                    items[r].text = typeName;
                 }
             });
 
+        typesTable->OnItemSelected([&](int itemIdx)
+            {
+                int padding = 20;
+                int numColumns = 1280 / (128 + padding);
+                const std::string &t = BrickManager::Inst().TypeName(itemIdx);
+                const std::vector<std::string> &partsForType = BrickManager::Inst().PartsForType(t);
+                int numRows = partsForType.size();
+
+                m_partsTable->SetItems(numRows, [numColumns, &partsForType](int start, int count, UITable::TableItem items[])
+                    {
+                        for (int r = 0; r < count; r++)
+                        {
+                            const std::string& name = partsForType[r + start];
+                            Brick* pBrick = BrickManager::Inst().GetBrick(name);
+                            items[r].text = std::to_string(r + start) + ": " + name;
+                            items[r].image = pBrick->m_icon;
+                        }
+                    });
+            });
+        //auto typesTable = std::make_shared<UITable>(numColumns);
+        auto typesPanel = std::make_shared<UIPanel>(0, 0, 150, 0);
+        typesPanel->AddControl(typesTable);
+        menu->AddControl(typesPanel);
+
+        {
+            int padding = 20;
+            int numColumns = 1280 / (128 + padding);
+            m_partsTable = std::make_shared<UITable>(numColumns);
+            int numItems = BrickManager::Inst().NumParts();
+
+            m_partsTable->SetItems(numItems, [numColumns](int start, int count, UITable::TableItem items[])
+                {
+                    for (int r = 0; r < count; r++)
+                    {
+                        const std::string& name = BrickManager::Inst().PartName(r + start);
+                        Brick* pBrick = BrickManager::Inst().GetBrick(name);
+                        items[r].text = std::to_string(r + start) + ": " + name;
+                        items[r].image = pBrick->m_icon;
+                    }
+                });
+        }
         auto panel = std::make_shared<UIPanel>(0, 0, 0, 0);
         panel->AddControl(m_partsTable);
         menu->AddControl(panel);

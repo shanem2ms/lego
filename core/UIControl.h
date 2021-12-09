@@ -6,6 +6,17 @@ namespace sam
 {
 
     class Engine;
+    
+    enum UILayout
+    {
+        Horizontal,
+        Vertical
+    };
+
+    struct UIContext
+    {
+        UILayout layout;
+    };
 
     class UIControl
     {
@@ -26,7 +37,7 @@ namespace sam
         virtual UIControl *IsHit(float x, float y, int touchId);
         void SetBackgroundColor(const Vec4f& color);
         void SetBorderColor(const Vec4f& color);
-        virtual void DrawUI() = 0;
+        virtual void DrawUI(UIContext &ctx) = 0;
     };
 
 
@@ -40,18 +51,19 @@ namespace sam
         { return m_isDown; }
         UIStateBtn(float x, float y, float w, float h, const std::string& text,
             std::function<void (bool)> stateChanged);
-        void DrawUI() override;
+        void DrawUI(UIContext& ctx) override;
     };
 
     class UIGroup : public UIControl
     {
     protected:
         std::vector<std::shared_ptr<UIControl>> m_controls;
+        UILayout m_layout;
         UIGroup(float x, float y, float w, float h);
         UIControl *IsHit(float x, float y, int touchId) override;
-        void DrawUI() override;
-
+        void DrawUI(UIContext& ctx) override;
     public:
+        void SetLayout(UILayout layout) { m_layout = layout; }
         void AddControl(std::shared_ptr<UIControl> ctrl);
     };
 
@@ -67,27 +79,43 @@ namespace sam
         UIWindow(float x, float y, float w, float h, const std::string& name,
             bool invisible);
         UIControl* IsHit(float x, float y, int touchId) override;
-        void DrawUI() override;
+        void DrawUI(UIContext& ctx) override;
         void Show() { m_isopen = true; }
     };
 
     class UIPanel : public UIGroup
     {
+        std::string m_name;
     public:
         UIPanel(float x = 0, float y = 0, float w = 0, float h = 0);
-        void DrawUI() override;
+        void DrawUI(UIContext& ctx) override;
     };
 
     class UITable : public UIControl
     {
+    public:
+        struct TableItem
+        {
+            std::string text;
+            bgfx::TextureHandle image;
+            TableItem() : image({ bgfx::kInvalidHandle })
+                {}
+        };
+    
+    protected:
         int m_itemcount;
-        int m_columns;                
-        std::function<void(int, int)> m_drawItemsFn;
+        int m_columns;  
+        int m_selectedIdx;
+        std::function<void(int, int, TableItem items[])> m_drawItemsFn;        
+        std::function<void(int)> m_itemSelectedFn;
+
     public:
         UITable(int columns);
-        void SetItems(int count, const std::function<void(int, int)> &drawItemsFn)
+        void SetItems(int count, const std::function<void(int, int, TableItem items[])> &drawItemsFn)
         { m_drawItemsFn = drawItemsFn; m_itemcount = count; }
-        void DrawUI() override;
+        void DrawUI(UIContext& ctx) override;
+        void OnItemSelected(const std::function<void(int)> &itemSelectedFn)
+        { m_itemSelectedFn = itemSelectedFn; }
     };
 
     class UIManager
@@ -102,7 +130,7 @@ namespace sam
         int m_height;
         float m_wheelDelta;
     public:
-        UIManager() {}
+        UIManager() : m_wheelDelta(0){}
         virtual bool TouchDown(float x, float y, int touchId);
         virtual bool TouchDrag(float x, float y, int touchId);
         virtual bool TouchUp(int touchId);

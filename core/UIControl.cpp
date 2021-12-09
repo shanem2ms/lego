@@ -100,11 +100,11 @@ namespace sam
             , (uint16_t)h
         );
 
-        m_wheelDelta = 0;
+        //m_wheelDelta = 0;
         const int btnSize = 150;
         const int btnSpace = 10;
-
-        m_topctrl->DrawUI();
+        UIContext uictx;
+        m_topctrl->DrawUI(uictx);
 
         imguiEndFrame();
     }
@@ -132,7 +132,7 @@ namespace sam
 
     }
 
-    void UIStateBtn::DrawUI()
+    void UIStateBtn::DrawUI(UIContext& ctx)
     {
         ImGui::SetCursorPos(ImVec2(m_x, m_y));
         ImGui::Button(ICON_FA_CHEVRON_UP, ImVec2(m_width, m_height));
@@ -154,7 +154,8 @@ namespace sam
     }
 
     UIGroup::UIGroup(float x, float y, float w, float h) :
-        UIControl(x, y, w, h)
+        UIControl(x, y, w, h),
+        m_layout(UILayout::Vertical)
     {}
 
 
@@ -177,12 +178,15 @@ namespace sam
         m_controls.push_back(ctrl);
     }
 
-    void UIGroup::DrawUI()
+    void UIGroup::DrawUI(UIContext &ctx)
     {
+        UILayout oldLayout = ctx.layout;
+        ctx.layout = m_layout;
         for (const auto& control : m_controls)
         {
-            control->DrawUI();
+            control->DrawUI(ctx);
         }
+        ctx.layout = oldLayout;
     }
 
     UIControl* UIWindow::IsHit(float x, float y, int touchId)
@@ -198,7 +202,7 @@ namespace sam
             y >= m_y && y < (m_y + m_height)) ? this : nullptr;
     }
 
-    void UIWindow::DrawUI()
+    void UIWindow::DrawUI(UIContext& ctx)
     {
         if (!m_isopen)
             return;
@@ -234,23 +238,31 @@ namespace sam
         m_height = size.y;
 
         m_isopen = isopen;
-        UIGroup::DrawUI();
+        UIGroup::DrawUI(ctx);
         ImGui::End();
     }
 
+    static int sUICnt = 0;
     UIPanel::UIPanel(float x, float y, float w, float h) :
         UIGroup(x, y, w, h)
     {
-
+        m_name = "UIPanel" + std::to_string(sUICnt++);
     }
        
-    void UIPanel::DrawUI() 
+    void UIPanel::DrawUI(UIContext& ctx)
     {
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
+        if (ctx.layout == UILayout::Horizontal)
+            ImGui::SameLine();
+
+        ImGuiWindowFlags window_flags = 0;
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
-        ImGui::BeginChild("ChildR", ImVec2(0, 0), true, window_flags);
+        float x = ImGui::GetCursorPosX();
+        float y = ImGui::GetCursorPosY();
+        ImGui::SetCursorPosX(x + (float)m_x);
+        ImGui::SetCursorPosY(y + (float)m_y);
+        ImGui::BeginChild(m_name.c_str(), ImVec2(m_width, m_height), true, window_flags);
         
-        UIGroup::DrawUI();
+        UIGroup::DrawUI(ctx);
         ImGui::EndChild();
         ImGui::PopStyleVar();
     }
@@ -258,22 +270,58 @@ namespace sam
     UITable::UITable(int columns) :
         UIControl(0, 0, 0, 0),
         m_columns(columns),
-        m_itemcount(0)
+        m_itemcount(0),
+        m_selectedIdx(-1)
     {
 
     }
 
-    void UITable::DrawUI()
+    void UITable::DrawUI(UIContext& ctx)
     {
         if (m_itemcount == 0)
             return;
         ImGui::Columns(m_columns);
         ImGuiListClipper clipper;
-        clipper.Begin(m_itemcount);
+        clipper.Begin(m_itemcount / m_columns);
         while (clipper.Step())
         {
-            m_drawItemsFn(clipper.DisplayStart, clipper.DisplayEnd);
+            int size = clipper.DisplayEnd - clipper.DisplayStart;
+            size *= m_columns;
+            std::vector<TableItem> tableItemsCache(size);
+            int startIdx = clipper.DisplayStart * m_columns;
+            size = std::min(m_itemcount - startIdx, size);
+            m_drawItemsFn(startIdx,
+                size, tableItemsCache.data());
+
+            ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(1.0f, 1.0f, 1.0f, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor(0.2f, 0.5f, 0.7f, 0.5f));
+
+            int curIdx = startIdx;
+            for (auto& item : tableItemsCache)
+            {
+                if (m_selectedIdx == curIdx)
+                    ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(0.6f, 0.2, 0.4, 0.75f));
+                if (bgfx::isValid(item.image))
+                    ImGui::ImageButton(item.image, ImVec2(128, 128));
+                else
+                    ImGui::Button(item.text.c_str());
+                if (m_selectedIdx == curIdx)
+                    ImGui::PopStyleColor();
+                if (ImGui::IsItemActive())
+                {
+                    if (m_selectedIdx != curIdx)
+                    {
+                        m_selectedIdx = curIdx;
+                        if (m_itemSelectedFn != nullptr)
+                            m_itemSelectedFn(curIdx);
+                    }
+                }
+                ImGui::NextColumn();
+                curIdx++;
+            }
+            ImGui::PopStyleColor(2);
         }
+        clipper.End();
         ImGui::Columns(1);
     }
 
