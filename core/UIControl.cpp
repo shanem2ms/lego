@@ -316,6 +316,16 @@ namespace sam
                             m_itemSelectedFn(curIdx);
                     }
                 }
+                if (m_tooltipFn != nullptr && ImGui::IsItemHovered())
+                {
+                    ImGui::BeginTooltip();
+                    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                    std::string tooltipstr;
+                    m_tooltipFn(curIdx, tooltipstr);
+                    ImGui::TextUnformatted(tooltipstr.c_str());
+                    ImGui::PopTextWrapPos();
+                    ImGui::EndTooltip();
+                }
                 ImGui::NextColumn();
                 curIdx++;
             }

@@ -86,6 +86,11 @@ namespace sam
                     m_hideMouseCursorFn(true);
                 m_rawMouseMode = true;
             });
+
+        m_legoUI->OnPartSelected([this](const PartId& partname)
+            {
+                m_world->SetRightHandPart(partname);
+            });
     }
 
     void Application::SetHideMouseCursorFn(const std::function<bool(bool)>& fn)

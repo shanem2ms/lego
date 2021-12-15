@@ -5,6 +5,7 @@
 #include <set>
 #include <functional>
 #include "Loc.h"
+#include "PartDefs.h"
 
 namespace leveldb
 {
@@ -18,7 +19,8 @@ namespace sam
     class Level {
         leveldb::DB* m_db;
     public:
-        struct CamPos
+
+        struct PlayerData
         {
             Vec3f pos;
             Vec2f dir;
@@ -26,6 +28,7 @@ namespace sam
             bool inspect;
             Vec3f inspectpos;
             Vec2f inspectdir;
+            PartInst rightHandPart;
         };
 
         Level();
@@ -36,7 +39,7 @@ namespace sam
 
         bool GetOctChunk(const Loc& l, std::string* val) const;
         bool WriteOctChunk(const Loc& il, const char* byte, size_t len);
-        bool WriteCameraPos(const CamPos &pos);
-        bool GetCameraPos(CamPos& pos);
+        bool WritePlayerData(const PlayerData &pos);
+        bool GetPlayerData(PlayerData& pos);
     };
 }

@@ -1,4 +1,4 @@
-$input v_texcoord0, v_normal
+$input v_vtxcolor, v_normal
 
 /*
  * Copyright 2011-2021 Branimir Karadzic. All rights reserved.
@@ -21,7 +21,7 @@ void main()
     nrm = (nrm + vec3(1,1,1)) * 0.5;
 	gl_FragColor.r = packColor(nrm);
     gl_FragColor.g = 0;
-    gl_FragColor.b = packColor(u_params[0].rgb);
+    gl_FragColor.b = packColor(v_vtxcolor);
 	gl_FragColor.a = 1;
 } 
 

@@ -170,6 +170,12 @@ namespace sam
     {}
 
 
+    Quatf Camera::Fly::Quat() const
+    {
+        return make<gmtl::Quatf>(AxisAnglef(dir[0], 0.0f, 1.0f, 0.0f)) *
+            make<gmtl::Quatf>(AxisAnglef(dir[1], 1.0f, 0.0f, 0.0f));
+    }
+
     void Camera::Fly::GetDirs(Vec3f &right, Vec3f &up, Vec3f &forward) const
     {
         forward = make<gmtl::Quatf>(AxisAnglef(dir[1], 1.0f, 0.0f, 0.0f)) * Vec3f(0, 0, 1);

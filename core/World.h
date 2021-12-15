@@ -4,6 +4,7 @@
 #include "OctTile.h"
 #include "OctTileSelection.h"
 #include "Level.h"
+#include "PartDefs.h"
 
 class SimplexNoise;
 
@@ -13,7 +14,6 @@ namespace sam
     struct DrawContext;
     class Engine;
     class Touch;
-    class TargetCube;
     
     class World
     {
@@ -30,15 +30,16 @@ namespace sam
 
         float m_gravityVel;
 
-        std::shared_ptr<SceneGroup> m_worldGroup;
+        std::shared_ptr<SceneGroup> m_octTiles;
+        std::shared_ptr<SceneGroup> m_playerGroup;
         std::shared_ptr<Touch> m_activeTouch;
         int m_currentTool;
         bgfx::ProgramHandle m_shader;        
-        std::shared_ptr<SceneItem> m_targetCube;
         std::shared_ptr<SceneItem> m_frustum;
-        std::shared_ptr<SceneItem> m_legoBrick;
-        Level m_level;        
-
+        std::shared_ptr<SceneGroup> m_rightHand;
+        Level m_level;
+        PartInst m_rightHandPartInst;
+        std::shared_ptr<SceneItem> m_rightHandPart;
     public:
 
 
@@ -54,6 +55,7 @@ namespace sam
         void KeyDown(int k);
         void KeyUp(int k);
         void Open(const std::string &path);
+        void SetRightHandPart(const PartId& partname);
     };
 
 }

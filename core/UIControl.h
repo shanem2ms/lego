@@ -108,12 +108,14 @@ namespace sam
         int m_selectedIdx;
         std::function<void(int, int, TableItem items[])> m_drawItemsFn;        
         std::function<void(int)> m_itemSelectedFn;
-
+        std::function<void(int, std::string&)> m_tooltipFn;
     public:
         UITable(int columns);
         void SetItems(int count, const std::function<void(int, int, TableItem items[])> &drawItemsFn)
         { m_drawItemsFn = drawItemsFn; m_itemcount = count; }
         void DrawUI(UIContext& ctx) override;
+        void OnTooltipText(const std::function<void(int, std::string&)> & tooltipFn)
+        { m_tooltipFn = tooltipFn; }
         void OnItemSelected(const std::function<void(int)> &itemSelectedFn)
         { m_itemSelectedFn = itemSelectedFn; }
     };

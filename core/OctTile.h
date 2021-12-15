@@ -4,14 +4,20 @@
 #include <set>
 #include "SceneItem.h"
 #include "Loc.h"
+#include "PartDefs.h"
 
 struct VoxCube;
 
 namespace sam
 {
     class TerrainTile;
+    class Brick;
 
-    class OctTile : public SceneItem
+    struct OctPart
+    {
+        int partIdx;
+    };
+    class OctTile : public SceneGroup
     {
         
         int m_image;
@@ -22,13 +28,13 @@ namespace sam
         int m_texpingpong;
         int m_buildFrame;
         int m_readyState;
-        bgfx::VertexBufferHandle m_vbh;
-        bgfx::IndexBufferHandle m_ibh;
         bgfxh<bgfx::UniformHandle> m_uparams;
+        Brick* m_pBrick;
 
         int m_lastUsedRawData;
         float m_intersects;
         bool m_isdecommissioned;
+        std::vector<PartInst> m_parts;
 
     public:
         static const int SquarePtsCt = 256;

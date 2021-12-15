@@ -1,6 +1,7 @@
 #include "StdIncludes.h"
 #include "World.h"
 #include "Application.h"
+#include "Application.h"
 #include "Engine.h"
 #include <numeric>
 #include "Mesh.h"
@@ -8,7 +9,7 @@
 #include "Frustum.h"
 #include "gmtl/PlaneOps.h"
 #include "LegoBrick.h"
-#include "BrickMgr.h"
+#include "PartDefs.h"
 #define NOMINMAX
 
 
@@ -217,26 +218,28 @@ namespace sam
     float g_hitDist = 0;
     void World::Update(Engine& e, DrawContext& ctx)
     {
-        if (m_worldGroup == nullptr)
+        if (m_octTiles == nullptr)
         {
-            m_worldGroup = std::make_shared<SceneGroup>();
-            e.Root()->AddItem(m_worldGroup);
-            m_targetCube = std::make_shared<TargetCube>();
-            e.Root()->AddItem(m_targetCube);
+            m_octTiles = std::make_shared<SceneGroup>();
+            e.Root()->AddItem(m_octTiles);
             m_frustum = std::make_shared<Frustum>();
             e.Root()->AddItem(m_frustum);
+            m_playerGroup = std::make_shared<SceneGroup>();
+            e.Root()->AddItem(m_playerGroup);
             Camera::Fly fly;
             Camera::Fly dfly;
-            Level::CamPos campos;
-            if (m_level.GetCameraPos(campos))
+            Level::PlayerData playerdata;
+            PartInst righthandpart;
+            if (m_level.GetPlayerData(playerdata))
             {
-                fly.pos = campos.pos;
-                fly.dir = campos.dir;
-                m_flymode = campos.flymode;
-                m_inspectmode = campos.inspect;
+                fly.pos = playerdata.pos;
+                fly.dir = playerdata.dir;
+                m_flymode = playerdata.flymode;
+                m_inspectmode = playerdata.inspect;
                 Engine::Inst().SetDbgCam(m_inspectmode);
-                dfly.pos = campos.inspectpos;
-                dfly.dir = campos.inspectdir;
+                dfly.pos = playerdata.inspectpos;
+                dfly.dir = playerdata.inspectdir;
+                righthandpart = playerdata.rightHandPart;
             }
             else
             {
@@ -246,31 +249,21 @@ namespace sam
             e.DrawCam().SetFly(dfly);
             e.ViewCam().SetFly(fly);
 
-            m_shader = e.LoadShader("vs_cubes.bin", "fs_cubes.bin");
-            m_worldGroup->BeforeDraw([this](DrawContext& ctx) { ctx.m_pgm = m_shader; return true; });
-
-
+            m_rightHand = std::make_shared<SceneGroup>();
+            m_rightHand->SetOffset(Vec3f(0.1f, -0.05f, 0.105f));
+            m_rightHand->SetRotate(make<Quatf>(AxisAnglef(gmtl::Math::PI, 0.0f, 1.0f, 0.0f)) *
+                make<Quatf>(AxisAnglef(-gmtl::Math::PI / 8.0f, 0.0f, 0.0f, 1.0f)) *
+                make<Quatf>(AxisAnglef(gmtl::Math::PI / 8.0f, 1.0f, 0.0f, 0.0f)));
+            m_rightHand->AddItem(std::make_shared<LegoBrick>("3820", 14));
+            m_playerGroup->AddItem(m_rightHand);
+            m_octTiles->BeforeDraw([this](DrawContext& ctx) { ctx.m_pgm = BGFX_INVALID_HANDLE; return true; });
+            SetRightHandPart(righthandpart.id);
         }
-        auto &brickmgr = BrickManager::Inst();
-        curPartIdx += partChange;
-        curPartIdx = std::max(curPartIdx, 0);
-        curPartIdx = std::min(curPartIdx, (int)brickmgr.NumParts() - 1);
-        if (curPartIdx != prevPartIdx)
-        {
-            if (m_legoBrick != nullptr)
-                e.Root()->RemoveItem(m_legoBrick);
-            std::string partname = brickmgr.PartName(curPartIdx);
-            m_legoBrick = std::make_shared<LegoBrick>(&BrickManager::Inst(), partname);
-            e.Root()->AddItem(m_legoBrick);
-
-            g_partName = partname;
-            prevPartIdx = curPartIdx;
-        }
-
+    
         m_frustum->SetEnabled(m_inspectmode);
        
         auto &cam = e.ViewCam();
-        Camera::Fly fly = cam.GetFly();
+        Camera::Fly fly = cam.GetFly();        
         const float playerHeadHeight = 0.01f;
         const float playerBodyWidth = playerHeadHeight;
 
@@ -279,9 +272,9 @@ namespace sam
 
         if (!isPaused)
         {
-            m_worldGroup->Clear();
+            m_octTiles->Clear();
             m_octTileSelection.Update(e, ctx, playerbounds);
-            m_octTileSelection.AddTilesToGroup(m_worldGroup);
+            m_octTileSelection.AddTilesToGroup(m_octTiles);
         }
 
         std::shared_ptr<OctTile> tile = m_octTileSelection.TileFromPos(fly.pos);
@@ -314,8 +307,7 @@ namespace sam
                 float scl = extents[0] / (float)tsz; 
                 
                 Point3f offset = Vec3f(hitpt[0], hitpt[1], hitpt[2]) * scl + aabb.mMin;
-                m_targetCube->SetOffset(offset);
-                m_targetCube->SetScale(Vec3f(scl, scl, scl));
+
                 g_hitLoc = hitLoc;
                 bool test;
                 Matrix44f vp = cam.GetPerspectiveMatrix(ctx.m_nearfar[0], ctx.m_nearfar[1])*
@@ -371,19 +363,40 @@ namespace sam
         }
 
 
+        //m_playerGroup->SetRotate()
+        m_playerGroup->SetOffset(newPos);
+        m_playerGroup->SetRotate(fly.Quat());
         dfly.pos = newPos;
         dcam.SetFly(dfly);
 
         if ((ctx.m_frameIdx % 60) == 0)
         {
-            Level::CamPos campos;
-            campos.pos = fly.pos;
-            campos.dir = fly.dir;
-            campos.flymode = m_flymode;
-            campos.inspect = m_inspectmode;
-            campos.inspectpos = dfly.pos;
-            campos.inspectdir = dfly.dir;
-            m_level.WriteCameraPos(campos);
+            Level::PlayerData playerdata;
+            playerdata.pos = fly.pos;
+            playerdata.dir = fly.dir;
+            playerdata.flymode = m_flymode;
+            playerdata.inspect = m_inspectmode;
+            playerdata.inspectpos = dfly.pos;
+            playerdata.inspectdir = dfly.dir;
+            playerdata.rightHandPart = m_rightHandPartInst;
+            
+            m_level.WritePlayerData(playerdata);
+        }
+    }
+
+    void World::SetRightHandPart(const PartId& partid)
+    {
+        if (m_rightHandPart != nullptr)
+        {
+            m_rightHand->RemoveItem(m_rightHandPart);
+            m_rightHandPart = nullptr;
+        }
+        m_rightHandPartInst.id = partid;
+        if (!partid.IsNull())
+        {
+            m_rightHandPart = std::make_shared<LegoBrick>(partid, 16);
+            m_rightHandPart->SetOffset(Vec3f(0, 0, -0.1f));
+            m_rightHand->AddItem(m_rightHandPart);
         }
     }
 

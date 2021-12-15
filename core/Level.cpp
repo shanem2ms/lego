@@ -89,22 +89,22 @@ namespace sam
         return status.ok();
     }
 
-    bool Level::WriteCameraPos(const Level::CamPos& pos)
+    bool Level::WritePlayerData(const Level::PlayerData& pos)
     {
         leveldb::Slice key("cam", 3);
-        leveldb::Slice val((const char *)&pos, sizeof(Level::CamPos));
+        leveldb::Slice val((const char *)&pos, sizeof(Level::PlayerData));
         leveldb::Status status = m_db->Put(leveldb::WriteOptions(), key, val);
         return status.ok();
     }
 
-    bool Level::GetCameraPos(CamPos& pos)
+    bool Level::GetPlayerData(PlayerData& pos)
     {
         leveldb::Slice key("cam", 3);
         std::string val;
         leveldb::Status status = m_db->Get(leveldb::ReadOptions(), key, &val);
-        if (status.ok() && val.size() == sizeof(CamPos))
+        if (status.ok() && val.size() == sizeof(PlayerData))
         {
-            memcpy(&pos, val.data(), sizeof(CamPos));
+            memcpy(&pos, val.data(), sizeof(PlayerData));
             return true;
         }
         return false;

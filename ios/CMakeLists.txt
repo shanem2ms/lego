@@ -95,6 +95,7 @@ target_include_directories(${IOSAPPNAME} PUBLIC
 target_link_libraries(${IOSAPPNAME} LINK_PUBLIC
     ${PLATFORMLIBS}
     core
+    fmt
     leveldb
     zlibstatic
     ${BGFX_LIB}/${CMAKE_STATIC_LIBRARY_PREFIX}bgfx${CMAKE_STATIC_LIBRARY_SUFFIX}

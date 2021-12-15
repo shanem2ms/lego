@@ -1,4 +1,4 @@
-$input v_texcoord0, v_normal
+$input v_vtxcolor, v_normal
 
 /*
  * Copyright 2011-2021 Branimir Karadzic. All rights reserved.
@@ -10,7 +10,7 @@ $input v_texcoord0, v_normal
 
 void main()
 {	
-	vec3 col = vec3(0.7, 0.7, 0.8);
+	vec3 col = v_vtxcolor.xyz;
 	vec3 lightdir[4] = {
 	vec3(1,1,-1),
 	vec3(1,-1,.5),

@@ -15,11 +15,12 @@ namespace sam
 
     void Frustum::Initialize(DrawContext& nvg)
     {
-        m_shader = Engine::Inst().LoadShader("vs_cubes.bin", "fs_frustum.bin");
+        m_shader = Engine::Inst().LoadShader("vs_brick.bin", "fs_frustum.bin");
     }
 
     void Frustum::Draw(DrawContext& ctx)
     {
+        return;
         if (ctx.m_curviewIdx == 1)
             return;
         Matrix44f invViewProj = Engine::Inst().ViewCam().PerspectiveMatrix()*

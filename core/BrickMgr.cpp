@@ -13,6 +13,7 @@
 #include <fstream>
 #include <filesystem>
 #include <regex>
+#include <fmt/format.h>
 
 
 namespace sam
@@ -121,6 +122,41 @@ namespace sam
         }
     };
 
+
+    PartId::PartId(const std::string& partfile)
+    {
+        memset(_id, 0, sizeof(_id));
+        size_t idx = partfile.find('.');
+        if (idx == std::string::npos)
+            idx = partfile.size();
+        memcpy(_id, partfile.c_str(), std::min(sizeof(_id), idx));
+    }
+
+    std::string PartId::GetFilename() const
+    {
+        std::string name;
+        if (_id[sizeof(_id) - 1] != 0)
+        {
+            name.assign(_id, 8);
+        }
+        else
+            name.assign(_id);
+
+        name += ".dat";
+        return name;
+    }
+    std::string PartId::Name() const
+    {
+        std::string name;
+        if (_id[sizeof(_id) - 1] != 0)
+        {
+            name.assign(_id, 8);
+        }
+        else
+            name.assign(_id);
+        return name;
+    }
+
     void DestroyBrickThreadPool(BrickThreadPool* ptr)
     {
         delete ptr;
@@ -128,6 +164,8 @@ namespace sam
 
     void Brick::Load(ldr::Loader* pLoader, BrickThreadPool* threadPool, const std::string& name, std::filesystem::path& cachePath)
     {
+        m_name = name;
+        m_connectorsLoaded = false;
         static bool sEnableDirectLoad = true;
         PosTexcoordNrmVertex::init();
         std::filesystem::path filepath = cachePath / name;
@@ -159,42 +197,77 @@ namespace sam
         }
         else
             return;
+
+        //LoadConnectors(pLoader, name);
         m_vbh = bgfx::createVertexBuffer(pVtx, PosTexcoordNrmVertex::ms_layout);
         m_ibh = bgfx::createIndexBuffer(pIdx, BGFX_BUFFER_INDEX32);
     }
 
+    void Brick::LoadConnectors(ldr::Loader* pLoader)
+    {
+        if (m_connectorsLoaded)
+            return;
+        std::vector<ldr::LdrConnection> connections;
+        pLoader->loadConnections(m_name.c_str(), connections);
+        for (auto& connection : connections)
+        {
+            Connector c;
+            c.type = (ConnectorType)connection.type;
+            Matrix44f m;
+            memcpy(m.mData, connection.transform.values, sizeof(float) * 16);
+            m.mState = Matrix44f::AFFINE;
+            Vec4f p;
+            xform(p, m, Vec4f(0, 0, 0, 1));
+            c.pos = Vec3f(p[0], p[1], p[2]);
+            Quatf q = gmtl::make<Quatf>(m);
+            c.dir = q;
+            m_connectors.push_back(c);
+        }
+        m_connectorsLoaded = true;
+    }
+
     void Brick::GenerateCacheItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
-        const std::string& name, std::filesystem::path& cachePath)
+        const std::string& name, std::filesystem::path& filepath,
+        const std::vector<int> atlasMaterialMapping)
     {
         LdrModelHDL model;
-        LdrResult result = pLoader->createModel(name.c_str(), LDR_FALSE, &model);
-        if (result != LDR_SUCCESS)
-            return;
-        uint32_t numParts = pLoader->getNumRegisteredParts();
-        uint32_t numThreads = threadPool->NumThreads();
-        uint32_t perThread = (numParts + numThreads - 1) / numThreads;
-
-        std::vector<LdrPartID> partIds(numParts);
-        std::vector<LdrResult> partResults(numParts);
-        for (uint32_t i = 0; i < numThreads; i++)
+        LdrResult result;
+        if (threadPool != nullptr)
         {
-            std::shared_ptr<Task> t = std::make_shared<Task>();
-            uint32_t offset = i * perThread;
-            uint32_t numLocal = offset > numParts ? 0 : std::min(perThread, numParts - i * perThread);
-            if (numLocal == 0)
-                break;
-            for (int p = 0; p < numLocal; p++)
-                t->partIds.push_back(offset + p);
-            threadPool->AddTask(t);
+            result = pLoader->createModel(name.c_str(), LDR_FALSE, &model);
+            if (result != LDR_SUCCESS)
+                return;
+            uint32_t numParts = pLoader->getNumRegisteredParts();
+            uint32_t numThreads = threadPool->NumThreads();
+            uint32_t perThread = (numParts + numThreads - 1) / numThreads;
+
+            std::vector<LdrPartID> partIds(numParts);
+            std::vector<LdrResult> partResults(numParts);
+            for (uint32_t i = 0; i < numThreads; i++)
+            {
+                std::shared_ptr<Task> t = std::make_shared<Task>();
+                uint32_t offset = i * perThread;
+                uint32_t numLocal = offset > numParts ? 0 : std::min(perThread, numParts - i * perThread);
+                if (numLocal == 0)
+                    break;
+                for (int p = 0; p < numLocal; p++)
+                    t->partIds.push_back(offset + p);
+                threadPool->AddTask(t);
+            }
+
+            threadPool->Flush();
+            LdrResult buildResult = threadPool->GetResult();
+            if (buildResult < LDR_SUCCESS)
+                return;
+            // must do manual resolve after parts are loaded
+            pLoader->resolveModel(model);
         }
-
-        threadPool->Flush();
-        LdrResult buildResult = threadPool->GetResult();
-        if (buildResult < LDR_SUCCESS)
-            return;
-        // must do manual resolve after parts are loaded
-        pLoader->resolveModel(model);
-
+        else
+        {
+            std::vector<ldr::LdrConnection> connections;
+            pLoader->loadConnections(name.c_str(), connections);
+            result = pLoader->createModel(name.c_str(), LDR_TRUE, &model);
+        }
 
         LdrRenderModelHDL rmodel;
         result = pLoader->createRenderModel(model, LDR_TRUE, &rmodel);
@@ -228,17 +301,31 @@ namespace sam
             {
                 memcpy(&curVtx->m_x, &rpart.vertices[idx].position, sizeof(LdrVector));
                 memcpy(&curVtx->m_nx, &rpart.vertices[idx].normal, sizeof(LdrVector));
+                curVtx->m_u = curVtx->m_v = -1;
                 m_bounds += Point3f(curVtx->m_x, curVtx->m_y, curVtx->m_z);
                 curVtx++;
             }
             memcpy(curIdx, rpart.triangles, rpart.num_triangles * 3 * sizeof(uint32_t));
             for (uint32_t idx = 0; idx < rpart.num_triangles * 3; ++idx, curIdx++)
                 *curIdx = *curIdx + vtxOffset;
+            if (rpart.materials != nullptr)
+            {
+                PosTexcoordNrmVertex *pvtx = (PosTexcoordNrmVertex*)vtx.data();
+                LdrMaterialID* curMat = rpart.materials;
+                LdrVertexIndex* pVtxIdx = rpart.triangles;
+                for (uint32_t idx = 0; idx < rpart.num_triangles * 3; ++idx, pVtxIdx++)
+                {         
+                    
+                    if (*pVtxIdx != LDR_INVALID_ID)
+                        pvtx[*pVtxIdx + vtxOffset].m_u = 
+                            (*curMat != -1) ? atlasMaterialMapping[*curMat] : -1;
+                    if ((idx % 3) == 2)
+                        curMat++;
+                }
+            }
             vtxOffset += rpart.num_vertices;
         }
 
-        std::filesystem::path filepath = cachePath / name;
-        filepath.replace_extension("mesh");
         std::ofstream ofs(filepath, std::ios_base::binary);
         ofs.write((const char*)&numvtx, sizeof(numvtx));
         ofs.write((const char*)vtx.data(), sizeof(PosTexcoordNrmVertex) * numvtx);
@@ -272,11 +359,73 @@ namespace sam
         spMgr = this;
         m_cachePath = Application::Inst().Documents() + "/ldrcache";
         std::filesystem::create_directory(m_cachePath);
+        LoadColors(ldrpath);
         LoadAllParts(ldrpath);
+    }
+    // trim from start (in place)
+    static inline void ltrim(std::string& s) {
+        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+            }));
+    }
+    void BrickManager::LoadConnectors(Brick* pBrick)
+    {
+        pBrick->LoadConnectors(m_ldrLoader.get());
+    }
+
+    void BrickManager::LoadColors(const std::string& ldrpath)
+    {
+        std::filesystem::path configpath = 
+            std::filesystem::path(ldrpath) / "LDConfig.ldr";
+        std::ifstream ifs(configpath);
+        std::regex colorrg("0\\s!COLOUR\\s(\\w+)\\s+CODE\\s+(\\d+)\\s+VALUE\\s#([\\dA-F]+)\\s+EDGE\\s+#([\\dA-F]+)");
+        while (!ifs.eof())
+        {
+            std::string line;
+            std::getline(ifs, line);
+            std::smatch match;
+            if (std::regex_search(line, match, colorrg))
+            {
+                std::string name = match[1];
+                int index = std::stoi(match[2].str());
+                unsigned int fill = std::stoul(match[3].str(), nullptr, 16);
+                unsigned int edge = std::stoul(match[4].str(), nullptr, 16);
+                BrickColor bc{ index, name, 
+                    { 
+                    (fill >> 16) & 0xFF,
+                    (fill >> 8) & 0xFF,
+                    fill & 0xFF,
+                    0xFF}, 
+                    { (edge >> 16) & 0xFF,
+                    (edge >> 8) & 0xFF,
+                    edge & 0xFF,
+                    0xFF}
+                };
+                m_colors.insert(std::make_pair(index, bc));
+            }
+        }
+
+        const bgfx::Memory *m = bgfx::alloc(16 * 16 * sizeof(RGBA));
+        RGBA* pgrbx = (RGBA * )m->data;
+        int atlasidx = 0;
+        for (auto& col : m_colors)
+        {
+            col.second.atlasidx = atlasidx++;
+            pgrbx[col.second.atlasidx] = col.second.fill;
+        }
+        m_colorPalette = bgfx::createTexture2D(16, 16, false, 1, bgfx::TextureFormat::RGBA8, BGFX_SAMPLER_POINT, m);
     }
 
     void BrickManager::LoadAllParts(const std::string& ldrpath)
     {
+        auto itcol = m_colors.end();
+        std::advance(itcol, -1);
+        std::vector<int> codeIdx(itcol->second.code + 1, -1);
+        for (auto& col : m_colors)
+        {
+            codeIdx[col.second.code] = col.second.atlasidx;
+        }
+
         std::string partnamefile = Application::Inst().Documents() + "/partnames.txt";
         if (std::filesystem::exists(partnamefile))
         {
@@ -309,9 +458,12 @@ namespace sam
                     for (int i = 0; i < 3; ++i)
                         pd.dims[i] = std::stof(dv[i + 1]);
                     pd.desc = desc;
+                    ltrim(pd.desc);
                     m_partsMap.insert(std::make_pair(pd.filename, pd));
                 }
             }
+
+            m_partsMap.sort();
         }
         else
         {
@@ -397,10 +549,16 @@ namespace sam
                             of << pd.desc << std::endl;
 
                             Brick b;
-                            b.GenerateCacheItem(m_ldrLoader.get(), m_threadPool.get(),
-                                name, m_cachePath);
+                            std::filesystem::path meshfilepath = m_cachePath / name;
+                            meshfilepath.replace_extension("mesh");
+                            if (!std::filesystem::exists(meshfilepath))
+                            {
+                                b.GenerateCacheItem(m_ldrLoader.get(), m_threadPool.get(),
+                                    name, meshfilepath, codeIdx);
+                            }
 
                             m_partsMap.insert(std::make_pair(pd.filename, pd));
+                            Application::DebugMsg(pd.filename + "\n");
                         }
                         catch (...)
                         {
@@ -411,16 +569,18 @@ namespace sam
             of.close();
             std::filesystem::rename(tmpfile, partnamefile);
         }
-        for (auto itPar = m_partsMap.begin(); itPar != m_partsMap.end(); ++itPar)
+        const auto &keys = m_partsMap.keys();
+        for (const auto &key : keys)
         {
-            auto itType = m_typesMap.find(itPar->second.type);
+            const PartDesc &desc = m_partsMap[key];
+            auto itType = m_typesMap.find(desc.type);
             if (itType == m_typesMap.end())
-                itType = m_typesMap.insert(std::make_pair(itPar->second.type,
-                    std::vector<std::string>()));
-            itType->second.push_back(itPar->first);
+                itType = m_typesMap.insert(std::make_pair(desc.type,
+                    std::vector<PartId>()));
+            itType->second.push_back(key);
         }
 
-        std::vector<std::string> misc;
+        std::vector<PartId> misc;
         for (auto itType = m_typesMap.begin(); itType != m_typesMap.end(); )
         {
             if (itType->second.size() < 64)
@@ -436,10 +596,17 @@ namespace sam
     }
 
     static bgfx::ProgramHandle sShader(BGFX_INVALID_HANDLE);
+    static bgfxh<bgfx::UniformHandle> sUparams;
+
     void BrickManager::Draw(DrawContext& ctx)
     {
         if (!bgfx::isValid(sShader))
-            sShader = Engine::Inst().LoadShader("vs_cubes.bin", "fs_targetcube.bin");
+            sShader = Engine::Inst().LoadShader("vs_brick.bin", "fs_targetcube.bin");
+        if (!sUparams.isValid())
+            sUparams = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 1);
+
+        if (!m_paletteHandle.isValid())
+            m_paletteHandle = bgfx::createUniform("s_brickPalette", bgfx::UniformType::Sampler);
         if (!m_iconDepth.isValid())
         {
             m_iconDepth =
@@ -453,6 +620,7 @@ namespace sam
                 );
         }
 
+        Vec4f color = Vec4f(16, 0, 0, 0);
         PosTexcoordNrmVertex::init();
         std::vector<Brick*> brickRenderQueue;
         std::swap(brickRenderQueue, m_brickRenderQueue);
@@ -481,6 +649,7 @@ namespace sam
             Matrix44f view, proj;
             identity(view);
             identity(proj);
+            bgfx::setUniform(sUparams, &color, 1);
             bgfx::setViewRect(viewId, 0, 0, bgfx::BackbufferRatio::Equal);
             bgfx::setViewTransform(viewId, view.getData(), proj.getData());
             bgfx::setViewClear(viewId,
@@ -489,7 +658,6 @@ namespace sam
                 1.0f,
                 0
             );
-
 
             Matrix44f m;
             m = makeScale<Matrix44f>(Vec3f(1, -1, 0.25)) *
@@ -510,6 +678,7 @@ namespace sam
 
             Vec4f color = Vec4f(1.0f, 1.0f, 0.0f, 1.0f);
 
+            bgfx::setTexture(0, m_paletteHandle, m_colorPalette);
             bgfx::setState(state);
             bgfx::setVertexBuffer(0, brick->m_vbh);
             bgfx::setIndexBuffer(brick->m_ibh);
@@ -528,12 +697,12 @@ namespace sam
     }
 
     BrickManager& BrickManager::Inst() { return *spMgr; }
-    Brick* BrickManager::GetBrick(const std::string& name)
+    Brick* BrickManager::GetBrick(const PartId& name)
     {
         Brick& b = m_bricks[name];
         if (!b.m_vbh.isValid())
         {
-            b.Load(m_ldrLoader.get(), m_threadPool.get(), name, m_cachePath);
+            b.Load(m_ldrLoader.get(), m_threadPool.get(), name.GetFilename(), m_cachePath);
             m_brickRenderQueue.push_back(&b);
         }
         MruUpdate(&b);
@@ -550,7 +719,7 @@ namespace sam
     {
         if (m_bricks.size() > 512)
         {
-            std::vector<std::pair<size_t, std::string>> mrulist;
+            std::vector<std::pair<size_t, PartId>> mrulist;
             mrulist.reserve(m_bricks.size());
             for (auto& pair : m_bricks)
             {
@@ -566,8 +735,23 @@ namespace sam
         }
     }
 
-    const std::string& BrickManager::PartName(size_t idx)
+    const PartId& BrickManager::GetPartId(size_t idx)
     {
-        return m_partsMap[idx];
+        return m_partsMap.keys()[idx];
+    }
+
+    std::string BrickManager::PartDescription(const std::string &partname)
+    {
+        PartDesc &desc = m_partsMap[partname];
+        if (desc.ndims == 1)
+            return fmt::format("{} {} {}\n{}", desc.type, desc.dims[0], desc.desc, desc.filename);
+        if (desc.ndims == 2)
+            return fmt::format("{} {}x{} {}\n{}", desc.type, desc.dims[0], desc.dims[1],
+                desc.desc, desc.filename);
+        if (desc.ndims == 3)
+            return fmt::format("{} {}x{}x{} {}\n{}", desc.type, desc.dims[0], desc.dims[1],
+                desc.dims[2], desc.desc, desc.filename);
+        else
+            return fmt::format("{} {}\n{}", desc.type, desc.desc, desc.filename);
     }
 }

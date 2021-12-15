@@ -7,6 +7,7 @@
 #include "OctTile.h"
 #include "gmtl/Intersection.h"
 #include "BrickMgr.h"
+#include "LegoBrick.h"
 
 #define NOMINMAX
 
@@ -15,13 +16,15 @@ namespace sam
 
     bgfxh<bgfx::ProgramHandle> sBboxshader;
     bgfxh<bgfx::ProgramHandle> sBrickShader;
+    static bgfx::UniformHandle sPaletteHandle(BGFX_INVALID_HANDLE);
 
     OctTile::OctTile(const Loc& l) : m_image(-1), m_l(l),
         m_buildFrame(0),
         m_readyState(0),
         m_intersects(-1),
         m_lastUsedRawData(0),
-        m_isdecommissioned(false)
+        m_isdecommissioned(false),
+        m_pBrick(nullptr)
     {
     }
 
@@ -107,11 +110,25 @@ namespace sam
         }
         if (m_readyState == 1)
         {
+            if (m_l.m_l == 8 && m_l.IsGroundLoc())
+            {
+                PartInst pi;
+                pi.id = "91405";
+                pi.paletteIdx = 0;
+                pi.pos = Vec3f(0, -0.5f, 0);
+                pi.rot = Quatf();
+                m_parts.push_back(pi);
+            }
             m_readyState = 2;
         }
 
         if (m_readyState == 2)
         {
+            auto brick = std::make_shared<LegoBrick>("91405", 0);
+            brick->SetOffset(Vec3f(0, -0.5f, 0));
+            brick->SetScale(Vec3f(2, 2, 2));
+            AddItem(brick);
+            //m_pBrick = BrickManager::Inst().GetBrick("91405");
             m_readyState = 3;
         }
     }
@@ -124,6 +141,8 @@ namespace sam
     }
     void OctTile::Draw(DrawContext& ctx)
     {
+        SceneGroup::Draw(ctx);
+
         if (!m_l.IsGroundLoc() || m_l.m_l != 8)
             return;
         nOctTilesTotal++;
@@ -139,16 +158,17 @@ namespace sam
 
         if (m_readyState == 3)
         {
-            Brick *brick = BrickManager::Inst().GetBrick("91405.dat");
-            m_ibh = brick->m_ibh;
-            m_vbh = brick->m_vbh;
             m_readyState++;
         }
+
+        if (m_pBrick == nullptr)
+            return;
+        BrickManager::Inst().MruUpdate(m_pBrick);
 
         if (g_showOctBoxes)
         {
             if (!sBboxshader.isValid())
-                sBboxshader = Engine::Inst().LoadShader("vs_cubes.bin", "fs_bbox.bin");
+                sBboxshader = Engine::Inst().LoadShader("vs_brick.bin", "fs_bbox.bin");
             Cube::init();
             AABoxf bbox = m_l.GetBBox();
             float scl = (bbox.mMax[0] - bbox.mMin[0]) * 0.45f;
@@ -176,7 +196,9 @@ namespace sam
         else if (false)
         {
             if (!sBrickShader.isValid())
-                sBrickShader = Engine::Inst().LoadShader("vs_cubes.bin", "fs_cubes.bin");
+                sBrickShader = Engine::Inst().LoadShader("vs_brick.bin", "fs_cubes.bin");
+            if (!bgfx::isValid(sPaletteHandle))
+                sPaletteHandle = bgfx::createUniform("s_brickPalette", bgfx::UniformType::Sampler);
 
             AABoxf bbox = m_l.GetBBox();
             float scl = (bbox.mMax[0] - bbox.mMin[0]) * BrickManager::Scale;
@@ -189,6 +211,7 @@ namespace sam
 
             bool istarget = m_l == g_hitLoc;
             Vec4f color = BrickManager::Color(0x8A928D);
+            bgfx::setTexture(0, sPaletteHandle, BrickManager::Inst().Palette());
             bgfx::setUniform(m_uparams, &color, 1);
             uint64_t state = 0
                 | BGFX_STATE_WRITE_RGB
@@ -200,8 +223,8 @@ namespace sam
                 | BGFX_STATE_BLEND_ALPHA;
             // Set render states.l
             bgfx::setState(state);
-            bgfx::setVertexBuffer(0, m_vbh);
-            bgfx::setIndexBuffer(m_ibh);
+            bgfx::setVertexBuffer(0, m_pBrick->m_vbh);
+            bgfx::setIndexBuffer(m_pBrick->m_ibh);
             bgfx::submit(ctx.m_curviewIdx, sBrickShader);
         }
     }
@@ -329,7 +352,7 @@ namespace sam
 
     void TargetCube::Initialize(DrawContext& nvg)
     {
-        m_shader = Engine::Inst().LoadShader("vs_cubes.bin", "fs_targetcube.bin");
+        m_shader = Engine::Inst().LoadShader("vs_brick.bin", "fs_targetcube.bin");
     }
 
     void TargetCube::Draw(DrawContext& ctx)

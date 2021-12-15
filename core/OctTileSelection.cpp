@@ -307,7 +307,6 @@ namespace sam
         FrustumTiles::Get(cam, locs, 10.0f, g_maxTileLod, playerBounds);
 
         std::sort(locs.begin(), locs.end());
-
         std::vector<std::shared_ptr<OctTile>> loaderTiles;
         for (const auto& l : locs)
         {
@@ -321,8 +320,6 @@ namespace sam
 
                     Point3f pos = l.GetCenter();
                     sq->SetOffset(pos);
-                    float s = l.GetExtent() * 0.5f;
-                    sq->SetScale(Vec3f(s, s, s));
                 }
                 itSq = m_tiles.insert(std::make_pair(l, sq)).first;
                 sNumTiles++;

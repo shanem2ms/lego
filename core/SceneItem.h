@@ -64,6 +64,7 @@ namespace sam
             Point3f pos;
             Vec2f dir;
 
+            Quatf Quat() const;
             void GetDirs(Vec3f& right, Vec3f& up, Vec3f& forward) const;
         };
 

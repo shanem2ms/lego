@@ -32,6 +32,7 @@ target_link_libraries(${PROJECT_NAME} LINK_PUBLIC
     ${BGFX_LIB}/astc-codec.lib 
     ${BGFX_LIB}/bimg.lib 
     ${BGFX_LIB}/bx.lib
+    fmt
     core 
     ${PLATFORMLIBS}
     zlibstatic

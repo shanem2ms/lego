@@ -10,6 +10,7 @@ set(BX_INC_DIR_COMPAT ${BGFX_INCLUDE_ROOT}/compat/osx)
 endif()
 
 add_subdirectory(shaders)
+add_subdirectory(fmt)
 
 ################################################################################
 # Source groups
@@ -26,7 +27,9 @@ set(Header_Files
     "OctTileSelection.h"
     "SceneItem.h"
     "Mesh.h"
+    "PlayerView.h"
     "LegoBrick.h"
+    "ConnectionWidget.h"
     "LegoUI.h"
 )  
 
@@ -51,13 +54,15 @@ set(Source_Files
     "OctTile.cpp"
     "Hud.cpp"
     "Frustum.cpp"
-    "OctTileSelection.cpp"
+    "OctTileSelection.cpp"    
     "SceneItem.cpp"
     "UIControl.cpp"
     "ConvexHull.cpp"
     "Mesh.cpp"
+    "PlayerView.cpp"
     "Level.cpp"
     "LegoBrick.cpp"
+    "ConnectionWidget.cpp"
     "LegoUI.cpp"
     "ldrawloader.cpp"
     "imgui/imgui.cpp"
@@ -92,6 +97,7 @@ target_include_directories(core PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/."
     "${CMAKE_CURRENT_SOURCE_DIR}/imgui/."
     "${CMAKE_CURRENT_SOURCE_DIR}/../leveldb/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/fmt/include"
     "${VCPKG_INSTALL_PATH}/include"
     ${BGFX_INCLUDE_ROOT}
     ${BX_INC_DIR_COMPAT}
