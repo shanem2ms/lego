@@ -9,7 +9,10 @@
 #include "Loc.h"
 #include "PartDefs.h"
 
-struct VoxCube;
+struct CubeList;
+struct LdrRenderModel;
+typedef const LdrRenderModel* LdrRenderModelHDL;
+class btBvhTriangleMeshShape;
 namespace ldr
 {
     struct Loader;
@@ -142,12 +145,66 @@ namespace sam
         PinholeStud
     };
 
+  
+    static Vec3f ScaleForType(ConnectorType ctype)
+    {
+        return Vec3f(5, 5, 5);
+    }
     struct Connector
     {
         ConnectorType type;
         Vec3f pos;
+        Vec3f scl;
         Quatf dir;
+        int pickIdx;
+
+        static bool CanConnect(ConnectorType a, ConnectorType b)
+        {
+            if (a > b)
+            {
+                ConnectorType tmp = b;
+                b = a;
+                a = tmp;
+            }
+            if (a == Stud && b == InvStud)
+                return true;
+            return false;
+        }
     };
+
+    inline bool operator < (const Vec3f& lhs, const Vec3f& rhs)
+    {
+        for (int i = 0; i < 3; ++i)
+        {
+            if (lhs[i] != rhs[i])
+                return lhs[i] < rhs[i];
+        }
+        return false;
+    }
+    inline bool operator < (const Quatf& lhs, const Quatf& rhs)
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            if (lhs[i] != rhs[i])
+                return lhs[i] < rhs[i];
+        }
+        return false;
+    }
+
+    inline bool operator < (const Connector& lhs, const Connector& rhs)
+    {
+        if (lhs.type != rhs.type)
+            return lhs.type < rhs.type;
+        if (lhs.pos != rhs.pos)
+            return lhs.pos < rhs.pos;
+        return lhs.dir < rhs.dir;
+    }
+    inline bool operator == (const Connector& lhs, const Connector& rhs)
+    {
+        if (lhs.type != rhs.type)
+            return false;
+        return lhs.pos == rhs.pos;
+    }
 
     struct Brick
     {
@@ -161,6 +218,8 @@ namespace sam
         Vec3f m_center;
         bool m_connectorsLoaded;
         std::vector<Connector> m_connectors;
+        std::shared_ptr<CubeList> m_connectorCL;
+        std::shared_ptr<btBvhTriangleMeshShape> m_collisionShape;
     private:
         void Load(ldr::Loader* pLoader, BrickThreadPool* threadPool,
             const std::string& name, std::filesystem::path& cachePath);
@@ -191,7 +250,7 @@ namespace sam
     {
     public:
         // Lego unit = 20, this makes each 1x1 space equal 16x16 legos
-        static constexpr float Scale = 1 / 320.0f;
+        static constexpr float Scale = 1 / 20.0f;
 
         
         static BrickManager& Inst();

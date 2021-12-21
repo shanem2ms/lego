@@ -5,6 +5,7 @@
 #include <bimg/bimg.h>
 #include "Hud.h"
 #include "Mesh.h"
+#include "Physics.h"
 
 namespace sam
 {
@@ -31,30 +32,39 @@ namespace sam
     {
         if (m_needRebuild)
         {
-            m_gbufferTex =
-                bgfx::createTexture2D(
-                    m_w
-                    , m_h
-                    , false
-                    , 1
-                    , bgfx::TextureFormat::RGBA32F
-                    , BGFX_TEXTURE_RT
-                );
-            m_depthTex =
-                bgfx::createTexture2D(
-                    m_w
-                    , m_h
-                    , false
-                    , 1
-                    , bgfx::TextureFormat::D32
-                    , BGFX_TEXTURE_RT | BGFX_SAMPLER_COMPARE_LEQUAL
-                );
-            bgfx::TextureHandle fbtextures[] = {
-                m_gbufferTex,
-                m_depthTex
-            };
-            m_depthFB = bgfx::createFrameBuffer(BX_COUNTOF(fbtextures), fbtextures, true);
+            {
+                m_gbufferTex =
+                    bgfx::createTexture2D(m_w, m_h, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT);
+                m_depthTex =
+                    bgfx::createTexture2D(m_w, m_h, false, 1, bgfx::TextureFormat::D32, 
+                        BGFX_TEXTURE_RT | BGFX_SAMPLER_COMPARE_LEQUAL);
+                bgfx::TextureHandle fbtextures[] = {
+                    m_gbufferTex,
+                    m_depthTex
+                };
+
+                m_depthFB = bgfx::createFrameBuffer(BX_COUNTOF(fbtextures), fbtextures, true);
+            }
+            {
+                m_pickColorTex = bgfx::createTexture2D(PickBufSize, PickBufSize, false, 1, bgfx::TextureFormat::RG32F, BGFX_TEXTURE_RT);
+                m_pickColorRB = bgfx::createTexture2D(PickBufSize, PickBufSize, false, 1, bgfx::TextureFormat::RG32F,
+                    BGFX_TEXTURE_BLIT_DST
+                    | BGFX_TEXTURE_READ_BACK
+                    | BGFX_SAMPLER_MIN_POINT
+                    | BGFX_SAMPLER_MAG_POINT
+                    | BGFX_SAMPLER_MIP_POINT
+                    | BGFX_SAMPLER_U_CLAMP
+                    | BGFX_SAMPLER_V_CLAMP);
+                m_pickDepthTex = bgfx::createTexture2D(PickBufSize, PickBufSize, false, 1, bgfx::TextureFormat::D32,
+                    BGFX_TEXTURE_RT | BGFX_SAMPLER_COMPARE_LEQUAL);
+                bgfx::TextureHandle fbtextures[] = {
+                    m_pickColorTex,
+                    m_pickDepthTex };
+
+                m_pickFB = bgfx::createFrameBuffer(BX_COUNTOF(fbtextures), fbtextures, true);                
+            }
             m_needRebuild = false;
+
         }
         m_camera.Update(m_w, m_h);
 
@@ -69,80 +79,58 @@ namespace sam
     }
     extern int nOctTilesTotal;
     extern int nOctTilesDrawn;
-    bgfxh<bgfx::ProgramHandle> sFullscreen;
+    bgfxh<bgfx::ProgramHandle> sFullscreenDeferred;
+    bgfxh<bgfx::ProgramHandle> sBlit;
 
     void Engine::Draw(DrawContext& dc)
     {
-        if (!sFullscreen.isValid())
-            sFullscreen = LoadShader("vs_fullscreen.bin", "fs_deferred.bin");
+        if (!sFullscreenDeferred.isValid())
+            sFullscreenDeferred = LoadShader("vs_fullscreen.bin", "fs_deferred.bin");
+        if (!sBlit.isValid())
+            sBlit = LoadShader("vs_fullscreen.bin", "fs_blit.bin");
 
         if (!m_depthTexRef.isValid())
         {
             m_depthTexRef = bgfx::createUniform("s_depthtex", bgfx::UniformType::Sampler);
             m_gbufTexRef = bgfx::createUniform("s_gbuftex", bgfx::UniformType::Sampler);
-            m_noiseTexRef = bgfx::createUniform("s_noisetex", bgfx::UniformType::Sampler);
+            m_blitTexRef = bgfx::createUniform("s_blittex", bgfx::UniformType::Sampler);
             m_eyePosRef = bgfx::createUniform("u_eyePos", bgfx::UniformType::Vec4);
             m_texelSizeRef = bgfx::createUniform("u_texelSize", bgfx::UniformType::Vec4);
             m_invViewProjRef = bgfx::createUniform("u_deferredViewProj", bgfx::UniformType::Mat4);
             
         }
-
-        if (!m_noiseTex.isValid())
-        {
-            int noisedim = 64;
-            // Noise texture.
-            const bgfx::Memory *m = bgfx::alloc(noisedim * noisedim * 4);
-            for (uint32_t x = 0; x < noisedim*noisedim*4; x++)
-            {
-                m->data[x] = uint8_t(rand() % 255);
-            }
-
-            m_noiseTex = bgfx::createTexture2D(noisedim, noisedim, false, 1, bgfx::TextureFormat::RGBA8, 0, m);
-        }
-
-        bgfx::setViewName(0, "depth");
-        bgfx::setViewName(1, "ssao");
-        bgfx::setViewName(2, "items");
-        bgfx::setViewFrameBuffer(0, m_depthFB);
-        bgfx::setViewFrameBuffer(1, BGFX_INVALID_HANDLE);
-        bgfx::setViewFrameBuffer(2, BGFX_INVALID_HANDLE);
+        nOctTilesTotal = nOctTilesDrawn = 0;
         gmtl::identity(dc.m_mat);
         float near = dc.m_nearfar[0];
         float far = dc.m_nearfar[1];
         gmtl::Matrix44f view = DrawCam().ViewMatrix();
-        
-        bgfx::setViewClear(0,
+        gmtl::Matrix44f proj0 = DrawCam().GetPerspectiveMatrix(near, far);
+
+        bgfx::setViewName(DrawViewId::DeferredObjects, "DeferredObjects");
+        bgfx::setViewFrameBuffer(DrawViewId::DeferredObjects, m_depthFB); 
+        bgfx::setViewClear(DrawViewId::DeferredObjects,
             BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
             0x000000ff,
             1.0f,
             0
         );
-        nOctTilesTotal = nOctTilesDrawn = 0;
-        
-        gmtl::Matrix44f proj0 = DrawCam().GetPerspectiveMatrix(near, far);
-        bgfx::setViewTransform(0, view.getData(), proj0.getData());
-        dc.m_curviewIdx = 0;
-        dc.m_nearfarpassIdx = 0;
-        m_root->DoDraw(dc);
-        nOctTilesTotal = nOctTilesDrawn = 0;
+        bgfx::setViewTransform(DrawViewId::DeferredObjects, view.getData(), proj0.getData());
 
-        bgfx::setViewClear(1,
-            BGFX_CLEAR_DEPTH,
-            0x0,
+        
+        bgfx::setViewName(DrawViewId::DeferredLighting, "DeferredLighting");
+        bgfx::setViewFrameBuffer(DrawViewId::DeferredLighting, BGFX_INVALID_HANDLE);
+        bgfx::setViewClear(DrawViewId::DeferredLighting,
+            BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+            0x000000ff,
             1.0f,
             0
         );
-       
-        //  d = 1 - ((1 / z) - (1 / fr)) / ((1 / nr) - (1 / fr))
-        //  z = (fr * nr) / (-d * fr + d * nr + fr)
-        
         Quad::init();
         Matrix44f m;
         gmtl::identity(m);
         bgfx::setTransform(m.getData());
         bgfx::setTexture(0, m_depthTexRef, m_depthTex, 0);
         bgfx::setTexture(1, m_gbufTexRef, m_gbufferTex, 0);
-        bgfx::setTexture(2, m_noiseTexRef, m_noiseTex, 0);
         Matrix44f invViewProj = proj0 * view;
         invert(invViewProj);
         bgfx::setUniform(m_invViewProjRef, invViewProj.getData());
@@ -158,34 +146,83 @@ namespace sam
         bgfx::setState(state);
         bgfx::setVertexBuffer(0, Quad::vbh);
         bgfx::setIndexBuffer(Quad::ibh);
-        bgfx::submit(1, sFullscreen);
-        
-        dc.m_curviewIdx = 2;
-        bgfx::setViewClear(2,
-            BGFX_CLEAR_DEPTH,
-            0x0,
+        bgfx::submit(DrawViewId::DeferredLighting, sFullscreenDeferred);
+
+
+        bgfx::setViewName(DrawViewId::ForwardRendered, "ForwardRendered");
+        bgfx::setViewFrameBuffer(DrawViewId::ForwardRendered, BGFX_INVALID_HANDLE);
+        bgfx::setViewTransform(DrawViewId::ForwardRendered, view.getData(), proj0.getData());
+        nOctTilesTotal = nOctTilesDrawn = 0;
+
+
+        bgfx::setViewName(DrawViewId::HUD, "HUD");
+        bgfx::setViewFrameBuffer(DrawViewId::HUD, BGFX_INVALID_HANDLE);
+        bgfx::setViewName(DrawViewId::PickObjects, "PickObjects");
+        bgfx::setViewClear(DrawViewId::PickObjects,
+            BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+            0x000000ff,
             1.0f,
             0
         );
+        Matrix44f p2 = proj0 * makeScale<Matrix44f>(Vec3f(dc.m_pickViewScale[0], dc.m_pickViewScale[1], 1));
+        bgfx::setViewTransform(DrawViewId::PickObjects, view.getData(), p2.getData());
 
-        gmtl::Matrix44f proj2 = DrawCam().GetPerspectiveMatrix(near, far);
-        bgfx::setViewTransform(2, view.getData(), proj2.getData());
+
+        bgfx::setViewFrameBuffer(DrawViewId::PickObjects, m_pickFB);
+        bgfx::setViewName(DrawViewId::PickBlit, "PickBlit");
+        bgfx::blit(DrawViewId::PickBlit, m_pickColorRB, 0, 0, m_pickColorTex);
+
         m_root->DoDraw(dc);
-        m_hud->DoDraw(dc);        
-
+        m_hud->DoDraw(dc);
+        auto pf = std::make_shared<PickFrame>();
+        pf->pickData.resize(PickBufSize * PickBufSize * 2);
+        pf->frameIdx = bgfx::readTexture(m_pickColorRB, pf->pickData.data());
+        pf->items = dc.m_pickedCandidates;
+        m_pickFrames.push_back(pf);
         if (dc.m_frameIdx == -1)
         {
             bgfx::FrameBufferHandle fbh = BGFX_INVALID_HANDLE;
             bgfx::requestScreenShot(fbh, "test.png");
-        }
-
-        m_nextView = 4;
+        }        
+      
+        Physics::Inst().DebugRender(dc);
+        /*
+        bgfx::setViewFrameBuffer(5, BGFX_INVALID_HANDLE);
+        bgfx::setTexture(0, m_blitTexRef, m_pickColorTex, 0);         
+        state = 0
+            | BGFX_STATE_WRITE_RGB
+            | BGFX_STATE_WRITE_A
+            | BGFX_STATE_MSAA;
+        // Set render states.l
+        bgfx::setState(state);
+        bgfx::setVertexBuffer(0, Quad::vbh);
+        bgfx::setIndexBuffer(Quad::ibh);
+        bgfx::submit(5, sBlit);
+        */
+        m_nextView = 6;
         for (auto draw : m_externalDraws)
         {
             draw->Draw(dc);
         }
     }
 
+    void Engine::UpdatePickData(DrawContext& dc)
+    {
+        if (m_pickFrames.size() > 0 &&
+            m_pickFrames[0]->frameIdx == dc.m_frameIdx)
+        {
+            PickFrame& pf = *m_pickFrames[0];
+            int offset = (PickBufSize * PickBufSize / 2 + PickBufSize / 2) * 2;
+            int partFl = (int)pf.pickData[offset + 1];
+            if (partFl < pf.items.size())
+            {
+                dc.m_pickedItem = pf.items[partFl];
+                dc.m_pickedVal = pf.pickData[offset];
+
+            }
+            m_pickFrames.erase(m_pickFrames.begin());
+        }
+    }
 
     void Engine::AddAnimation(const std::shared_ptr<Animation>& anim)
     {
@@ -334,4 +371,5 @@ namespace sam
         return std::make_shared<BgfxCallback>();
     }
 }
+
 

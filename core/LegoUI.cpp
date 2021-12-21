@@ -142,21 +142,21 @@ namespace sam
         m_deactivateFn = deactivateFn;        
     }
 
-    bool LegoUI::TouchDown(float x, float y, int touchId)
+    bool LegoUI::MouseDown(float x, float y, int buttonId)
     {
-        bool ret = UIManager::TouchDown(x, y, touchId);
+        bool ret = UIManager::MouseDown(x, y, buttonId);
         return m_isActive;
     }
 
-    bool LegoUI::TouchDrag(float x, float y, int touchId)
+    bool LegoUI::MouseDrag(float x, float y, int buttonId)
     {
-        bool ret = UIManager::TouchDrag(x, y, touchId);
+        bool ret = UIManager::MouseDrag(x, y, buttonId);
         return m_isActive;
     }
 
-    bool LegoUI::TouchUp(int touchId)
+    bool LegoUI::MouseUp(int buttonId)
     {
-        bool ret = UIManager::TouchUp(touchId);
+        bool ret = UIManager::MouseUp(buttonId);
         return m_isActive;
     }
 }

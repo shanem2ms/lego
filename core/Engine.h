@@ -23,6 +23,8 @@ public:
     virtual void Draw(DrawContext & dc) = 0;
 };
 
+constexpr int PickBufSize = 128;
+
 class Hud;
 class Engine
 {
@@ -40,17 +42,29 @@ class Engine
     bgfxh<bgfx::UniformHandle> m_invViewProjRef;
     bgfxh<bgfx::UniformHandle> m_eyePosRef;
     bgfxh<bgfx::UniformHandle> m_texelSizeRef;
-    bgfxh<bgfx::UniformHandle> m_noiseTexRef;
     bgfxh<bgfx::FrameBufferHandle> m_depthFB;
     bgfxh<bgfx::TextureHandle> m_depthTex;
     bgfxh<bgfx::TextureHandle> m_gbufferTex;
-    bgfxh<bgfx::TextureHandle> m_noiseTex;
+    bgfxh<bgfx::TextureHandle> m_pickDepthTex;
+    bgfxh<bgfx::TextureHandle> m_pickColorTex;
+    bgfxh<bgfx::TextureHandle> m_pickColorRB;
+    bgfxh<bgfx::UniformHandle> m_blitTexRef;
+    bgfxh<bgfx::FrameBufferHandle> m_pickFB;
 
     std::map<std::string, bgfx::ProgramHandle> m_shaders;
     std::vector<IEngineDraw*> m_externalDraws;
     bool m_debugCam;
     std::atomic<int> m_nextView;
 
+    struct PickFrame
+    {
+        std::vector<float> pickData;
+        std::vector<std::shared_ptr<SceneItem>> items;
+        uint32_t frameIdx;
+    };
+    std::vector<std::shared_ptr<PickFrame>> m_pickFrames;
+    SceneItem* m_pickedItem;
+    float m_pickedVal;
 public:
     Engine();
 
@@ -71,6 +85,7 @@ public:
     static DrawContext & Ctx();
     void Resize(int w, int h);
     void Draw(DrawContext & nvg);
+    void UpdatePickData(DrawContext& nvg);
     void AddAnimation(const std::shared_ptr<Animation>& anim);
     const std::shared_ptr<SceneGroup> &Root() { return m_root; }
     void AddExternalDraw(IEngineDraw* externalDraw) {

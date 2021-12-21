@@ -24,7 +24,7 @@ namespace sam
     {
         if (!bgfx::isValid(sShader))
         {
-            sShader = Engine::Inst().LoadShader("vs_connector.bin", "fs_cubes.bin");
+            sShader = Engine::Inst().LoadShader("vs_connector.bin", "fs_forwardshade.bin");
             sPaletteHandle = bgfx::createUniform("s_brickPalette", bgfx::UniformType::Sampler);
         }
         m_uparams = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 1);
@@ -34,7 +34,7 @@ namespace sam
     {
         Cube::init();
         Matrix44f m = ctx.m_mat * CalcMat() *
-            makeScale<Matrix44f>(Vec3f(1, 8, 1));
+            makeScale<Matrix44f>(Vec3f(3, 5, 3));
         bgfx::setTransform(m.getData());
         uint64_t state = 0
             | BGFX_STATE_WRITE_RGB
@@ -42,17 +42,18 @@ namespace sam
             | BGFX_STATE_WRITE_Z
             | BGFX_STATE_CULL_CW
             | BGFX_STATE_DEPTH_TEST_LESS
+            | BGFX_STATE_BLEND_ALPHA
             | BGFX_STATE_MSAA;
         // Set render states.l
 
         bgfx::setTexture(0, sPaletteHandle, BrickManager::Inst().Palette());
-        Vec4f color = Vec4f(m_color, 1.0f, 0.0f, 0);
+        Vec4f color = Vec4f(m_color, 0.5f, 0.0f, 0);
         bgfx::setUniform(m_uparams, &color, 1);
 
         bgfx::setState(state);
         bgfx::setVertexBuffer(0, Cube::vbh);
         bgfx::setIndexBuffer(Cube::ibh);
-        bgfx::submit(ctx.m_curviewIdx, sShader);
+        bgfx::submit(DrawViewId::ForwardRendered, sShader);
 
     }
 

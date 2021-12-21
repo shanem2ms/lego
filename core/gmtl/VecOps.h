@@ -241,6 +241,19 @@ operator*(const T scalar, const VecBase<T,SIZE,R1>& v1)
 }
 #endif
 
+
+template<class DATA_TYPE, unsigned SIZE>
+VecBase<DATA_TYPE, SIZE> operator *(const VecBase<DATA_TYPE, SIZE>& v1,
+    const VecBase<DATA_TYPE, SIZE>& v2)
+{
+    VecBase<DATA_TYPE, SIZE> ret;
+    for (int i = 0; i < SIZE; ++i)
+    {
+        ret[i] = v1[i] * v2[i];
+    }
+    return ret;
+}
+
 /**
  * Multiplies v1 by a scalar value and returns the result. Thus result = scalar
  * * v1. This is equivalent to result = v1 * scalar.

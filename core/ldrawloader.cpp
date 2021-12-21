@@ -3834,6 +3834,11 @@ namespace ldr {
 
     LdrResult Loader::loadConnections(const char* filename, std::vector<LdrConnection>& connections)
     {
+        //#ifdef DBGPRINT
+        std::string dbg = std::string("loadConnections: ") + filename;
+        DbgPrint(dbg.c_str());
+        //#endif
+
         LdrResult result = loadConnection(filename, 0, mat_identity(), connections);
         std::sort(connections.begin(), connections.end());
         auto itunique = std::unique(connections.begin(), connections.end());
@@ -3848,7 +3853,8 @@ namespace ldr {
         { "stud2a.dat", 4},
         { "stud2.dat", 5},
         { "stud3.dat", 6},
-        { "stud6.dat", 7}
+        { "stud6.dat", 7},
+        { "1-4ring3.dat", 8}
     };
 
     LdrResult Loader::loadConnection(const char* filename, int level, const LdrMatrix &intransform, std::vector<LdrConnection>& connections)

@@ -14,6 +14,8 @@
 #include <filesystem>
 #include <regex>
 #include <fmt/format.h>
+#include "bullet/btBulletCollisionCommon.h"
+#include "bullet/btBulletDynamicsCommon.h"
 
 
 namespace sam
@@ -189,41 +191,35 @@ namespace sam
             PosTexcoordNrmVertex* endVtx = curVtx + numvtx;
             for (; curVtx != endVtx; ++curVtx)
             {
+                curVtx->m_y = -curVtx->m_y;
                 m_bounds += Point3f(curVtx->m_x, curVtx->m_y, curVtx->m_z);
             }
             Vec3f ext = m_bounds.mMax - m_bounds.mMin;
             m_scale = std::max(std::max(ext[0], ext[1]), ext[2]);
             m_center = (m_bounds.mMax + m_bounds.mMin) * 0.5f;
+
+            const uint32_t* pI = (const uint32_t*)pIdx->data;
+            const PosTexcoordNrmVertex* pV = (const PosTexcoordNrmVertex * )pVtx->data;
+            btTriangleMesh* pMesh = new btTriangleMesh();
+            constexpr float s = BrickManager::Scale;
+            for (uint32_t i = 0; i < numidx; i += 3) {
+                auto& v0 = pV[pI[i]];
+                auto& v1 = pV[pI[i + 1]];
+                auto& v2 = pV[pI[i + 2]];
+                pMesh->addTriangle(btVector3(v0.m_x * s, v0.m_y * s, v0.m_z * s),
+                    btVector3(v1.m_x * s, v1.m_y * s, v1.m_z * s),
+                    btVector3(v2.m_x * s, v2.m_y * s, v2.m_z * s));
+            }
+            m_collisionShape = std::make_shared<btBvhTriangleMeshShape>(pMesh, true, true);
         }
         else
             return;
 
+
+
         //LoadConnectors(pLoader, name);
         m_vbh = bgfx::createVertexBuffer(pVtx, PosTexcoordNrmVertex::ms_layout);
         m_ibh = bgfx::createIndexBuffer(pIdx, BGFX_BUFFER_INDEX32);
-    }
-
-    void Brick::LoadConnectors(ldr::Loader* pLoader)
-    {
-        if (m_connectorsLoaded)
-            return;
-        std::vector<ldr::LdrConnection> connections;
-        pLoader->loadConnections(m_name.c_str(), connections);
-        for (auto& connection : connections)
-        {
-            Connector c;
-            c.type = (ConnectorType)connection.type;
-            Matrix44f m;
-            memcpy(m.mData, connection.transform.values, sizeof(float) * 16);
-            m.mState = Matrix44f::AFFINE;
-            Vec4f p;
-            xform(p, m, Vec4f(0, 0, 0, 1));
-            c.pos = Vec3f(p[0], p[1], p[2]);
-            Quatf q = gmtl::make<Quatf>(m);
-            c.dir = q;
-            m_connectors.push_back(c);
-        }
-        m_connectorsLoaded = true;
     }
 
     void Brick::GenerateCacheItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
@@ -310,15 +306,15 @@ namespace sam
                 *curIdx = *curIdx + vtxOffset;
             if (rpart.materials != nullptr)
             {
-                PosTexcoordNrmVertex *pvtx = (PosTexcoordNrmVertex*)vtx.data();
+                PosTexcoordNrmVertex* pvtx = (PosTexcoordNrmVertex*)vtx.data();
                 LdrMaterialID* curMat = rpart.materials;
                 LdrVertexIndex* pVtxIdx = rpart.triangles;
                 for (uint32_t idx = 0; idx < rpart.num_triangles * 3; ++idx, pVtxIdx++)
-                {         
-                    
+                {
+
                     if (*pVtxIdx != LDR_INVALID_ID)
-                        pvtx[*pVtxIdx + vtxOffset].m_u = 
-                            (*curMat != -1) ? atlasMaterialMapping[*curMat] : -1;
+                        pvtx[*pVtxIdx + vtxOffset].m_u =
+                        (*curMat != -1) ? atlasMaterialMapping[*curMat] : -1;
                     if ((idx % 3) == 2)
                         curMat++;
                 }
@@ -332,6 +328,86 @@ namespace sam
         ofs.write((const char*)&numidx, sizeof(numidx));
         ofs.write((const char*)idx.data(), sizeof(uint32_t) * numidx);
         ofs.close();
+    }
+
+
+    struct ConnectorInfo
+    {
+        ConnectorType type;
+        std::vector<Vec3f> offsets;
+    };
+
+    static ConnectorInfo connectorInfo[] =
+    {
+        { ConnectorType::Unknown, { Vec3f(0,0,0) }},
+        { ConnectorType::Stud, { Vec3f(0,0,0) }},
+        { ConnectorType::InvStud, { Vec3f(0,-4,0), Vec3f(10,-4,10), Vec3f(-10,-4,10), Vec3f(10,-4,-10), Vec3f(-10,-4,-10) }},
+        { ConnectorType::InvStud, { Vec3f(0,0,0) }},
+        { ConnectorType::InvStud, { Vec3f(0,0,0) }},
+        { ConnectorType::InvStud, { Vec3f(0,0,0) }},
+        { ConnectorType::InvStud, { Vec3f(10,-4,0), Vec3f(-10,-4,0) }},
+        { ConnectorType::InvStud, { Vec3f(0,0,0)}},
+        { ConnectorType::InvStud, { Vec3f(0,0,0)}},
+    };
+
+    std::map<std::string, int> sConnectorMap =
+    { { "stud.dat", 1 },
+        { "stud4.dat", 2 },
+        { "connect.dat", 3},
+        { "stud2a.dat", 4},
+        { "stud2.dat", 5},
+        { "stud3.dat", 6},
+        { "stud6.dat", 7},
+        { "1-4ring3.dat", 8}
+    };
+
+    void Brick::LoadConnectors(ldr::Loader* pLoader)
+    {
+        if (m_connectorsLoaded)
+            return;
+        std::vector<ldr::LdrConnection> connections;
+        pLoader->loadConnections(m_name.c_str(), connections);
+        for (auto& connection : connections)
+        {
+            Connector c;
+            ConnectorInfo& ci = connectorInfo[connection.type];
+            c.type = ci.type;
+
+            Matrix44f m;
+            memcpy(m.mData, connection.transform.values, sizeof(float) * 16);
+            m.mState = Matrix44f::AFFINE;
+            Vec4f p;
+            xform(p, m, Vec4f(0, 0, 0, 1));
+            c.pos = Vec3f(p[0], -p[1], p[2]);
+            float* v = m.mData;
+            c.scl = Vec3f(length(Vec3f(v[0], v[4], v[8])),
+                length(Vec3f(v[1], v[5], v[9])),
+                length(Vec3f(v[2], v[6], v[10])));
+            Quatf q = gmtl::make<Quatf>(m);
+            c.dir = q;
+
+            for (auto& offset : ci.offsets)
+            {
+                Connector c2 = c;
+                c2.pos += offset * c.scl;
+                m_connectors.push_back(c2);
+            }
+        }
+        std::sort(m_connectors.begin(), m_connectors.end());
+        auto itunique = std::unique(m_connectors.begin(), m_connectors.end());
+        m_connectors.erase(itunique, m_connectors.end());
+        if (m_connectors.size() > 0)
+        {
+            std::vector<Vec3f> pts;
+            for (auto& c : m_connectors)
+            {
+                c.pickIdx = pts.size();
+                pts.push_back(c.pos);
+            }
+            m_connectorCL = std::make_shared<CubeList>();
+            m_connectorCL->Create(pts, 5);
+        }
+        m_connectorsLoaded = true;
     }
 
     constexpr int iconW = 256;
@@ -375,7 +451,7 @@ namespace sam
 
     void BrickManager::LoadColors(const std::string& ldrpath)
     {
-        std::filesystem::path configpath = 
+        std::filesystem::path configpath =
             std::filesystem::path(ldrpath) / "LDConfig.ldr";
         std::ifstream ifs(configpath);
         std::regex colorrg("0\\s!COLOUR\\s(\\w+)\\s+CODE\\s+(\\d+)\\s+VALUE\\s#([\\dA-F]+)\\s+EDGE\\s+#([\\dA-F]+)");
@@ -390,12 +466,12 @@ namespace sam
                 int index = std::stoi(match[2].str());
                 unsigned int fill = std::stoul(match[3].str(), nullptr, 16);
                 unsigned int edge = std::stoul(match[4].str(), nullptr, 16);
-                BrickColor bc{ index, name, 
-                    { 
+                BrickColor bc{ index, name,
+                    {
                     (fill >> 16) & 0xFF,
                     (fill >> 8) & 0xFF,
                     fill & 0xFF,
-                    0xFF}, 
+                    0xFF},
                     { (edge >> 16) & 0xFF,
                     (edge >> 8) & 0xFF,
                     edge & 0xFF,
@@ -405,8 +481,8 @@ namespace sam
             }
         }
 
-        const bgfx::Memory *m = bgfx::alloc(16 * 16 * sizeof(RGBA));
-        RGBA* pgrbx = (RGBA * )m->data;
+        const bgfx::Memory* m = bgfx::alloc(16 * 16 * sizeof(RGBA));
+        RGBA* pgrbx = (RGBA*)m->data;
         int atlasidx = 0;
         for (auto& col : m_colors)
         {
@@ -569,10 +645,10 @@ namespace sam
             of.close();
             std::filesystem::rename(tmpfile, partnamefile);
         }
-        const auto &keys = m_partsMap.keys();
-        for (const auto &key : keys)
+        const auto& keys = m_partsMap.keys();
+        for (const auto& key : keys)
         {
-            const PartDesc &desc = m_partsMap[key];
+            const PartDesc& desc = m_partsMap[key];
             auto itType = m_typesMap.find(desc.type);
             if (itType == m_typesMap.end())
                 itType = m_typesMap.insert(std::make_pair(desc.type,
@@ -589,7 +665,7 @@ namespace sam
                 itType = m_typesMap.erase(itType);
             }
             else
-                ++itType;            
+                ++itType;
         }
 
         m_typesMap.insert(std::make_pair("misc", misc));
@@ -662,6 +738,7 @@ namespace sam
             Matrix44f m;
             m = makeScale<Matrix44f>(Vec3f(1, -1, 0.25)) *
                 makeTrans<Matrix44f>(Vec3f(0, 0, 0.75f)) *
+                makeRot<Matrix44f>(AxisAnglef(gmtl::Math::PI, Vec3f(1, 0, 0))) *
                 makeRot<Matrix44f>(AxisAnglef(gmtl::Math::PI_OVER_4, Vec3f(1, 0, 0))) *
                 makeRot<Matrix44f>(AxisAnglef(gmtl::Math::PI_OVER_4, Vec3f(0, 1, 0))) *
                 makeScale<Matrix44f>(1.0f / brick->m_scale) *
@@ -740,9 +817,9 @@ namespace sam
         return m_partsMap.keys()[idx];
     }
 
-    std::string BrickManager::PartDescription(const std::string &partname)
+    std::string BrickManager::PartDescription(const std::string& partname)
     {
-        PartDesc &desc = m_partsMap[partname];
+        PartDesc& desc = m_partsMap[partname];
         if (desc.ndims == 1)
             return fmt::format("{} {} {}\n{}", desc.type, desc.dims[0], desc.desc, desc.filename);
         if (desc.ndims == 2)

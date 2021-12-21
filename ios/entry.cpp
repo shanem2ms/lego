@@ -584,14 +584,14 @@ bool update()
             prevMouseLeftBtn = m_mouseState.m_buttons[entry::MouseButton::Left];
             
             if (prevMouseLeftBtn > 0)
-                app.TouchDown(m_mouseState.m_mx, m_mouseState.m_my, 0);
+                app.MouseDown(m_mouseState.m_mx, m_mouseState.m_my, 0);
             else
-                app.TouchUp(0);
+                app.MouseUp(0);
         }
         else if (prevMouseLeftBtn > 0 && (prevX != m_mouseState.m_mx
                                           || prevY != m_mouseState.m_my))
         {
-            app.TouchMove(m_mouseState.m_mx, m_mouseState.m_my, 0);
+            app.MouseMove(m_mouseState.m_mx, m_mouseState.m_my, 0);
         }
         prevX = m_mouseState.m_mx;
         prevY = m_mouseState.m_my;

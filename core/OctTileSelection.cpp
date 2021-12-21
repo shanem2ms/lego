@@ -5,6 +5,7 @@
 #include <numeric>
 #include "Mesh.h"
 #include "gmtl/PlaneOps.h"
+#include "gmtl/Containment.h"
 #include <sstream>
 #include "gmtl/Ray.h"
 #define NOMINMAX
@@ -458,6 +459,20 @@ namespace sam
         Loc l;
         std::shared_ptr<OctTile> tile;
     };
+
+    void OctTileSelection::AddPartInst(const PartInst& pi)
+    {
+        for (auto& pair : m_tiles)
+        {
+            AABoxf bbox = pair.first.GetBBox();
+            if (isInVolume(bbox, Point3f(pi.pos)))
+            {
+                PartInst p2 = pi;
+                p2.pos -= (bbox.mMin + bbox.mMax) * 0.5f;
+                pair.second->AddPartInst(p2);
+            }
+        }
+    }
 
     bool OctTileSelection::Intersects(const Point3f& pos, const Vec3f& ray, Loc& outloc, Vec3i& opt)
     {

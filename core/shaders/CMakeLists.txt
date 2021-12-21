@@ -1,5 +1,6 @@
-set (VS_SHADERS vs_brick.sc vs_connector.sc vs_hud.sc vs_fullscreen.sc) 
-set (FS_SHADERS fs_cubes.sc fs_targetcube.sc fs_hud.sc fs_bbox.sc fs_deferred.sc)
+set (VS_SHADERS vs_brick.sc vs_connector.sc vs_hud.sc vs_physicsdbg.sc) 
+set (FS_SHADERS fs_cubes.sc fs_pickconnector.sc fs_pickbrick.sc fs_targetcube.sc 
+    fs_forwardshade.sc fs_hud.sc fs_bbox.sc fs_deferred.sc fs_blit.sc)
 
 set (CS_BINS ${CS_SHADERS})
 list(TRANSFORM CS_BINS REPLACE "\\.sc" ".bin" )

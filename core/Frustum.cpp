@@ -20,9 +20,6 @@ namespace sam
 
     void Frustum::Draw(DrawContext& ctx)
     {
-        return;
-        if (ctx.m_curviewIdx == 1)
-            return;
         Matrix44f invViewProj = Engine::Inst().ViewCam().PerspectiveMatrix()*
             Engine::Inst().ViewCam().ViewMatrix();
         invert(invViewProj);
@@ -45,7 +42,7 @@ namespace sam
             | BGFX_STATE_CULL_CW;
         // Set render states.l
         bgfx::setState(state);
-        bgfx::submit(ctx.m_curviewIdx, m_shader);
+        bgfx::submit(DrawViewId::ForwardRendered, m_shader);
 
     }
 }

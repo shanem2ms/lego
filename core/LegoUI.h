@@ -26,9 +26,9 @@ namespace sam
 
         void ActivateUI(const std::function<void()>& deactivateFn);
         bool IsActive() const { return m_isActive; }
-        bool TouchDown(float x, float y, int touchId) override;
-        bool TouchDrag(float x, float y, int touchId) override;
-        bool TouchUp(int touchId) override;
+        bool MouseDown(float x, float y, int buttonId) override;
+        bool MouseDrag(float x, float y, int buttonId) override;
+        bool MouseUp(int buttonId) override;
         void BuildPartsTable(int itemIdx);
         void OnPartSelected(const std::function<void(const PartId&)>& partSelectedFn)
         { m_partSelectedFn = partSelectedFn; }

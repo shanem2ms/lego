@@ -12,7 +12,8 @@ namespace sam
         m_scale(1, 1, 1),
         m_rotate(),
         m_enabled(true),
-        m_isInitialized(false)
+        m_isInitialized(false),
+        m_pParent(nullptr)
     {
     }
 
@@ -33,6 +34,15 @@ namespace sam
         return makeTrans<Matrix44f>(m_offset) *
             makeRot<Matrix44f>(m_rotate) *
             makeScale<Matrix44f>(m_scale);
+    }
+
+    Matrix44f SceneItem::GetWorldMatrix() const
+    {
+        if (m_pParent == nullptr)
+            return CalcMat();
+        else
+            return m_pParent->GetWorldMatrix() *
+                CalcMat();
     }
 
     inline void AABoxAdd(AABoxf& aab1, const AABoxf& aab2)
@@ -58,6 +68,14 @@ namespace sam
                     pt[1] > max[1] ? pt[1] : max[1],
                     pt[2] > max[2] ? pt[2] : max[2]));
             }
+        }
+    }
+
+    void SceneGroup::Decomission(DrawContext& ctx)
+    {
+        for (auto item : m_sceneItems)
+        {
+            item->Decomission(ctx);
         }
     }
 

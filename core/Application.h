@@ -34,10 +34,10 @@ public:
     ~Application();
     static Application& Inst();
     int FrameIdx() const { return m_frameIdx; }
-    void TouchDown(float x, float y, int touchId);
-    void TouchMove(float x, float y, int touchId);
+    void MouseDown(float x, float y, int buttonId);
+    void MouseMove(float x, float y, int buttonId);
     void WheelScroll(float delta);
-    void TouchUp(int touchId);
+    void MouseUp(int buttonId);
     void RawMouseMoved(int32_t rx, int32_t ry);
     void KeyDown(int keyId);
     void KeyUp(int keyId);

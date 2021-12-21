@@ -34,7 +34,7 @@ namespace sam
         int m_buttonDown;
 
     public:
-        virtual UIControl *IsHit(float x, float y, int touchId);
+        virtual UIControl *IsHit(float x, float y, int buttonId);
         void SetBackgroundColor(const Vec4f& color);
         void SetBorderColor(const Vec4f& color);
         virtual void DrawUI(UIContext &ctx) = 0;
@@ -60,7 +60,7 @@ namespace sam
         std::vector<std::shared_ptr<UIControl>> m_controls;
         UILayout m_layout;
         UIGroup(float x, float y, float w, float h);
-        UIControl *IsHit(float x, float y, int touchId) override;
+        UIControl *IsHit(float x, float y, int buttonId) override;
         void DrawUI(UIContext& ctx) override;
     public:
         void SetLayout(UILayout layout) { m_layout = layout; }
@@ -78,7 +78,7 @@ namespace sam
         { m_onOpenChangedFn = fn; }
         UIWindow(float x, float y, float w, float h, const std::string& name,
             bool invisible);
-        UIControl* IsHit(float x, float y, int touchId) override;
+        UIControl* IsHit(float x, float y, int buttonId) override;
         void DrawUI(UIContext& ctx) override;
         void Show() { m_isopen = true; }
     };
@@ -133,9 +133,9 @@ namespace sam
         float m_wheelDelta;
     public:
         UIManager() : m_wheelDelta(0){}
-        virtual bool TouchDown(float x, float y, int touchId);
-        virtual bool TouchDrag(float x, float y, int touchId);
-        virtual bool TouchUp(int touchId);
+        virtual bool MouseDown(float x, float y, int buttonId);
+        virtual bool MouseDrag(float x, float y, int buttonId);
+        virtual bool MouseUp(int buttonId);
         bool WheelScroll(float delta);
         virtual std::shared_ptr<UIControl> Build(DrawContext& ctx, int w, int h) = 0;
         void Update(Engine& engine, int w, int h, DrawContext& ctx);

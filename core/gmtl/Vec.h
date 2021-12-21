@@ -54,6 +54,20 @@ public:
          this->mData[i] = (DATA_TYPE)0;
    }
 
+
+   Vec(const Vec<DATA_TYPE, SIZE - 1>& other, DATA_TYPE v = 0)
+   {
+       for (unsigned i = 0; i < SIZE - 1; ++i)
+           this->mData[i] = other.mData[i];
+       this->mData[SIZE - 1] = v;
+   }
+
+   Vec(const Vec<DATA_TYPE, SIZE + 1>& other)
+   {
+       for (unsigned i = 0; i < SIZE; ++i)
+           this->mData[i] = other.mData[i];
+   }
+
    /// @name Value constructors
    //@{
    /**
@@ -129,6 +143,8 @@ typedef Vec<double,3> Vec3d;
 typedef Vec<int, 4> Vec4i;
 typedef Vec<float,4> Vec4f;
 typedef Vec<double,4> Vec4d;
+
+
 
 }
 

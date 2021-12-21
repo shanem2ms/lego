@@ -291,13 +291,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         PostQuitMessage(0);
         break;
     case WM_LBUTTONDOWN:
-        app.TouchDown((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 0);
+        app.MouseDown((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 0);
         break;
     case WM_LBUTTONUP:
-        app.TouchUp(0);
+        app.MouseUp(0);
+        break;
+    case WM_RBUTTONDOWN:
+        app.MouseDown((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 1);
+        break;
+    case WM_RBUTTONUP:
+        app.MouseUp(1);
+        break;
+    case WM_MBUTTONDOWN:
+        app.MouseDown((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 3);
+        break;
+    case WM_MBUTTONUP:
+        app.MouseUp(3);
         break;
     case WM_MOUSEMOVE:
-        app.TouchMove((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 0);
+        app.MouseMove((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 0);
         break;
     case WM_MOUSEWHEEL:
     {

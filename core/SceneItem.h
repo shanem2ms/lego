@@ -19,6 +19,18 @@ namespace sam
 {
     class Camera;
     class World;
+    class SceneItem;
+    class Physics;
+
+    enum DrawViewId
+    {
+        DeferredObjects = 0,
+        DeferredLighting = 1,
+        ForwardRendered = 2,
+        HUD = 3,
+        PickObjects = 4,
+        PickBlit = 5
+    };
 
     struct DrawContext
     {
@@ -27,11 +39,16 @@ namespace sam
         bgfx::UniformHandle m_texture;
         bgfx::UniformHandle m_gradient;
         World* m_pWorld;
-        int m_nearfarpassIdx;
+        int m_passIdx;
         float m_nearfar[3];
-        int m_curviewIdx;
         int m_frameIdx;
         int m_numGpuCalcs;
+        float m_pickViewScale[2];
+        std::shared_ptr<SceneItem> m_pickedItem;
+        std::shared_ptr<Physics> m_physics;
+        float m_pickedVal;
+
+        std::vector<std::shared_ptr<SceneItem>> m_pickedCandidates;
     };
 
 
@@ -108,8 +125,9 @@ namespace sam
         const gmtl::Matrix44f& ViewMatrix() const;
     };
 
-    class SceneItem
+    class SceneItem : public std::enable_shared_from_this<SceneItem>
     {
+        friend class SceneGroup;
     protected:
         Point3f m_offset;
         Vec3f m_scale;
@@ -119,11 +137,15 @@ namespace sam
         float m_strokeWidth;
         bool m_isInitialized;
         bool m_enabled;
-
+        SceneItem* m_pParent;
         SceneItem();
 
         Matrix44f CalcMat() const;
     public:
+        
+        std::shared_ptr<SceneItem> ptr() {
+            return shared_from_this();
+        }
         void SetAnchor(const Point3f& p)
         {
 
@@ -167,8 +189,12 @@ namespace sam
         
         void DoDraw(DrawContext& ctx);
 
+        Matrix44f GetWorldMatrix() const;
+
         virtual AABoxf GetBounds() const
         { return AABoxf(); }
+
+        virtual void Decomission(DrawContext& ctx) {}
     protected:
 
         virtual void Initialize(DrawContext& nvg) {}
@@ -186,6 +212,7 @@ namespace sam
     public:
         void AddItem(const std::shared_ptr<SceneItem>& item)
         {
+            item->m_pParent = this;
             m_sceneItems.push_back(item);
         }
         void RemoveItem(const std::shared_ptr<SceneItem>& item)
@@ -193,8 +220,13 @@ namespace sam
             auto ititem = std::find(m_sceneItems.begin(),
                 m_sceneItems.end(), item);
             if (ititem != m_sceneItems.end())
+            {
+                (*ititem)->m_pParent = nullptr;
                 m_sceneItems.erase(ititem);
+            }
         }
+
+        void Decomission(DrawContext& ctx) override;
 
         void BeforeDraw(std::function<bool(DrawContext& ctx)> f)
         { m_beforeDraw = f; }

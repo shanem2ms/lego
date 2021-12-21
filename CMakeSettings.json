@@ -7,7 +7,7 @@
       "inheritEnvironments": [ "msvc_x64_x64" ],
       "buildRoot": "${projectDir}\\out\\build\\${name}",
       "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "-DVCPKG_INSTALL_PATH=C:\\homep4\\vcpkg\\installed\\x64-windows",
+      "cmakeCommandArgs": "-DVCPKG_INSTALL_PATH=C:\\homep4\\vcpkg\\installed\\x64-windows\\",
       "buildCommandArgs": "",
       "ctestCommandArgs": ""
     },

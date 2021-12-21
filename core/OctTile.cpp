@@ -24,7 +24,8 @@ namespace sam
         m_intersects(-1),
         m_lastUsedRawData(0),
         m_isdecommissioned(false),
-        m_pBrick(nullptr)
+        m_needsPersist(false),
+        m_needsRefresh(false)
     {
     }
 
@@ -104,33 +105,39 @@ namespace sam
             std::string strval;
             if (pWorld->Level().GetOctChunk(m_l, &strval))
             {
+                size_t parts = strval.size() / sizeof(PartInst);
+                m_parts.resize(parts);
+                memcpy(m_parts.data(), strval.data(), strval.size());
                 m_readyState = 3;
+                m_needsRefresh = true;
             }
 
         }
         if (m_readyState == 1)
         {
-            if (m_l.m_l == 8 && m_l.IsGroundLoc())
+            if (m_l.m_l == 8 && m_l.IsGroundLoc() && abs(m_l.m_x - 128) < 3 && abs(m_l.m_y - 128) < 3)
             {
                 PartInst pi;
                 pi.id = "91405";
                 pi.paletteIdx = 0;
                 pi.pos = Vec3f(0, -0.5f, 0);
                 pi.rot = Quatf();
-                m_parts.push_back(pi);
+                m_parts.push_back(pi);                
+                m_needsPersist = true;
+                m_needsRefresh = true;
             }
             m_readyState = 2;
         }
 
         if (m_readyState == 2)
         {
-            auto brick = std::make_shared<LegoBrick>("91405", 0);
-            brick->SetOffset(Vec3f(0, -0.5f, 0));
-            brick->SetScale(Vec3f(2, 2, 2));
-            AddItem(brick);
-            //m_pBrick = BrickManager::Inst().GetBrick("91405");
             m_readyState = 3;
         }
+    }
+
+    void OctTile::Refresh()
+    {
+
     }
 
     extern Loc g_hitLoc;
@@ -147,23 +154,24 @@ namespace sam
             return;
         nOctTilesTotal++;
         nOctTilesDrawn++;
-        
-        if (ctx.m_curviewIdx > 1)
-            return;
-            
+                   
         if (!bgfx::isValid(m_uparams))
         {
             m_uparams = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 1);
         }
 
-        if (m_readyState == 3)
+        if (m_needsRefresh)
         {
-            m_readyState++;
+            Clear();
+            for (auto& part : m_parts)
+            {
+                auto brick = std::make_shared<LegoBrick>(part.id, part.paletteIdx, false);
+                brick->SetOffset(part.pos);
+                brick->SetScale(Vec3f(2, 2, 2));
+                AddItem(brick);
+            }
+            m_needsRefresh = false;
         }
-
-        if (m_pBrick == nullptr)
-            return;
-        BrickManager::Inst().MruUpdate(m_pBrick);
 
         if (g_showOctBoxes)
         {
@@ -191,46 +199,20 @@ namespace sam
             bgfx::setState(state);
             bgfx::setVertexBuffer(0, Cube::vbh);
             bgfx::setIndexBuffer(Cube::ibh);
-            bgfx::submit(ctx.m_curviewIdx, sBboxshader);
+            bgfx::submit(DrawViewId::ForwardRendered, sBboxshader);
         }
-        else if (false)
-        {
-            if (!sBrickShader.isValid())
-                sBrickShader = Engine::Inst().LoadShader("vs_brick.bin", "fs_cubes.bin");
-            if (!bgfx::isValid(sPaletteHandle))
-                sPaletteHandle = bgfx::createUniform("s_brickPalette", bgfx::UniformType::Sampler);
 
-            AABoxf bbox = m_l.GetBBox();
-            float scl = (bbox.mMax[0] - bbox.mMin[0]) * BrickManager::Scale;
-            Point3f off = (bbox.mMax + bbox.mMin) * 0.5f;
-            off[1] = bbox.mMin[1];
-            Matrix44f m = makeTrans<Matrix44f>(off) *
-                makeRot<Matrix44f>(AxisAnglef(Math::PI, 1.0f, 0.0f, 0.0f)) *
-                makeScale<Matrix44f>(scl);
-            bgfx::setTransform(m.getData());
-
-            bool istarget = m_l == g_hitLoc;
-            Vec4f color = BrickManager::Color(0x8A928D);
-            bgfx::setTexture(0, sPaletteHandle, BrickManager::Inst().Palette());
-            bgfx::setUniform(m_uparams, &color, 1);
-            uint64_t state = 0
-                | BGFX_STATE_WRITE_RGB
-                | BGFX_STATE_WRITE_A
-                | BGFX_STATE_WRITE_Z
-                | BGFX_STATE_CULL_CCW
-                | BGFX_STATE_DEPTH_TEST_LESS
-                | BGFX_STATE_MSAA
-                | BGFX_STATE_BLEND_ALPHA;
-            // Set render states.l
-            bgfx::setState(state);
-            bgfx::setVertexBuffer(0, m_pBrick->m_vbh);
-            bgfx::setIndexBuffer(m_pBrick->m_ibh);
-            bgfx::submit(ctx.m_curviewIdx, sBrickShader);
+        if (m_needsPersist)
+        {            
+            ctx.m_pWorld->Level().WriteOctChunk(m_l, (const char*)m_parts.data(), m_parts.size() *
+                sizeof(PartInst));
+            m_needsPersist = false;
         }
     }
 
     void OctTile::Decomission(DrawContext& ctx)
     {
+        SceneGroup::Decomission(ctx);
         m_readyState = 0;
         m_isdecommissioned = true;
     }
@@ -245,6 +227,13 @@ namespace sam
         Point3f pmax = (playerbox.mMax - off + newpos) * scale;
         return false;
 
+    }
+
+    void OctTile::AddPartInst(const PartInst& pi)
+    {
+        m_parts.push_back(pi);
+        m_needsPersist = true;
+        m_needsRefresh = true;
     }
 
     OctTile::~OctTile()
@@ -356,9 +345,7 @@ namespace sam
     }
 
     void TargetCube::Draw(DrawContext& ctx)
-    {
-        if (ctx.m_curviewIdx != 2)
-            return;
+    {   
         Cube::init();
         Matrix44f m = ctx.m_mat * CalcMat();
         bgfx::setTransform(m.getData());
@@ -373,7 +360,7 @@ namespace sam
             | BGFX_STATE_BLEND_ALPHA;
         // Set render states.l
         bgfx::setState(state);
-        bgfx::submit(ctx.m_curviewIdx, m_shader);
+        bgfx::submit(DrawViewId::ForwardRendered, m_shader);
     }
 
 }

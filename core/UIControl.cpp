@@ -33,7 +33,7 @@ namespace sam
         m_border = color;
     }
 
-    UIControl *UIControl::IsHit(float x, float y, int touchId)
+    UIControl *UIControl::IsHit(float x, float y, int buttonId)
     {
         return (x >= m_x && x < (m_x + m_width) &&
             y >= m_y && y < (m_y + m_height)) ? this : nullptr;
@@ -51,13 +51,13 @@ namespace sam
 
     }
 
-    bool UIManager::TouchDown(float x, float y, int touchId)
+    bool UIManager::MouseDown(float x, float y, int buttonId)
     {
         m_touchPos = m_touchDown = gmtl::Vec2f(x, y);
 
         g_buttonDown = m_buttonDown = 1;
 
-        UIControl* pCtrl = m_topctrl->IsHit(x, y, touchId);
+        UIControl* pCtrl = m_topctrl->IsHit(x, y, buttonId);
         if (pCtrl != nullptr)
         {
             m_capturedCtrl = pCtrl;
@@ -67,7 +67,7 @@ namespace sam
         return false;
     }
 
-    bool UIManager::TouchDrag(float x, float y, int touchId)
+    bool UIManager::MouseDrag(float x, float y, int buttonId)
     {
         m_touchPos = gmtl::Vec2f(x, y);
 
@@ -109,7 +109,7 @@ namespace sam
         imguiEndFrame();
     }
 
-    bool UIManager::TouchUp(int touchId)
+    bool UIManager::MouseUp(int buttonId)
     {
         g_buttonDown = m_buttonDown = 0;
         if (m_capturedCtrl != nullptr)
@@ -159,13 +159,13 @@ namespace sam
     {}
 
 
-    UIControl* UIGroup::IsHit(float x, float y, int touchId)
+    UIControl* UIGroup::IsHit(float x, float y, int buttonId)
     {
         float lx = x - m_x;
         float ly = y - m_y;
         for (const auto& ctrl : m_controls)
         {
-            UIControl* pHit = ctrl->IsHit(lx, ly, touchId);
+            UIControl* pHit = ctrl->IsHit(lx, ly, buttonId);
             if (pHit != nullptr)
                 return pHit;
         }
@@ -189,9 +189,9 @@ namespace sam
         ctx.layout = oldLayout;
     }
 
-    UIControl* UIWindow::IsHit(float x, float y, int touchId)
+    UIControl* UIWindow::IsHit(float x, float y, int buttonId)
     {
-        UIControl *pHit = UIGroup::IsHit(x, y, touchId);
+        UIControl *pHit = UIGroup::IsHit(x, y, buttonId);
         if (pHit != nullptr)
             return pHit;
 

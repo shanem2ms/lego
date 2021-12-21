@@ -10,6 +10,8 @@
 #include "gmtl/PlaneOps.h"
 #include "LegoBrick.h"
 #include "PartDefs.h"
+#include "BrickMgr.h"
+#include "Physics.h"
 #define NOMINMAX
 
 
@@ -24,7 +26,8 @@ namespace sam
         m_currentTool(0),
         m_gravityVel(0),        
         m_flymode(true),
-        m_inspectmode(false)       
+        m_inspectmode(false),
+        m_pPickedBrick(nullptr)
     {        
     }  
 
@@ -73,17 +76,36 @@ namespace sam
     //https://shanetest-cos-earth.s3.us-east.cloud-object-storage.appdomain.cloud/world9m_whqt/Q1/L3/R1/Q1_L3_R1_C0.png
 
     bool cursormode = false;
-    void World::TouchDown(float x, float y, int touchId)
+    void World::MouseDown(float x, float y, int buttonId)
     {
-        m_activeTouch = std::make_shared<Touch>();
-        float xb = x / m_width;
-        float yb = y / m_height;
+        if (buttonId == 1 && m_pPickedBrick != nullptr)
+        {
+            Matrix44f mat = m_pPickedBrick->GetWorldMatrix();
+            Brick *pBrick = m_pPickedBrick->GetBrick();
+            Matrix44f wm = m_pPickedBrick->GetWorldMatrix();
+            int connectorIdx = m_pPickedBrick->GetHighlightedConnector();
+            if (connectorIdx >= 0)
+            {
+                auto& connector = pBrick->m_connectors[connectorIdx];
+                
+                Vec4f cwpos;
+                xform(cwpos, wm, Vec4f(connector.pos,1));
 
-        Engine& e = Engine::Inst();
-        Camera::Fly la = e.DrawCam().GetFly();
-        
-        m_activeTouch->m_initCamDir = la.dir;
-        m_activeTouch->SetInitialPos(Point2f(xb, yb));
+                Brick* pMyBrick = BrickManager::Inst().GetBrick(m_rightHandPartInst.id);
+                BrickManager::Inst().LoadConnectors(pBrick);
+                for (auto& myconnect : pMyBrick->m_connectors)
+                {
+                    if (Connector::CanConnect(connector.type, myconnect.type))
+                    {
+                        PartInst pi = m_rightHandPartInst;
+                        Vec3f pos = Vec3f(cwpos) - (myconnect.pos * BrickManager::Scale);
+                        pi.pos = pos;
+                        m_octTileSelection.AddPartInst(pi);
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     constexpr float pi_over_two = 3.14159265358979323846f * 0.5f;
@@ -97,32 +119,19 @@ namespace sam
         e.DrawCam().SetFly(la);
     }
 
-    void World::TouchDrag(float x, float y, int touchId)
+    void World::MouseDrag(float x, float y, int buttonId)
     {
-        if (m_activeTouch != nullptr)
-        {
-            float xb = x / m_width;
-            float yb = y / m_height;
-
-            m_activeTouch->SetDragPos(Point2f(xb, yb));
-
-            Vec2f dragDiff = Point2f(xb, yb) - m_activeTouch->TouchPos();
-
-            Engine& e = Engine::Inst();
-            Camera::Fly la = e.DrawCam().GetFly();
-
-            la.dir[0] = m_activeTouch->m_initCamDir[0] + dragDiff[0] * 2;
-            la.dir[1] = m_activeTouch->m_initCamDir[1] + dragDiff[1] * 2;
-            la.dir[1] = std::max(la.dir[1], -pi_over_two);
-            e.DrawCam().SetFly(la);
-
-        }
+      
     }
 
-    void World::TouchUp(int touchId)
+    void World::WheelScroll(float delta)
+    {
+
+    }
+
+
+    void World::MouseUp(int buttonId)
     {        
-        m_activeTouch = nullptr;
-        m_tiltVel = 0;
     }
     extern bool g_showOctBoxes;
     
@@ -181,6 +190,11 @@ namespace sam
             break;
         case 'L':
             partChange = -1;
+            break;
+        case 'Q':            
+            m_rightHandPartInst.rot *= make<Quatf>(AxisAnglef(
+                -Math::PI_OVER_2, Vec3f(1, 0, 0)));
+            SetRightHandPart(m_rightHandPartInst);
             break;
         }
         if (k >= '1' && k <= '9')
@@ -257,9 +271,31 @@ namespace sam
             m_rightHand->AddItem(std::make_shared<LegoBrick>("3820", 14));
             m_playerGroup->AddItem(m_rightHand);
             m_octTiles->BeforeDraw([this](DrawContext& ctx) { ctx.m_pgm = BGFX_INVALID_HANDLE; return true; });
-            SetRightHandPart(righthandpart.id);
+            SetRightHandPart(righthandpart);
+            m_physics = std::make_shared<Physics>();
         }
     
+        ctx.m_physics = m_physics;
+        if (ctx.m_physics)
+            ctx.m_physics->Step(ctx);
+
+        if (ctx.m_pickedItem != nullptr)
+        {
+            std::shared_ptr<LegoBrick> pBrick = 
+                std::dynamic_pointer_cast<LegoBrick>(ctx.m_pickedItem);
+            if (m_pPickedBrick != pBrick && 
+                m_pPickedBrick != nullptr)
+            {
+                m_pPickedBrick->SetPickData(-1);
+            }
+            if (pBrick != nullptr)
+            {
+                pBrick->SetPickData(ctx.m_pickedVal);
+            }
+
+            m_pPickedBrick = pBrick;
+        }
+
         m_frustum->SetEnabled(m_inspectmode);
        
         auto &cam = e.ViewCam();
@@ -363,7 +399,6 @@ namespace sam
         }
 
 
-        //m_playerGroup->SetRotate()
         m_playerGroup->SetOffset(newPos);
         m_playerGroup->SetRotate(fly.Quat());
         dfly.pos = newPos;
@@ -384,18 +419,19 @@ namespace sam
         }
     }
 
-    void World::SetRightHandPart(const PartId& partid)
+    void World::SetRightHandPart(const PartInst& part)
     {
         if (m_rightHandPart != nullptr)
         {
             m_rightHand->RemoveItem(m_rightHandPart);
             m_rightHandPart = nullptr;
         }
-        m_rightHandPartInst.id = partid;
-        if (!partid.IsNull())
+        m_rightHandPartInst = part;
+        if (!part.id.IsNull())
         {
-            m_rightHandPart = std::make_shared<LegoBrick>(partid, 16);
-            m_rightHandPart->SetOffset(Vec3f(0, 0, -0.1f));
+            m_rightHandPart = std::make_shared<LegoBrick>(part.id, part.paletteIdx, true);
+            m_rightHandPart->SetOffset(part.pos);
+            m_rightHandPart->SetRotate(part.rot);
             m_rightHand->AddItem(m_rightHandPart);
         }
     }

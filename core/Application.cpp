@@ -89,7 +89,12 @@ namespace sam
 
         m_legoUI->OnPartSelected([this](const PartId& partname)
             {
-                m_world->SetRightHandPart(partname);
+                PartInst pi;
+                pi.id = partname;
+                pi.paletteIdx = 16;
+                pi.pos = Vec3f(0, 0, -0.1f);
+                pi.rot = Quatf(QUAT_MULT_IDENTITYF);
+                m_world->SetRightHandPart(pi);
             });
     }
 
@@ -107,33 +112,33 @@ namespace sam
         }
     }
 
-    void Application::TouchDown(float x, float y, int touchId)
+    void Application::MouseDown(float x, float y, int buttonId)
     {
-        if (!m_legoUI->TouchDown(x, y, touchId))
+        if (!m_legoUI->MouseDown(x, y, buttonId))
         {
             if (!m_rawMouseMode)
                 m_rawMouseMode = m_hideMouseCursorFn(true);
             else
-                m_world->TouchDown(x, y, touchId);
+                m_world->MouseDown(x, y, buttonId);
         }
     }
 
-    void Application::TouchMove(float x, float y, int touchId)
+    void Application::MouseMove(float x, float y, int buttonId)
     {
-        if (!m_legoUI->TouchDrag(x, y, touchId))
-            m_world->TouchDrag(x, y, touchId);
+        if (!m_legoUI->MouseDrag(x, y, buttonId))
+            m_world->MouseDrag(x, y, buttonId);
     }
 
-    void Application::TouchUp(int touchId)
+    void Application::MouseUp(int buttonId)
     {
-        if (!m_legoUI->TouchUp(touchId))
-            m_world->TouchUp(touchId);
+        if (!m_legoUI->MouseUp(buttonId))
+            m_world->MouseUp(buttonId);
     }
 
     void Application::WheelScroll(float delta)
     {
         if (!m_legoUI->WheelScroll(delta))
-            m_world->TouchUp(delta);
+            m_world->WheelScroll(delta);
     }
 
     void Application::KeyDown(int keyId)
@@ -197,11 +202,21 @@ namespace sam
         ctx.m_frameIdx = m_frameIdx;
         ctx.m_pWorld = m_world.get();
         ctx.m_numGpuCalcs = 0;
+        ctx.m_pickedItem = nullptr;
+        m_engine->UpdatePickData(ctx);
         m_legoUI->Update(*m_engine, m_width, m_height, ctx);
         m_world->Update(*m_engine, ctx);
 
-        bgfx::setViewRect(0, 0, 0, uint16_t(m_width), uint16_t(m_height));
-        bgfx::setViewRect(1, 0, 0, uint16_t(m_width), uint16_t(m_height));
+        bgfx::setViewRect(DrawViewId::DeferredObjects, 0, 0, uint16_t(m_width), uint16_t(m_height));
+        bgfx::setViewRect(DrawViewId::DeferredLighting, 0, 0, uint16_t(m_width), uint16_t(m_height));
+        bgfx::setViewRect(DrawViewId::ForwardRendered, 0, 0, uint16_t(m_width), uint16_t(m_height));
+
+        bgfx::setViewRect(DrawViewId::PickObjects, 0, 0, PickBufSize, PickBufSize);
+        bgfx::setViewRect(DrawViewId::PickBlit, 0, 0, PickBufSize, PickBufSize);
+
+        ctx.m_pickViewScale[0] = (float)(m_width) / (float)(PickBufSize);
+        ctx.m_pickViewScale[1] = (float)(m_height) / (float)(PickBufSize);
+
         m_engine->Draw(ctx);
 
         m_frameIdx = bgfx::frame() + 1;

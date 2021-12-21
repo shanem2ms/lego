@@ -29,18 +29,21 @@ namespace sam
         int m_buildFrame;
         int m_readyState;
         bgfxh<bgfx::UniformHandle> m_uparams;
-        Brick* m_pBrick;
 
         int m_lastUsedRawData;
         float m_intersects;
         bool m_isdecommissioned;
         std::vector<PartInst> m_parts;
+        bool m_needsPersist;
+        bool m_needsRefresh;
 
     public:
         static const int SquarePtsCt = 256;
         float m_nearDist;
         float m_farDist;
         float distFromCam;
+    protected:
+        void Refresh();
     public:
         void Draw(DrawContext& ctx) override;
         OctTile(const Loc& l);
@@ -61,12 +64,13 @@ namespace sam
         {
             m_vals = v;
         }
-        void Decomission(DrawContext& ctx);
+        void Decomission(DrawContext& ctx) override;
         void LoadVB();
         bool IsCollided(Point3f &oldpos, Point3f &newpos, AABoxf& bbox, Vec3f& outNormal);
         static Vec3i FindHit(const std::vector<byte> &data, const Vec3i p1, const Vec3i p2);
         int GetReadyState() const
         { return m_readyState; }
+        void AddPartInst(const PartInst& pi);
     };
 
     class TargetCube : public SceneItem

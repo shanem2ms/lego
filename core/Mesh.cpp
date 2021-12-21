@@ -133,8 +133,10 @@ void CubeList::Create(const std::vector<Vec3f>& pts, float cubeSize)
     pindices = new uint32_t[indicesSize];
     uint32_t *pcurindex = pindices;
     size_t vtxoffset = 0;
+    size_t ptIdx = 0;
     for (const Vec3f& pt : pts)
     {
+        ptIdx++;
         uint32_t offset = vtxoffset;
         for (uint32_t i : s_cubeIndices)
         {
@@ -146,6 +148,8 @@ void CubeList::Create(const std::vector<Vec3f>& pts, float cubeSize)
             vtx.m_x = vtx.m_x * cubeSize + pt[0];
             vtx.m_y = vtx.m_y * cubeSize + pt[1];
             vtx.m_z = vtx.m_z * cubeSize + pt[2];
+            vtx.m_u = ptIdx;
+            vtx.m_v = ptIdx;
             vtxoffset++;
             (*pCurVtx++) = vtx;
         }
