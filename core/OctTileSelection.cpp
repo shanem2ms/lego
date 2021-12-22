@@ -393,7 +393,7 @@ namespace sam
         float logsplitdist = (log2(neardist) + log2(fardist)) * 0.5f;
         splitdist = pow(2, logsplitdist);
 
-        m_nearfarmid[0] = 0.1f;// neardist;
+        m_nearfarmid[0] = 1.0f;// neardist;
         m_nearfarmid[1] = 6.0f;// splitdist;
         m_nearfarmid[2] = 180.0f;// fardist;
         int nearCt = 0;

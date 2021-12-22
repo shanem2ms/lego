@@ -209,6 +209,29 @@ namespace sam
         m_isInit = true;
     }
 
+    class MyContactTest : public btCollisionWorld::ContactResultCallback
+    {
+    public:
+        bool collision;
+        MyContactTest()
+        {
+            collision = false;
+        }
+        btScalar addSingleResult(btManifoldPoint& cp, const btCollisionObjectWrapper* colObj0Wrap, int partId0, int index0, const btCollisionObjectWrapper* colObj1Wrap, int partId1, int index1) override
+        {
+            collision = true;
+            return 0;
+        }
+    };
+
+    bool Physics::TestCollision(btCollisionObject* pObj)
+    {
+        MyContactTest contactTest;
+        m_discreteDynamicsWorld->contactTest(pObj, contactTest);
+        return contactTest.collision;
+        
+    }
+
     void Physics::AddRigidBody(btRigidBody* pRigidBody)
     {
         m_discreteDynamicsWorld->addRigidBody(pRigidBody);
@@ -223,8 +246,7 @@ namespace sam
     {
         if (!m_isInit)
             Init();
-        m_discreteDynamicsWorld->stepSimulation(1.0f / 60.0f, 10);
-
+        m_discreteDynamicsWorld->stepSimulation(1.0f / 60.0f, 10);        
 #define PHYSICSDEBUG 1
 #ifdef PHYSICSDEBUG
         m_dbgPhysics->BeginDraw();

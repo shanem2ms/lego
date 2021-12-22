@@ -1,6 +1,5 @@
-$input a_position
-$input a_texcoord0
-$output v_vtxcolor
+$input a_position, a_texcoord0
+$output v_vtxcolor, v_texcoord0, v_normal
 
 /*
  * Copyright 2011-2021 Branimir Karadzic. All rights reserved.

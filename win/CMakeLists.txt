@@ -27,6 +27,7 @@ set (PLATFORMLIBS
 "Shcore;")
 
 find_package(Bullet CONFIG REQUIRED)
+find_package(v-hacd CONFIG REQUIRED)
 
 target_link_libraries(${PROJECT_NAME} LINK_PUBLIC 
     ${BGFX_LIB}/bgfx.lib 
@@ -38,6 +39,7 @@ target_link_libraries(${PROJECT_NAME} LINK_PUBLIC
     ${VCPKG_INSTALL_PATH}/debug/lib/BulletDynamics_Debug.lib
     ${VCPKG_INSTALL_PATH}/debug/lib/BulletInverseDynamics_Debug.lib
     ${VCPKG_INSTALL_PATH}/debug/lib/LinearMath_Debug.lib
+    vhacd::vhacd
     fmt
     core 
     ${PLATFORMLIBS}

@@ -44,7 +44,7 @@ void main()
             ao += clamp(zr - z, 0, 1);
         }
     }
-    ao = clamp(1 - ao / (sd * sd) * 3, 0, 1);
+    ao = clamp(1 - ao / (sd * sd) * 1, 0, 1);
     vec4 spos; 
     spos.xy = v_texcoord0.xy * 2 - vec2(1,1);
     spos.y = -spos.y;

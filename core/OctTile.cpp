@@ -122,6 +122,7 @@ namespace sam
                 pi.paletteIdx = 0;
                 pi.pos = Vec3f(0, -0.5f, 0);
                 pi.rot = Quatf();
+                pi.connected = true;
                 m_parts.push_back(pi);                
                 m_needsPersist = true;
                 m_needsRefresh = true;
@@ -155,6 +156,8 @@ namespace sam
         nOctTilesTotal++;
         nOctTilesDrawn++;
                    
+        AABoxf box = m_l.GetBBox();
+
         if (!bgfx::isValid(m_uparams))
         {
             m_uparams = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 1);
@@ -162,21 +165,22 @@ namespace sam
 
         if (m_needsRefresh)
         {
+            SceneGroup::Decomission(ctx);
             Clear();
             for (auto& part : m_parts)
             {
-                auto brick = std::make_shared<LegoBrick>(part.id, part.paletteIdx, false);
+                auto brick = std::make_shared<LegoBrick>(part.id, part.paletteIdx, 
+                    part.connected ? LegoBrick::Physics::Static : LegoBrick::Physics::Dynamic, false);
                 brick->SetOffset(part.pos);
-                brick->SetScale(Vec3f(2, 2, 2));
                 AddItem(brick);
             }
             m_needsRefresh = false;
         }
-
+        
         if (g_showOctBoxes)
         {
             if (!sBboxshader.isValid())
-                sBboxshader = Engine::Inst().LoadShader("vs_brick.bin", "fs_bbox.bin");
+                sBboxshader = Engine::Inst().LoadShader("vs_cubes.bin", "fs_bbox.bin");
             Cube::init();
             AABoxf bbox = m_l.GetBBox();
             float scl = (bbox.mMax[0] - bbox.mMin[0]) * 0.45f;
@@ -185,7 +189,7 @@ namespace sam
                 makeScale<Matrix44f>(scl);
             bgfx::setTransform(m.getData());
             bool istarget = m_l == g_hitLoc;
-            Vec4f color = istarget ? Vec4f(1.0f, 1.0f, 1.0f, 1.0f) : Vec4f(1.0f, 1.0f, 0.0f, 0.25f);
+            Vec4f color = istarget ? Vec4f(1.0f, 1.0f, 1.0f, 1.0f) : Vec4f(1.0f, 1.0f, 0.0f, 0.65f);
             bgfx::setUniform(m_uparams, &color, 1);
             uint64_t state = 0
                 | BGFX_STATE_WRITE_RGB

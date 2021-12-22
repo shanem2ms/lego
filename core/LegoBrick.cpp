@@ -15,14 +15,16 @@
 
 namespace sam
 {
-    LegoBrick::LegoBrick(const PartId &partid, int paletteIdx, bool showConnectors) :
+    LegoBrick::LegoBrick(const PartId &partid, int paletteIdx, Physics physics, bool showConnectors
+        ) :
         m_partid(partid),
         m_paletteIdx(paletteIdx),
         m_showConnectors(showConnectors),
         m_connectorPickIdx(-1),
         m_connectorPickWidget(),
         m_rigidBody(nullptr),
-        m_initialState(nullptr)
+        m_initialState(nullptr),
+        m_physicsType(physics)
     {
 
     }
@@ -61,18 +63,24 @@ namespace sam
             }
         }
 
-        Matrix44f m = dc.m_mat *
-            makeTrans<Matrix44f>(m_offset) *
-            makeRot<Matrix44f>(m_rotate) *
-            makeScale<Matrix44f>(m_scale);
+        if (m_physicsType != Physics::None)
+        {
+            m_pBrick->LoadCollisionMesh();
+            Matrix44f m = dc.m_mat *
+                makeTrans<Matrix44f>(m_offset) *
+                makeRot<Matrix44f>(m_rotate) *
+                makeScale<Matrix44f>(m_scale);
 
-        btTransform mat4;
-        mat4.setFromOpenGLMatrix(m.getData());
-        m_initialState = std::make_shared<btDefaultMotionState>(mat4);
-        btRigidBody::btRigidBodyConstructionInfo constructInfo((btScalar)0, m_initialState.get(),
-            m_pBrick->m_collisionShape.get());
-        m_rigidBody = std::make_shared<btRigidBody>(constructInfo);
-        dc.m_physics->AddRigidBody(m_rigidBody.get());
+            btTransform mat4;
+            mat4.setFromOpenGLMatrix(m.getData());
+            m_initialState = std::make_shared<btDefaultMotionState>(mat4);
+            btScalar mass = m_physicsType == Physics::Dynamic ? 0 : 0;
+            btRigidBody::btRigidBodyConstructionInfo constructInfo(mass, m_initialState.get(),
+                m_pBrick->m_collisionShape.get());
+            m_rigidBody = std::make_shared<btRigidBody>(constructInfo);
+            dc.m_physics->TestCollision(m_rigidBody.get());
+            dc.m_physics->AddRigidBody(m_rigidBody.get());
+        }
     }
 
     void LegoBrick::SetPickData(float data)
@@ -133,7 +141,7 @@ namespace sam
             bgfx::submit(DrawViewId::DeferredObjects, sShader);
         }
 
-        if (m_pBrick->m_connectorCL != nullptr)
+        if (m_pBrick->m_connectorCL != nullptr && m_physicsType != Physics::None)
         {
             int pickItems = ctx.m_pickedCandidates.size();
             ctx.m_pickedCandidates.push_back(ptr());

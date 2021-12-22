@@ -14,6 +14,8 @@
 #include <filesystem>
 #include <regex>
 #include <fmt/format.h>
+#include <VHACD.h>
+#include "Simplify.h"
 #include "bullet/btBulletCollisionCommon.h"
 #include "bullet/btBulletDynamicsCommon.h"
 
@@ -164,7 +166,7 @@ namespace sam
         delete ptr;
     }
 
-    void Brick::Load(ldr::Loader* pLoader, BrickThreadPool* threadPool, const std::string& name, std::filesystem::path& cachePath)
+    void Brick::Load(ldr::Loader* pLoader, const std::string& name, std::filesystem::path& cachePath)
     {
         m_name = name;
         m_connectorsLoaded = false;
@@ -172,8 +174,6 @@ namespace sam
         PosTexcoordNrmVertex::init();
         std::filesystem::path filepath = cachePath / name;
         filepath.replace_extension("mesh");
-        const bgfx::Memory* pVtx = nullptr;
-        const bgfx::Memory* pIdx = nullptr;
         if (std::filesystem::exists(filepath))
         {
             std::ifstream ifs(filepath, std::ios_base::binary);
@@ -182,12 +182,13 @@ namespace sam
             ifs.read((char*)&numvtx, sizeof(numvtx));
             if (numvtx == 0)
                 return;
-            pVtx = bgfx::alloc(sizeof(PosTexcoordNrmVertex) * numvtx);
-            ifs.read((char*)pVtx->data, sizeof(PosTexcoordNrmVertex) * numvtx);
+            m_vertices.resize(numvtx);
+            ifs.read((char*)m_vertices.data(), sizeof(PosTexcoordNrmVertex) * numvtx);
             ifs.read((char*)&numidx, sizeof(numidx));
-            pIdx = bgfx::alloc(sizeof(uint32_t) * numidx);
-            ifs.read((char*)pIdx->data, sizeof(uint32_t) * numidx);
-            PosTexcoordNrmVertex* curVtx = (PosTexcoordNrmVertex*)pVtx->data;
+            m_indices.resize(numidx);
+            ifs.read((char*)m_indices.data(), sizeof(uint32_t) * numidx);
+
+            PosTexcoordNrmVertex* curVtx = m_vertices.data();
             PosTexcoordNrmVertex* endVtx = curVtx + numvtx;
             for (; curVtx != endVtx; ++curVtx)
             {
@@ -197,29 +198,141 @@ namespace sam
             Vec3f ext = m_bounds.mMax - m_bounds.mMin;
             m_scale = std::max(std::max(ext[0], ext[1]), ext[2]);
             m_center = (m_bounds.mMax + m_bounds.mMin) * 0.5f;
-
-            const uint32_t* pI = (const uint32_t*)pIdx->data;
-            const PosTexcoordNrmVertex* pV = (const PosTexcoordNrmVertex * )pVtx->data;
-            btTriangleMesh* pMesh = new btTriangleMesh();
-            constexpr float s = BrickManager::Scale;
-            for (uint32_t i = 0; i < numidx; i += 3) {
-                auto& v0 = pV[pI[i]];
-                auto& v1 = pV[pI[i + 1]];
-                auto& v2 = pV[pI[i + 2]];
-                pMesh->addTriangle(btVector3(v0.m_x * s, v0.m_y * s, v0.m_z * s),
-                    btVector3(v1.m_x * s, v1.m_y * s, v1.m_z * s),
-                    btVector3(v2.m_x * s, v2.m_y * s, v2.m_z * s));
-            }
-            m_collisionShape = std::make_shared<btBvhTriangleMeshShape>(pMesh, true, true);
         }
         else
             return;
 
-
-
         //LoadConnectors(pLoader, name);
-        m_vbh = bgfx::createVertexBuffer(pVtx, PosTexcoordNrmVertex::ms_layout);
-        m_ibh = bgfx::createIndexBuffer(pIdx, BGFX_BUFFER_INDEX32);
+        m_vbh = bgfx::createVertexBuffer(bgfx::makeRef(m_vertices.data(), m_vertices.size() * sizeof(PosTexcoordNrmVertex)), PosTexcoordNrmVertex::ms_layout);
+        m_ibh = bgfx::createIndexBuffer(bgfx::makeRef(m_indices.data(), m_indices.size() * sizeof(uint32_t)), BGFX_BUFFER_INDEX32);
+    }
+
+    static ldr::Loader* spLoader = nullptr;
+
+    void Brick::LoadCollisionMesh()
+    {
+        if (m_collisionShape != nullptr)
+            return;
+#ifdef LOADMODEL
+        LdrModelHDL model;
+        std::vector<ldr::LdrConnection> connections;        
+        spLoader->loadConnections(m_name.c_str(), connections);
+        LdrResult result = spLoader->createModel(m_name.c_str(), LDR_TRUE, &model);
+
+        LdrRenderModelHDL rmodel;
+        result = spLoader->createRenderModel(model, LDR_TRUE, &rmodel);
+        //PosTexcoordNrmVertex 
+               // access the model and part details directly
+        uint32_t numvtx = 0;
+        uint32_t numidx = 0;
+        for (uint32_t i = 0; i < rmodel->num_instances; i++) {
+            const LdrInstance& instance = model->instances[i];
+            const LdrRenderPart& rpart = spLoader->getRenderPart(instance.part);
+            numvtx += rpart.num_vertices;
+            numidx += rpart.num_triangles * 3;
+        }
+
+        std::vector<Vec3f> vtx;
+        vtx.resize(numvtx);
+        std::vector<uint32_t> idxs;
+        idxs.resize(numidx);
+
+        Vec3f* curVtx = (Vec3f*)vtx.data();
+        uint32_t* curIdx = (uint32_t*)idxs.data();
+        uint32_t vtxOffset = 0;
+        for (uint32_t i = 0; i < rmodel->num_instances; i++) {
+            const LdrInstance& instance = model->instances[i];
+            const LdrRenderPart& rpart = spLoader->getRenderPart(instance.part);
+            for (uint32_t idx = 0; idx < rpart.num_vertices; ++idx)
+            {
+                memcpy(curVtx, &rpart.vertices[idx].position, sizeof(LdrVector));
+                curVtx++;
+            }
+            memcpy(curIdx, rpart.triangles, rpart.num_triangles * 3 * sizeof(uint32_t));
+            for (uint32_t idx = 0; idx < rpart.num_triangles * 3; ++idx, curIdx++)
+                *curIdx = *curIdx + vtxOffset;
+            vtxOffset += rpart.num_vertices;
+        }
+#else
+        std::vector<Vec3f> vtx;
+        std::vector<uint32_t>& idxs = m_indices;
+        float ss = 0.1f;
+  
+        for (auto& v : m_vertices)
+        {
+            vtx.push_back(Vec3f(v.m_x *ss, v.m_y *ss, v.m_z*ss));
+        }
+#endif
+
+//#define HACD 1
+#ifdef HACD
+        Simplify::vertices.clear();
+        Simplify::triangles.clear();
+        for (auto& v : vtx)
+        {
+            Simplify::Vertex p;
+            p.p.x = v[0];
+            p.p.y = v[1];
+            p.p.z = v[2];
+            Simplify::vertices.push_back(p);
+        }
+
+        for (int i = 0; i < idxs.size(); i += 3)
+        {
+            Simplify::Triangle t;
+            t.v[0] = m_indices[i+2];
+            t.v[1] = m_indices[i + 1];
+            t.v[2] = m_indices[i];
+            Simplify::triangles.push_back(t);
+        }
+
+        Simplify::simplify_mesh(100,8);
+
+        std::vector<Vec3f> pts(Simplify::vertices.size());
+        VHACD::IVHACD* pVHACD = VHACD::CreateVHACD();
+        auto it1 = Simplify::vertices.begin();
+        auto it2 = pts.begin();
+        for (; it1 != Simplify::vertices.end(); ++it1, ++it2)
+        {
+            it2->mData[0] = it1->p.x;
+            it2->mData[1] = it1->p.y;
+            it2->mData[2] = it1->p.z;
+        }
+        std::vector<uint32_t> ind;
+        ind.reserve(Simplify::triangles.size() * 3);
+        for (auto& t : Simplify::triangles)
+        {
+            ind.push_back(t.v[0]);
+            ind.push_back(t.v[1]);
+            ind.push_back(t.v[2]);
+        }
+
+        VHACD::IVHACD::Parameters p;
+        p.m_oclAcceleration = false;
+        pVHACD->Compute((const float*)pts.data(), pts.size(), ind.data(), ind.size() / 3,
+            p);
+
+
+        pVHACD->Release();
+#endif
+
+        const uint32_t* pI = (const uint32_t*)m_indices.data();
+        const PosTexcoordNrmVertex* pV = m_vertices.data();
+        btTriangleMesh* pMesh = new btTriangleMesh();
+        constexpr float s = 1.0f;// BrickManager::Scale;
+        for (uint32_t i = 0; i < m_indices.size(); i += 3) {
+            if (pI[i] == (uint32_t)(-1) ||
+                pI[i + 1] == (uint32_t)(-1) ||
+                pI[i + 2] == (uint32_t)(-1))
+                continue;
+            auto& v0 = pV[pI[i]];
+            auto& v1 = pV[pI[i + 1]];
+            auto& v2 = pV[pI[i + 2]];
+            pMesh->addTriangle(btVector3(v0.m_x * s, v0.m_y * s, v0.m_z * s),
+                btVector3(v1.m_x * s, v1.m_y * s, v1.m_z * s),
+                btVector3(v2.m_x * s, v2.m_y * s, v2.m_z * s));
+        }
+        m_collisionShape = std::make_shared<btBvhTriangleMeshShape>(pMesh, true, true);
     }
 
     void Brick::GenerateCacheItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
@@ -361,6 +474,11 @@ namespace sam
         { "1-4ring3.dat", 8}
     };
 
+    void Brick::LoadPrimitives(ldr::Loader* pLoader)
+    {
+        std::vector<ldr::LdrConnection> connections;
+        pLoader->loadPrimitives(m_name.c_str());
+    }
     void Brick::LoadConnectors(ldr::Loader* pLoader)
     {
         if (m_connectorsLoaded)
@@ -421,17 +539,18 @@ namespace sam
         LdrLoaderCreateInfo  createInfo = {};
         // while parts are not directly fixed, we will implicitly create a fixed version
         // for renderparts
-        createInfo.partFixMode = LDR_PART_FIX_ONLOAD;
+        createInfo.partFixMode = LDR_PART_FIX_NONE;
         createInfo.renderpartBuildMode = LDR_RENDERPART_BUILD_ONLOAD;
         // required for chamfering
-        createInfo.partFixTjunctions = LDR_TRUE;
+        createInfo.partFixTjunctions = LDR_FALSE;
         // optionally look for higher subdivided ldraw primitives
         createInfo.partHiResPrimitives = LDR_FALSE;
         // leave 0 to disable
-        createInfo.renderpartChamfer = 0.35f;
+        createInfo.renderpartChamfer = 0.0f;
         // installation path of the LDraw Part Library
         createInfo.basePath = ldrpath.c_str();
         m_ldrLoader->init(&createInfo);
+        spLoader = m_ldrLoader.get();
         spMgr = this;
         m_cachePath = Application::Inst().Documents() + "/ldrcache";
         std::filesystem::create_directory(m_cachePath);
@@ -449,6 +568,10 @@ namespace sam
         pBrick->LoadConnectors(m_ldrLoader.get());
     }
 
+    void BrickManager::LoadPrimitives(Brick* pBrick)
+    {
+        pBrick->LoadPrimitives(m_ldrLoader.get());
+    }
     void BrickManager::LoadColors(const std::string& ldrpath)
     {
         std::filesystem::path configpath =
@@ -779,7 +902,7 @@ namespace sam
         Brick& b = m_bricks[name];
         if (!b.m_vbh.isValid())
         {
-            b.Load(m_ldrLoader.get(), m_threadPool.get(), name.GetFilename(), m_cachePath);
+            b.Load(m_ldrLoader.get(), name.GetFilename(), m_cachePath);
             m_brickRenderQueue.push_back(&b);
         }
         MruUpdate(&b);

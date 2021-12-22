@@ -22,7 +22,7 @@ namespace sam
         int m_y;
         int m_z;
         int m_l;
-        static const int lsize = 8;
+        static const int lsize = 12;
         static const int ox = -(1 << (lsize - 1));
         static const int oy = -(1 << (lsize - 1));
         static const int oz = -(1 << (lsize - 1));

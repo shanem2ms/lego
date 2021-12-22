@@ -3832,6 +3832,134 @@ namespace ldr {
         model.raw = { 0, 0 };
     }
 
+   
+
+    LdrResult Loader::loadPrimitives(const char* filename)
+    {
+        std::string dbg = std::string("loadConnections: ") + filename;
+        DbgPrint(dbg.c_str());
+        //#endif
+        LdrResult result = loadPrimitive(filename, 0, mat_identity());
+
+        return result;
+    }
+
+
+    LdrResult Loader::loadPrimitive(const char* filename, int level, const LdrMatrix& intransform)
+    {
+        std::string foundname;
+        bool isprim;
+        findLibraryFile(filename, foundname, true, isprim);
+
+
+        Text txt;
+        if (!txt.load(foundname.c_str())) {
+            // actually should not get here, as resolve function takes care of finding files
+            assert(0);
+
+            return LDR_ERROR_FILE_NOT_FOUND;
+        }
+
+        BFCWinding   winding = BFC_CCW;
+        BFCCertified certified = BFC_UNKNOWN;
+        bool         localCull = true;
+        bool         invertNext = false;
+        bool         keepInvertNext = false;
+
+        bool hasQuad = false;
+        char* line = txt.buffer;
+        for (size_t i = 0; i < txt.size; i++) {
+            if (txt.buffer[i] == '\r')
+                txt.buffer[i] = ' ';
+            if (txt.buffer[i] != '\n')
+                continue;
+
+            txt.buffer[i] = 0;
+
+            // parse line
+
+            int dummy;
+            int material = LDR_MATERIALID_INHERIT;
+
+            int typ = atoi(line);
+            switch (typ) {
+            case 0: {
+                // we only care for BFC
+                char* bfc = strstr(line, "0 BFC");
+                if (bfc) {
+                    if (certified == BFC_UNKNOWN) {
+                        certified = BFC_TRUE;
+                    }
+                    if (strstr(bfc, "CERTIFY")) {
+                        certified = BFC_TRUE;
+                    }
+                    if (strstr(bfc, "NOCERTIFY")) {
+                        certified = BFC_FALSE;
+                    }
+                    if (strstr(bfc, "CLIP")) {
+                        localCull = true;
+                    }
+                    if (strstr(bfc, "NOCLIP")) {
+                        localCull = false;
+                    }
+                    if (strstr(bfc, "CW")) {
+                        winding = BFC_CW;
+                    }
+                    if (strstr(bfc, "CCW")) {
+                        winding = BFC_CCW;
+                    }
+                    if (strstr(bfc, "INVERTNEXT")) {
+                        invertNext = true;
+                        keepInvertNext = true;
+                    }
+                }
+            } break;
+            case 1: {
+                // sub file
+                LdrMatrix transform;
+                float* mat = transform.values;
+                mat[3] = mat[7] = mat[11] = 0;
+                mat[15] = 1.0f;
+
+                char subfilename[512] = { 0 };
+
+                int read = sscanf(line, "%d %d %f %f %f %f %f %f %f %f %f %f %f %f %511s", &dummy, &material, mat + 12, mat + 13,
+                    mat + 14, mat + 0, mat + 4, mat + 8, mat + 1, mat + 5, mat + 9, mat + 2, mat + 6, mat + 10, subfilename);
+
+
+                transform = mat_mul(intransform, transform);            
+                loadPrimitive(subfilename, level + 1, transform);
+                if (read != 15) {
+                    return LDR_ERROR_PARSER;
+                }
+                keepInvertNext = false;
+                // append to builder
+            } break;
+            case 4:
+            {
+                hasQuad = true;
+                break;
+            }
+            default:
+                break;
+            }
+
+            txt.buffer[i] = '\n';
+            line = txt.buffer + (i + 1);
+        }
+
+        if (hasQuad)
+        {
+            //#ifdef DBGPRINT
+            std::string dbg = std::string(level * 2, ' ') + std::string(filename) + " " +
+                std::to_string(isprim);
+            DbgPrint(dbg.c_str());
+            //#endif
+        }
+        return LDR_SUCCESS;
+    }
+
+
     LdrResult Loader::loadConnections(const char* filename, std::vector<LdrConnection>& connections)
     {
         //#ifdef DBGPRINT
@@ -3845,7 +3973,6 @@ namespace ldr {
         connections.erase(itunique, connections.end());
         return result;
     }
-
     std::map<std::string, int> sConnectorMap =
     { { "stud.dat", 1 },
         { "stud4.dat", 2 },
@@ -3863,11 +3990,11 @@ namespace ldr {
         bool isprim;
         findLibraryFile(filename, foundname, true, isprim);
 
-//#ifdef DBGPRINT
+#ifdef DBGPRINT
         std::string dbg = std::string(level * 2, ' ') + std::string(filename) + " " +
             std::to_string(isprim);
         DbgPrint(dbg.c_str());
-//#endif
+#endif
 
         Text txt;
         if (!txt.load(foundname.c_str())) {

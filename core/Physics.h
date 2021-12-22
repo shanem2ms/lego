@@ -8,6 +8,7 @@ class btCollisionDispatcher;
 class btDiscreteDynamicsWorld;
 class btConstraintSolver;
 class btRigidBody;
+class btCollisionObject;
 
 namespace sam
 {
@@ -30,6 +31,7 @@ namespace sam
         void DebugRender(DrawContext& ctx);
         void AddRigidBody(btRigidBody* pRigidBody);
         void RemoveRigidBody(btRigidBody* pRigidBody);
+        bool TestCollision(btCollisionObject* pObj);
 
     private:
         void Init();

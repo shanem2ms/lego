@@ -1,4 +1,4 @@
-$input v_vtxcolor
+$input v_vtxcolor, v_texcoord0, v_normal
 
 /*
  * Copyright 2011-2021 Branimir Karadzic. All rights reserved.
@@ -8,7 +8,7 @@ $input v_vtxcolor
 #include "uniforms.sh"
 #include <bgfx_shader.sh>
 
-
+ 
 void main()
 {
     gl_FragColor = vec4(v_vtxcolor);	

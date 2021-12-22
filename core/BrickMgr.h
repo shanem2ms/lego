@@ -8,6 +8,7 @@
 #include "Engine.h"
 #include "Loc.h"
 #include "PartDefs.h"
+#include "Mesh.h"
 
 struct CubeList;
 struct LdrRenderModel;
@@ -209,6 +210,8 @@ namespace sam
     struct Brick
     {
         std::string m_name;
+        std::vector<PosTexcoordNrmVertex> m_vertices;
+        std::vector<uint32_t> m_indices;
         bgfxh<bgfx::VertexBufferHandle> m_vbh;
         bgfxh<bgfx::IndexBufferHandle> m_ibh;
         AABoxf m_bounds;
@@ -220,10 +223,14 @@ namespace sam
         std::vector<Connector> m_connectors;
         std::shared_ptr<CubeList> m_connectorCL;
         std::shared_ptr<btBvhTriangleMeshShape> m_collisionShape;
+
+        void LoadCollisionMesh();
+
     private:
-        void Load(ldr::Loader* pLoader, BrickThreadPool* threadPool,
+        void Load(ldr::Loader* pLoader,
             const std::string& name, std::filesystem::path& cachePath);
         void LoadConnectors(ldr::Loader* pLoader);
+        void LoadPrimitives(ldr::Loader* pLoader);
         void GenerateCacheItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
             const std::string& name, std::filesystem::path& cachePath, 
             const std::vector<int> atlasMaterialMapping);
@@ -269,6 +276,7 @@ namespace sam
         void Draw(DrawContext& ctx) override;
         void MruUpdate(Brick* pBrick);        
         void LoadConnectors(Brick* pBrick);
+        void LoadPrimitives(Brick* pBrick);
         const std::vector<PartId>& PartsForType(
             const std::string typestr)
         {

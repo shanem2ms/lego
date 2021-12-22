@@ -121,6 +121,8 @@ namespace ldr {
         LdrResult loadDeferredParts(uint32_t numParts, const LdrPartID* parts, size_t partStride);
         LdrResult loadConnections(const char* filename, std::vector<LdrConnection> &connections);
 
+        LdrResult loadPrimitives(const char* filename);
+
         inline const LdrMaterial& getMaterial(LdrMaterialID idx) const { return m_materials[idx]; }
         inline const LdrPart& getPart(LdrPartID idx) const { return m_parts[idx]; }
         inline const LdrPart& getPrimitive(LdrPrimitiveID idx) const { return m_primitives[idx]; }
@@ -571,6 +573,7 @@ namespace ldr {
         LdrResult loadModel(LdrModel& model, const char* filename, LdrBool32 autoResolve);
         LdrResult loadPart(LdrModel& model, const char* filename, LdrBool32 autoResolve);
         LdrResult loadConnection(const char* filename, int level, const LdrMatrix& matrix, std::vector<LdrConnection>& connections);
+        LdrResult loadPrimitive(const char* filename, int level, const LdrMatrix& matrix);
         LdrResult makeRenderModel(LdrRenderModel& rmodel, LdrModelHDL model, LdrBool32 autoResolve);
 
         LdrResult appendSubModel(BuilderModel& builder, Text& text, const LdrMatrix& transform, LdrMaterialID material, LdrBool32 autoResolve);

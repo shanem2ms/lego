@@ -151,7 +151,7 @@ namespace sam
     int g_maxTileLod = 8;
     void World::KeyDown(int k)
     {
-        float speed = 0.001f;
+        float speed = 0.01f;
         switch (k)
         {
         case 'P':
@@ -264,7 +264,7 @@ namespace sam
             e.ViewCam().SetFly(fly);
 
             m_rightHand = std::make_shared<SceneGroup>();
-            m_rightHand->SetOffset(Vec3f(0.1f, -0.05f, 0.105f));
+            m_rightHand->SetOffset(Vec3f(1.3f, -0.65f, 1.005f));
             m_rightHand->SetRotate(make<Quatf>(AxisAnglef(gmtl::Math::PI, 0.0f, 1.0f, 0.0f)) *
                 make<Quatf>(AxisAnglef(-gmtl::Math::PI / 8.0f, 0.0f, 0.0f, 1.0f)) *
                 make<Quatf>(AxisAnglef(gmtl::Math::PI / 8.0f, 1.0f, 0.0f, 0.0f)));
@@ -429,7 +429,7 @@ namespace sam
         m_rightHandPartInst = part;
         if (!part.id.IsNull())
         {
-            m_rightHandPart = std::make_shared<LegoBrick>(part.id, part.paletteIdx, true);
+            m_rightHandPart = std::make_shared<LegoBrick>(part.id, part.paletteIdx, LegoBrick::Physics::None, true);
             m_rightHandPart->SetOffset(part.pos);
             m_rightHandPart->SetRotate(part.rot);
             m_rightHand->AddItem(m_rightHandPart);

@@ -1,3 +1,4 @@
+#pragma once
 #include "StdIncludes.h"
 #include "SceneItem.h"
 #include <bgfx/bgfx.h>

@@ -102,7 +102,7 @@ namespace sam
         nOctTilesTotal = nOctTilesDrawn = 0;
         gmtl::identity(dc.m_mat);
         float near = dc.m_nearfar[0];
-        float far = dc.m_nearfar[1];
+        float far = dc.m_nearfar[2];
         gmtl::Matrix44f view = DrawCam().ViewMatrix();
         gmtl::Matrix44f proj0 = DrawCam().GetPerspectiveMatrix(near, far);
 
@@ -186,7 +186,7 @@ namespace sam
         }        
       
         Physics::Inst().DebugRender(dc);
-        /*
+        
         bgfx::setViewFrameBuffer(5, BGFX_INVALID_HANDLE);
         bgfx::setTexture(0, m_blitTexRef, m_pickColorTex, 0);         
         state = 0
@@ -198,7 +198,7 @@ namespace sam
         bgfx::setVertexBuffer(0, Quad::vbh);
         bgfx::setIndexBuffer(Quad::ibh);
         bgfx::submit(5, sBlit);
-        */
+        
         m_nextView = 6;
         for (auto draw : m_externalDraws)
         {

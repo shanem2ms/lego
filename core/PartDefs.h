@@ -36,6 +36,7 @@ namespace sam
         int paletteIdx;
         Vec3f pos;
         Quatf rot;
+        bool connected;
     };
 
     inline bool operator < (const PartId& lhs, const PartId& rhs)

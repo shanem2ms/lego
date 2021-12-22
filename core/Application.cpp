@@ -92,8 +92,9 @@ namespace sam
                 PartInst pi;
                 pi.id = partname;
                 pi.paletteIdx = 16;
-                pi.pos = Vec3f(0, 0, -0.1f);
+                pi.pos = Vec3f(0, 0, -1.0f);
                 pi.rot = Quatf(QUAT_MULT_IDENTITYF);
+                pi.connected = false;
                 m_world->SetRightHandPart(pi);
             });
     }
