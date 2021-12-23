@@ -47,6 +47,7 @@ namespace sam
         std::shared_ptr<SceneItem> m_pickedItem;
         std::shared_ptr<Physics> m_physics;
         float m_pickedVal;
+        int debugDraw;
 
         std::vector<std::shared_ptr<SceneItem>> m_pickedCandidates;
     };

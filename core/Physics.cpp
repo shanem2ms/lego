@@ -247,7 +247,7 @@ namespace sam
         if (!m_isInit)
             Init();
         m_discreteDynamicsWorld->stepSimulation(1.0f / 60.0f, 10);        
-#define PHYSICSDEBUG 1
+//#define PHYSICSDEBUG 1
 #ifdef PHYSICSDEBUG
         m_dbgPhysics->BeginDraw();
         m_discreteDynamicsWorld->debugDrawWorld();

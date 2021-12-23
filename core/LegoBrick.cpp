@@ -15,8 +15,8 @@
 
 namespace sam
 {
-    LegoBrick::LegoBrick(const PartId &partid, int paletteIdx, Physics physics, bool showConnectors
-        ) :
+    LegoBrick::LegoBrick(const PartId& partid, int paletteIdx, Physics physics, bool showConnectors
+    ) :
         m_partid(partid),
         m_paletteIdx(paletteIdx),
         m_showConnectors(showConnectors),
@@ -30,8 +30,9 @@ namespace sam
     }
 
     static bgfx::ProgramHandle sShader(BGFX_INVALID_HANDLE);
-    static bgfx::ProgramHandle sShader2(BGFX_INVALID_HANDLE);  
+    static bgfx::ProgramHandle sShader2(BGFX_INVALID_HANDLE);
     static bgfx::ProgramHandle sShader3(BGFX_INVALID_HANDLE);
+    static bgfx::ProgramHandle sShaderBbox(BGFX_INVALID_HANDLE);
     static bgfx::UniformHandle sPaletteHandle(BGFX_INVALID_HANDLE);
     static bgfxh<bgfx::UniformHandle> sUparams;
 
@@ -47,7 +48,7 @@ namespace sam
         m_pBrick = BrickManager::Inst().GetBrick(m_partid);
         if (!sUparams.isValid())
             sUparams = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 1);
-        
+
         SetScale(Vec3f(BrickManager::Scale, BrickManager::Scale, BrickManager::Scale));
         //SetRotate();
 
@@ -90,7 +91,7 @@ namespace sam
         {
             if (m_connectorPickWidget != nullptr)
                 RemoveItem(m_connectorPickWidget);
-            if (connectorIdx >= 0 && 
+            if (connectorIdx >= 0 &&
                 connectorIdx < m_pBrick->m_connectors.size())
             {
 
@@ -107,23 +108,22 @@ namespace sam
 
     void LegoBrick::Draw(DrawContext& ctx)
     {
-        static const Quatf rot = make<Quatf>(AxisAnglef(Math::PI, 0.0f, 0.0f, 1.0f));
         SceneGroup::Draw(ctx);
         if (!bgfx::isValid(m_pBrick->m_vbh))
             return;
         if (m_pBrick != nullptr)
             BrickManager::Inst().MruUpdate(m_pBrick);
         PosTexcoordNrmVertex::init();
-        Matrix44f m = ctx.m_mat * 
+        Matrix44f m = ctx.m_mat *
             makeTrans<Matrix44f>(m_offset) *
             makeRot<Matrix44f>(m_rotate) *
             makeScale<Matrix44f>(m_scale);
         // Set render states.l
-        
-        Vec4f color = Vec4f(m_paletteIdx, 0, 0, 0);
 
+        bool drawBBoxes = (ctx.debugDraw == 1);
+        if (!drawBBoxes)
         {
-        uint64_t state = 0
+            uint64_t state = 0
                 | BGFX_STATE_WRITE_RGB
                 | BGFX_STATE_WRITE_A
                 | BGFX_STATE_WRITE_Z
@@ -133,12 +133,42 @@ namespace sam
                 | BGFX_STATE_BLEND_ALPHA;
             bgfx::setTransform(m.getData());
             bgfx::setTexture(0, sPaletteHandle, BrickManager::Inst().Palette());
+            Vec4f color = Vec4f(m_paletteIdx, 0, 0, 0);
             bgfx::setUniform(sUparams, &color, 1);
 
             bgfx::setState(state);
             bgfx::setVertexBuffer(0, m_pBrick->m_vbh);
             bgfx::setIndexBuffer(m_pBrick->m_ibh);
             bgfx::submit(DrawViewId::DeferredObjects, sShader);
+        }
+        else
+        {
+            if (!bgfx::isValid(sShaderBbox))
+                sShaderBbox = Engine::Inst().LoadShader("vs_connector.bin", "fs_forwardshade.bin");
+            Cube::init();
+            Vec3f size = (m_pBrick->m_collisionBox.mMax - m_pBrick->m_collisionBox.mMin) * 0.5f;
+            Vec3f offset = (m_pBrick->m_collisionBox.mMax + m_pBrick->m_collisionBox.mMin) * 0.5f;
+            Matrix44f m = ctx.m_mat * CalcMat() *
+                makeTrans<Matrix44f>(offset) *
+                makeScale<Matrix44f>(size);
+            bgfx::setTransform(m.getData());
+            uint64_t state = 0
+                | BGFX_STATE_WRITE_RGB
+                | BGFX_STATE_WRITE_A
+                | BGFX_STATE_WRITE_Z
+                | BGFX_STATE_CULL_CW
+                | BGFX_STATE_DEPTH_TEST_LESS
+                | BGFX_STATE_BLEND_ALPHA
+                | BGFX_STATE_MSAA;
+            // Set render states.l
+
+            bgfx::setTexture(0, sPaletteHandle, BrickManager::Inst().Palette());
+            Vec4f color = Vec4f(m_paletteIdx, 1.0f, 0, 0);
+            bgfx::setUniform(sUparams, &color, 1);
+            bgfx::setState(state);
+            bgfx::setVertexBuffer(0, Cube::vbh);
+            bgfx::setIndexBuffer(Cube::ibh);
+            bgfx::submit(DrawViewId::ForwardRendered, sShaderBbox);
         }
 
         if (m_pBrick->m_connectorCL != nullptr && m_physicsType != Physics::None)
@@ -171,7 +201,7 @@ namespace sam
             bgfx::submit(DrawViewId::PickObjects, sShader3);
         }
     }
-    
+
     void LegoBrick::Decomission(DrawContext& ctx)
     {
         SceneGroup::Decomission(ctx);
@@ -182,7 +212,7 @@ namespace sam
         }
     }
     LegoBrick::~LegoBrick()
-    {        
+    {
     }
 
 }

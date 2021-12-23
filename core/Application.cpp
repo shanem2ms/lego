@@ -8,6 +8,8 @@
 #include "World.h"
 #include "imgui.h"
 #include <chrono>
+#define MINIAUDIO_IMPLEMENTATION
+#include "miniaudio/miniaudio.h"
 
 #define WATCHDOGTHREAD 0
 
@@ -80,7 +82,10 @@ namespace sam
 
     void Application::ActivateUI()
     {
-        m_legoUI->ActivateUI([this]()
+        if (m_hideMouseCursorFn != nullptr)
+            m_hideMouseCursorFn(false);
+        m_rawMouseMode = false;
+        m_legoUI->OpenInventory([this]()
             {
                 if (m_hideMouseCursorFn)
                     m_hideMouseCursorFn(true);
@@ -146,9 +151,14 @@ namespace sam
     {
         if (keyId == 0x1B) // Escape
         {
-            m_hideMouseCursorFn(false);
-            ActivateUI();
-            m_rawMouseMode = false;
+            if (m_rawMouseMode)
+            {
+                ActivateUI();
+            }
+            else
+            {
+                m_legoUI->CloseInventory();
+            }
         }
         else if (m_legoUI->IsActive())
             m_legoUI->KeyDown(keyId);
@@ -204,6 +214,7 @@ namespace sam
         ctx.m_pWorld = m_world.get();
         ctx.m_numGpuCalcs = 0;
         ctx.m_pickedItem = nullptr;
+        ctx.debugDraw = false;
         m_engine->UpdatePickData(ctx);
         m_legoUI->Update(*m_engine, m_width, m_height, ctx);
         m_world->Update(*m_engine, ctx);

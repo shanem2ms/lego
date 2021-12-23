@@ -43,7 +43,9 @@ namespace sam
         static void GetLocDistance(const Loc& loc, const Point3f& campos, const Vec3f& camdir,
             float& neardir, float& middir, float& fardir);
 
+        bool CanAddPart(const PartInst& pi, const AABoxf& bbox);
         void AddPartInst(const PartInst& pi);
+        void RemovePart(const PartInst& pi);
 
     public:
         OctTileSelection();

@@ -27,7 +27,8 @@ namespace sam
         m_gravityVel(0),        
         m_flymode(true),
         m_inspectmode(false),
-        m_pPickedBrick(nullptr)
+        m_pPickedBrick(nullptr),
+        m_debugDraw(0)
     {        
     }  
 
@@ -100,11 +101,26 @@ namespace sam
                         PartInst pi = m_rightHandPartInst;
                         Vec3f pos = Vec3f(cwpos) - (myconnect.pos * BrickManager::Scale);
                         pi.pos = pos;
-                        m_octTileSelection.AddPartInst(pi);
+
+                        AABoxf cbox = pMyBrick->m_collisionBox;
+                        cbox.mMin = cbox.mMin * BrickManager::Scale + pi.pos;
+                        cbox.mMax = cbox.mMax * BrickManager::Scale + pi.pos;
+                        if (m_octTileSelection.CanAddPart(pi, cbox))
+                            m_octTileSelection.AddPartInst(pi);
                         break;
                     }
                 }
             }
+        }
+        else if (buttonId == 0 && m_pPickedBrick != nullptr)
+        {
+            PartInst pi;
+            pi.id = m_pPickedBrick->GetPartId();
+            Matrix44f wm = m_pPickedBrick->GetWorldMatrix();
+            Vec4f offset;
+            xform(offset, wm, Vec4f(0, 0, 0, 1));
+            pi.pos = Vec3f(offset);
+            m_octTileSelection.RemovePart(pi);
         }
     }
 
@@ -133,8 +149,7 @@ namespace sam
     void World::MouseUp(int buttonId)
     {        
     }
-    extern bool g_showOctBoxes;
-    
+   
     static int curPartIdx = 0;
     static int prevPartIdx = -1;
 
@@ -155,7 +170,8 @@ namespace sam
         switch (k)
         {
         case 'P':
-            isPaused = !isPaused;
+            BrickManager::Inst().LoadPrimitives(
+                BrickManager::Inst().GetBrick(m_rightHandPartInst.id));
             break;
         case LeftShift:
             m_camVel[1] -= speed;
@@ -179,7 +195,7 @@ namespace sam
             m_flymode = !m_flymode;
             break;
         case 'B':
-            g_showOctBoxes = !g_showOctBoxes;
+            m_debugDraw = (m_debugDraw + 1) % 3;
             break;
         case 'I':
             m_inspectmode = !m_inspectmode;
@@ -232,6 +248,7 @@ namespace sam
     float g_hitDist = 0;
     void World::Update(Engine& e, DrawContext& ctx)
     {
+        ctx.debugDraw = m_debugDraw;
         if (m_octTiles == nullptr)
         {
             m_octTiles = std::make_shared<SceneGroup>();

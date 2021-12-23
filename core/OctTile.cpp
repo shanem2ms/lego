@@ -108,6 +108,10 @@ namespace sam
                 size_t parts = strval.size() / sizeof(PartInst);
                 m_parts.resize(parts);
                 memcpy(m_parts.data(), strval.data(), strval.size());
+                for (auto& part : m_parts)
+                {
+                    m_bricks.push_back(BrickManager::Inst().GetBrick(part.id));
+                }
                 m_readyState = 3;
                 m_needsRefresh = true;
             }
@@ -123,7 +127,8 @@ namespace sam
                 pi.pos = Vec3f(0, -0.5f, 0);
                 pi.rot = Quatf();
                 pi.connected = true;
-                m_parts.push_back(pi);                
+                m_parts.push_back(pi);
+                m_bricks.push_back(BrickManager::Inst().GetBrick(pi.id));
                 m_needsPersist = true;
                 m_needsRefresh = true;
             }
@@ -142,10 +147,9 @@ namespace sam
     }
 
     extern Loc g_hitLoc;
-    bool g_showOctBoxes = false;
     bool OctTile::IsEmpty() const
     {
-        return false;
+        return m_parts.size() == 0;
     }
     void OctTile::Draw(DrawContext& ctx)
     {
@@ -177,7 +181,7 @@ namespace sam
             m_needsRefresh = false;
         }
         
-        if (g_showOctBoxes)
+        if (ctx.debugDraw == 2)
         {
             if (!sBboxshader.isValid())
                 sBboxshader = Engine::Inst().LoadShader("vs_cubes.bin", "fs_bbox.bin");
@@ -233,11 +237,53 @@ namespace sam
 
     }
 
+    bool OctTile::CanAddPart(const PartInst& pi, const AABoxf& bbox)
+    {
+        auto itBrick = m_bricks.begin();
+        auto itPart = m_parts.begin();
+        for (; itPart != m_parts.end(); ++itPart, ++itBrick)
+        {
+            AABox cb = (*itBrick)->m_collisionBox;
+            cb.mMin = cb.mMin * BrickManager::Scale + itPart->pos;
+            cb.mMax = cb.mMax * BrickManager::Scale + itPart->pos;
+            if (intersect(bbox, cb))
+                return false;
+        }
+        return true;
+    }
+
     void OctTile::AddPartInst(const PartInst& pi)
     {
         m_parts.push_back(pi);
+        m_bricks.push_back(BrickManager::Inst().GetBrick(pi.id));
         m_needsPersist = true;
         m_needsRefresh = true;
+    }
+    
+    void OctTile::RemovePart(const PartInst& pi)
+    {
+        bool removed = false;
+        auto itBrick = m_bricks.begin();
+        for (auto itPart = m_parts.begin(); itPart != m_parts.end();
+            )
+        {
+            if (itPart->id == pi.id && itPart->pos == pi.pos)
+            {
+                removed = true;
+                itPart = m_parts.erase(itPart);
+                itBrick = m_bricks.erase(itBrick);
+            }
+            else
+            {
+                ++itPart;
+                ++itBrick;
+            }
+        }
+        if (removed)
+        {
+            m_needsPersist = true;
+            m_needsRefresh = true;
+        }
     }
 
     OctTile::~OctTile()

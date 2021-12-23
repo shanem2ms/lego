@@ -215,6 +215,7 @@ namespace sam
         bgfxh<bgfx::VertexBufferHandle> m_vbh;
         bgfxh<bgfx::IndexBufferHandle> m_ibh;
         AABoxf m_bounds;
+        AABoxf m_collisionBox;
         float m_scale;
         bgfxh<bgfx::TextureHandle> m_icon;
         size_t m_mruCtr;

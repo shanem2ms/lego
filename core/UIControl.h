@@ -81,6 +81,12 @@ namespace sam
         UIControl* IsHit(float x, float y, int buttonId) override;
         void DrawUI(UIContext& ctx) override;
         void Show() { m_isopen = true; }
+        void Close() { 
+            if (!m_isopen)
+                return;
+            if (m_onOpenChangedFn != nullptr)
+                m_onOpenChangedFn(false);
+            m_isopen = false; }
     };
 
     class UIPanel : public UIGroup

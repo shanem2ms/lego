@@ -39,47 +39,21 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <set>
 
 void DbgPrint(const char* str);
 
 namespace ldr {
 
 
-    struct LdrConnection
+    struct LdrPrimitive
     {
-        int type;
+        int idx;
         LdrMatrix transform;
+        LdrBbox bbox;
+        bool inverted;
     };
-
-    inline bool operator < (const LdrConnection& lhs, const LdrConnection& rhs)
-    {
-        if (lhs.type != rhs.type)
-        {
-            return lhs.type < rhs.type;
-        }
-        for (int i = 0; i < 16; ++i)
-        {
-            if (lhs.transform.values[i] != 
-                rhs.transform.values[i])
-                return lhs.transform.values[i] <
-                    rhs.transform.values[i];
-        }
-        return false;
-    }
-    inline bool operator == (const LdrConnection& lhs, const LdrConnection& rhs)
-    {
-        if (lhs.type != rhs.type)
-        {
-            return false;
-        }
-        for (int i = 0; i < 16; ++i)
-        {
-            if (lhs.transform.values[i] !=
-                rhs.transform.values[i])
-                return false;
-        }
-        return true;
-    }
+   
     struct Loader
     {
         friend class MeshUtils;
@@ -119,9 +93,12 @@ namespace ldr {
         void      destroyRenderModel(LdrRenderModelHDL renderModel);
 
         LdrResult loadDeferredParts(uint32_t numParts, const LdrPartID* parts, size_t partStride);
-        LdrResult loadConnections(const char* filename, std::vector<LdrConnection> &connections);
 
-        LdrResult loadPrimitives(const char* filename);
+        LdrResult loadPrimitives(const char* filename, 
+            const std::set<std::string> &primitiveFiles, std::vector<LdrPrimitive>& connections);
+        const std::string& getPrimitiveName(int idx) const;
+        
+        LdrBbox getBboxWithExlcusions(const char* filename, const std::set<std::string>& excludePrimitives);
 
         inline const LdrMaterial& getMaterial(LdrMaterialID idx) const { return m_materials[idx]; }
         inline const LdrPart& getPart(LdrPartID idx) const { return m_parts[idx]; }
@@ -572,8 +549,8 @@ namespace ldr {
         LdrResult loadData(LdrPart& part, LdrRenderPart& renderpart, const char* filename, bool isPrimitive);
         LdrResult loadModel(LdrModel& model, const char* filename, LdrBool32 autoResolve);
         LdrResult loadPart(LdrModel& model, const char* filename, LdrBool32 autoResolve);
-        LdrResult loadConnection(const char* filename, int level, const LdrMatrix& matrix, std::vector<LdrConnection>& connections);
-        LdrResult loadPrimitive(const char* filename, int level, const LdrMatrix& matrix);
+        LdrResult loadPrimitive(const char* filename, int level, const LdrMatrix& matrix, bool isInverted, bool excludePrimitive,
+            const std::set<std::string>& primitiveFiles, std::vector<LdrPrimitive>& connections, LdrBbox& wsBbox);
         LdrResult makeRenderModel(LdrRenderModel& rmodel, LdrModelHDL model, LdrBool32 autoResolve);
 
         LdrResult appendSubModel(BuilderModel& builder, Text& text, const LdrMatrix& transform, LdrMaterialID material, LdrBool32 autoResolve);

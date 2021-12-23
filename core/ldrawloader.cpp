@@ -68,6 +68,13 @@ namespace ldr {
         return out;
     }
 
+    inline LdrVector invy(const LdrVector& vec)
+    {
+        LdrVector vi = vec;
+        vi.y = -vi.y;
+        return vi;
+    }
+
     inline LdrVector transform_point(const LdrMatrix& transform, const LdrVector& vec)
     {
         LdrVector    out;
@@ -189,6 +196,29 @@ namespace ldr {
             corner.z = values[(i & 4 ? max : min) + 2];
             LdrVector point = transform_point(transform, corner);
             bbox_merge(bbox, point);
+        }
+    }
+
+    inline bool bbox_empty(const LdrBbox &bbox)
+    {
+        return bbox.max.x <= bbox.min.x ||
+            bbox.max.y <= bbox.min.y ||
+            bbox.max.z <= bbox.min.z;
+    }
+
+    inline void bbox_merge(LdrBbox& bbox, const LdrBbox other)
+    {
+        if (bbox_empty(other))
+            return;
+        const float* values = &other.min.x;
+        uint32_t     min = 0;
+        uint32_t     max = uint32_t(offsetof(LdrBbox, max) / sizeof(float));
+        for (int i = 0; i < 8; i++) {
+            LdrVector corner;
+            corner.x = values[(i & 1 ? max : min) + 0];
+            corner.y = values[(i & 2 ? max : min) + 1];
+            corner.z = values[(i & 4 ? max : min) + 2];
+            bbox_merge(bbox, corner);
         }
     }
 
@@ -2673,6 +2703,7 @@ namespace ldr {
                 if (strstr(line, "0 !LDRAW_ORG Subpart")) {
                     builder.flag.isSubpart = 1;
                 }
+              
             } break;
             case 1: {
                 // sub file
@@ -3832,24 +3863,45 @@ namespace ldr {
         model.raw = { 0, 0 };
     }
 
-   
-
-    LdrResult Loader::loadPrimitives(const char* filename)
+    LdrResult Loader::loadPrimitives(const char* filename, const std::set<std::string>& primitiveFiles, std::vector<LdrPrimitive>& primitives)
     {
         std::string dbg = std::string("loadConnections: ") + filename;
         DbgPrint(dbg.c_str());
         //#endif
-        LdrResult result = loadPrimitive(filename, 0, mat_identity());
+        LdrBbox bbox;
+        LdrResult result = loadPrimitive(filename, 0, mat_identity(), false, false, primitiveFiles,
+            primitives, bbox);
 
         return result;
     }
 
+    LdrBbox Loader::getBboxWithExlcusions(const char* filename, const std::set<std::string>& excludePrimitives)
+    {
+        std::string dbg = std::string("getBboxWithExlcusions: ") + filename;
+        DbgPrint(dbg.c_str());
+        //#endif
+        LdrBbox bbox;
+        std::vector<LdrPrimitive> primitives;
+        LdrResult result = loadPrimitive(filename, 0, mat_identity(), false, true, excludePrimitives,
+            primitives, bbox);
 
-    LdrResult Loader::loadPrimitive(const char* filename, int level, const LdrMatrix& intransform)
+        return bbox;
+    }
+
+    static std::map<std::string, int> sPrimitiveMap;
+    static std::vector<std::string> sPrimitiveNames;
+
+    const std::string& Loader::getPrimitiveName(int idx) const
+    {
+        return sPrimitiveNames[idx];
+    }
+
+    LdrResult Loader::loadPrimitive(const char* filename, int level, const LdrMatrix& intransform, bool isInverted,
+        bool exludePrimitives, const std::set<std::string>& primitiveFiles, std::vector<LdrPrimitive>& primitives, LdrBbox& wsBbox)
     {
         std::string foundname;
-        bool isprim;
-        findLibraryFile(filename, foundname, true, isprim);
+        bool isprimfolder;
+        findLibraryFile(filename, foundname, true, isprimfolder);
 
 
         Text txt;
@@ -3864,8 +3916,8 @@ namespace ldr {
         BFCCertified certified = BFC_UNKNOWN;
         bool         localCull = true;
         bool         invertNext = false;
-        bool         keepInvertNext = false;
-
+        bool         isprim = false;
+        wsBbox = { {FLT_MAX, FLT_MAX, FLT_MAX}, {-FLT_MAX, -FLT_MAX, -FLT_MAX} };
         bool hasQuad = false;
         char* line = txt.buffer;
         for (size_t i = 0; i < txt.size; i++) {
@@ -3874,6 +3926,7 @@ namespace ldr {
             if (txt.buffer[i] != '\n')
                 continue;
 
+            bool         keepInvertNext = false;
             txt.buffer[i] = 0;
 
             // parse line
@@ -3913,6 +3966,11 @@ namespace ldr {
                         keepInvertNext = true;
                     }
                 }
+
+                if (strstr(line, "0 !LDRAW_ORG Primitive")) {
+                    isprim = true;
+                }
+
             } break;
             case 1: {
                 // sub file
@@ -3926,17 +3984,39 @@ namespace ldr {
                 int read = sscanf(line, "%d %d %f %f %f %f %f %f %f %f %f %f %f %f %511s", &dummy, &material, mat + 12, mat + 13,
                     mat + 14, mat + 0, mat + 4, mat + 8, mat + 1, mat + 5, mat + 9, mat + 2, mat + 6, mat + 10, subfilename);
 
+                if (!exludePrimitives || primitiveFiles.find(subfilename) == primitiveFiles.end())
+                {
+                    transform = mat_mul(intransform, transform);
+                    bool childHasGeometry = false;
+                    LdrBbox childBbox;
+                    loadPrimitive(subfilename, level + 1, transform, isInverted ^ invertNext, exludePrimitives, primitiveFiles,
+                        primitives, childBbox);
 
-                transform = mat_mul(intransform, transform);            
-                loadPrimitive(subfilename, level + 1, transform);
+                    bbox_merge(wsBbox, childBbox);
+                }
                 if (read != 15) {
                     return LDR_ERROR_PARSER;
                 }
-                keepInvertNext = false;
                 // append to builder
             } break;
             case 4:
             {
+                // quad
+                LdrVector vecA;
+                LdrVector vecB;
+                LdrVector vecC;
+                LdrVector vecD;
+                // line
+                int read = sscanf(line, "%d %d %f %f %f %f %f %f %f %f %f %f %f %f", &dummy, &material, &vecA.x, &vecA.y,
+                    &vecA.z, &vecB.x, &vecB.y, &vecB.z, &vecC.x, &vecC.y, &vecC.z, &vecD.x, &vecD.y, &vecD.z);
+                if (read != 14) {
+                    return LDR_ERROR_PARSER;
+                }
+                
+                bbox_merge(wsBbox, invy(transform_point(intransform, vecA)));
+                bbox_merge(wsBbox, invy(transform_point(intransform, vecB)));
+                bbox_merge(wsBbox, invy(transform_point(intransform, vecC)));
+                bbox_merge(wsBbox, invy(transform_point(intransform, vecD)));
                 hasQuad = true;
                 break;
             }
@@ -3946,154 +4026,38 @@ namespace ldr {
 
             txt.buffer[i] = '\n';
             line = txt.buffer + (i + 1);
+            if (!keepInvertNext)
+                invertNext = false;
         }
 
-        if (hasQuad)
+        if (!bbox_empty(wsBbox))
         {
-            //#ifdef DBGPRINT
-            std::string dbg = std::string(level * 2, ' ') + std::string(filename) + " " +
+            auto it = sPrimitiveMap.find(filename);
+            int idx;
+            if (it == sPrimitiveMap.end())
+            {
+                idx = sPrimitiveNames.size();
+                sPrimitiveMap.insert(std::make_pair(
+                    filename, idx));
+                sPrimitiveNames.push_back(filename);
+            }
+            else
+                idx = it->second;
+
+            LdrPrimitive prm;
+            prm.idx = idx;
+            prm.inverted = isInverted;
+            prm.transform = intransform;
+            prm.bbox = wsBbox;
+            primitives.push_back(prm);
+
+            #ifdef DBGPRINT
+            std::string dbg = std::string(level * 2, ' ') + (isInverted ? std::string("-") : std::string()) +
+                std::string(filename) + " " +
                 std::to_string(isprim);
             DbgPrint(dbg.c_str());
-            //#endif
+            #endif
         }
-        return LDR_SUCCESS;
-    }
-
-
-    LdrResult Loader::loadConnections(const char* filename, std::vector<LdrConnection>& connections)
-    {
-        //#ifdef DBGPRINT
-        std::string dbg = std::string("loadConnections: ") + filename;
-        DbgPrint(dbg.c_str());
-        //#endif
-
-        LdrResult result = loadConnection(filename, 0, mat_identity(), connections);
-        std::sort(connections.begin(), connections.end());
-        auto itunique = std::unique(connections.begin(), connections.end());
-        connections.erase(itunique, connections.end());
-        return result;
-    }
-    std::map<std::string, int> sConnectorMap =
-    { { "stud.dat", 1 },
-        { "stud4.dat", 2 },
-        { "connect.dat", 3},
-        { "stud2a.dat", 4},
-        { "stud2.dat", 5},
-        { "stud3.dat", 6},
-        { "stud6.dat", 7},
-        { "1-4ring3.dat", 8}
-    };
-
-    LdrResult Loader::loadConnection(const char* filename, int level, const LdrMatrix &intransform, std::vector<LdrConnection>& connections)
-    {
-        std::string foundname;
-        bool isprim;
-        findLibraryFile(filename, foundname, true, isprim);
-
-#ifdef DBGPRINT
-        std::string dbg = std::string(level * 2, ' ') + std::string(filename) + " " +
-            std::to_string(isprim);
-        DbgPrint(dbg.c_str());
-#endif
-
-        Text txt;
-        if (!txt.load(foundname.c_str())) {
-            // actually should not get here, as resolve function takes care of finding files
-            assert(0);
-
-            return LDR_ERROR_FILE_NOT_FOUND;
-        }
-
-        BFCWinding   winding = BFC_CCW;
-        BFCCertified certified = BFC_UNKNOWN;
-        bool         localCull = true;
-        bool         invertNext = false;
-        bool         keepInvertNext = false;
-
-        char* line = txt.buffer;
-        for (size_t i = 0; i < txt.size; i++) {
-            if (txt.buffer[i] == '\r')
-                txt.buffer[i] = ' ';
-            if (txt.buffer[i] != '\n')
-                continue;
-
-            txt.buffer[i] = 0;
-
-            // parse line
-
-            int dummy;
-            int material = LDR_MATERIALID_INHERIT;
-
-            int typ = atoi(line);
-            switch (typ) {
-            case 0: {
-                // we only care for BFC
-                char* bfc = strstr(line, "0 BFC");
-                if (bfc) {
-                    if (certified == BFC_UNKNOWN) {
-                        certified = BFC_TRUE;
-                    }
-                    if (strstr(bfc, "CERTIFY")) {
-                        certified = BFC_TRUE;
-                    }
-                    if (strstr(bfc, "NOCERTIFY")) {
-                        certified = BFC_FALSE;
-                    }
-                    if (strstr(bfc, "CLIP")) {
-                        localCull = true;
-                    }
-                    if (strstr(bfc, "NOCLIP")) {
-                        localCull = false;
-                    }
-                    if (strstr(bfc, "CW")) {
-                        winding = BFC_CW;
-                    }
-                    if (strstr(bfc, "CCW")) {
-                        winding = BFC_CCW;
-                    }
-                    if (strstr(bfc, "INVERTNEXT")) {
-                        invertNext = true;
-                        keepInvertNext = true;
-                    }
-                }
-            } break;
-            case 1: {
-                // sub file
-                LdrMatrix transform;
-                float* mat = transform.values;
-                mat[3] = mat[7] = mat[11] = 0;
-                mat[15] = 1.0f;
-
-                char subfilename[512] = { 0 };
-
-                int read = sscanf(line, "%d %d %f %f %f %f %f %f %f %f %f %f %f %f %511s", &dummy, &material, mat + 12, mat + 13,
-                    mat + 14, mat + 0, mat + 4, mat + 8, mat + 1, mat + 5, mat + 9, mat + 2, mat + 6, mat + 10, subfilename);
-
-
-                transform = mat_mul(intransform, transform);
-                auto itconnector = sConnectorMap.find(subfilename);
-                if (itconnector != sConnectorMap.end())
-                {
-                    connections.push_back(LdrConnection { itconnector->second, transform });
-                }
-                else
-                {
-                    loadConnection(subfilename, level + 1, transform, connections);
-                }
-                if (read != 15) {
-                    return LDR_ERROR_PARSER;
-                }              
-                keepInvertNext = false;
-                // append to builder
-            } break;
-            default:
-                break;
-            }
-
-            txt.buffer[i] = '\n';
-            line = txt.buffer + (i + 1);
-        }
-
         return LDR_SUCCESS;
     }
 }  // namespace ldr

@@ -34,6 +34,7 @@ namespace sam
         float m_intersects;
         bool m_isdecommissioned;
         std::vector<PartInst> m_parts;
+        std::vector<Brick*> m_bricks;
         bool m_needsPersist;
         bool m_needsRefresh;
 
@@ -71,6 +72,9 @@ namespace sam
         int GetReadyState() const
         { return m_readyState; }
         void AddPartInst(const PartInst& pi);
+        bool CanAddPart(const PartInst& pi, const AABoxf& bbox);
+        void RemovePart(const PartInst& pi);
+        
     };
 
     class TargetCube : public SceneItem

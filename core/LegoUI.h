@@ -24,7 +24,8 @@ namespace sam
             }
         }
 
-        void ActivateUI(const std::function<void()>& deactivateFn);
+        void OpenInventory(const std::function<void()>& deactivateFn);
+        void CloseInventory();
         bool IsActive() const { return m_isActive; }
         bool MouseDown(float x, float y, int buttonId) override;
         bool MouseDrag(float x, float y, int buttonId) override;

@@ -31,6 +31,8 @@ namespace sam
         void CreateBulletMesh();
         int GetHighlightedConnector() const
         { return m_connectorPickIdx; }
+        const PartId &GetPartId() const
+        { return m_partid; }
     private:
         PartId m_partid;
         Brick* m_pBrick;

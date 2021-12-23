@@ -43,4 +43,10 @@ namespace sam
     {
         return strncmp(lhs._id, rhs._id, sizeof(lhs._id)) < 0;
     }
+
+    inline bool operator == (const PartId& lhs, const PartId& rhs)
+    {
+        return strncmp(lhs._id, rhs._id, sizeof(lhs._id)) == 0;
+    }
+
 }

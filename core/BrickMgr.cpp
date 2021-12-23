@@ -166,6 +166,37 @@ namespace sam
         delete ptr;
     }
 
+
+    struct ConnectorInfo
+    {
+        ConnectorType type;
+        std::vector<Vec3f> offsets;
+    };
+
+    std::map<std::string, ConnectorInfo> sConnectorMap =
+    { { "stud.dat", { ConnectorType::Stud, { Vec3f(0,0,0) }}},
+        { "stud4.dat", { ConnectorType::InvStud, { Vec3f(0,-4,0), Vec3f(10,-4,10), Vec3f(-10,-4,10), Vec3f(10,-4,-10), Vec3f(-10,-4,-10) }}},
+        { "connect.dat", { ConnectorType::InvStud, { Vec3f(0,0,0) }}},
+        { "stud2a.dat",{ ConnectorType::Stud, { Vec3f(0,0,0) }}},
+        { "stud2.dat", { ConnectorType::InvStud, { Vec3f(0,0,0) }}},
+        { "stud3.dat", { ConnectorType::InvStud, { Vec3f(10,-4,0), Vec3f(-10,-4,0) }}},
+        { "stud6.dat", { ConnectorType::InvStud, { Vec3f(0,0,0)}}},
+        { "1-4ring3.dat", { ConnectorType::InvStud, { Vec3f(0,0,0)}}},
+    };
+
+    static std::set<std::string> sConnectorNames;
+
+    void InitConnectorNames()
+    {
+        if (sConnectorNames.size() == 0)
+        {
+            for (auto& connectorPair : sConnectorMap)
+            {
+                sConnectorNames.insert(connectorPair.first);
+            }
+        }
+    }
+
     void Brick::Load(ldr::Loader* pLoader, const std::string& name, std::filesystem::path& cachePath)
     {
         m_name = name;
@@ -198,6 +229,15 @@ namespace sam
             Vec3f ext = m_bounds.mMax - m_bounds.mMin;
             m_scale = std::max(std::max(ext[0], ext[1]), ext[2]);
             m_center = (m_bounds.mMax + m_bounds.mMin) * 0.5f;
+
+            InitConnectorNames();
+            LdrBbox bbox = pLoader->getBboxWithExlcusions(name.c_str(), sConnectorNames);
+            m_collisionBox.mEmpty = false;
+            m_collisionBox.mMin = Vec3f(bbox.min.x, bbox.min.y, bbox.min.z);
+            m_collisionBox.mMax = Vec3f(bbox.max.x, bbox.max.y, bbox.max.z);
+
+            Vec3f bnd = m_bounds.mMax - m_bounds.mMin;
+            Vec3f col = m_collisionBox.mMax - m_collisionBox.mMin;
         }
         else
             return;
@@ -213,108 +253,6 @@ namespace sam
     {
         if (m_collisionShape != nullptr)
             return;
-#ifdef LOADMODEL
-        LdrModelHDL model;
-        std::vector<ldr::LdrConnection> connections;        
-        spLoader->loadConnections(m_name.c_str(), connections);
-        LdrResult result = spLoader->createModel(m_name.c_str(), LDR_TRUE, &model);
-
-        LdrRenderModelHDL rmodel;
-        result = spLoader->createRenderModel(model, LDR_TRUE, &rmodel);
-        //PosTexcoordNrmVertex 
-               // access the model and part details directly
-        uint32_t numvtx = 0;
-        uint32_t numidx = 0;
-        for (uint32_t i = 0; i < rmodel->num_instances; i++) {
-            const LdrInstance& instance = model->instances[i];
-            const LdrRenderPart& rpart = spLoader->getRenderPart(instance.part);
-            numvtx += rpart.num_vertices;
-            numidx += rpart.num_triangles * 3;
-        }
-
-        std::vector<Vec3f> vtx;
-        vtx.resize(numvtx);
-        std::vector<uint32_t> idxs;
-        idxs.resize(numidx);
-
-        Vec3f* curVtx = (Vec3f*)vtx.data();
-        uint32_t* curIdx = (uint32_t*)idxs.data();
-        uint32_t vtxOffset = 0;
-        for (uint32_t i = 0; i < rmodel->num_instances; i++) {
-            const LdrInstance& instance = model->instances[i];
-            const LdrRenderPart& rpart = spLoader->getRenderPart(instance.part);
-            for (uint32_t idx = 0; idx < rpart.num_vertices; ++idx)
-            {
-                memcpy(curVtx, &rpart.vertices[idx].position, sizeof(LdrVector));
-                curVtx++;
-            }
-            memcpy(curIdx, rpart.triangles, rpart.num_triangles * 3 * sizeof(uint32_t));
-            for (uint32_t idx = 0; idx < rpart.num_triangles * 3; ++idx, curIdx++)
-                *curIdx = *curIdx + vtxOffset;
-            vtxOffset += rpart.num_vertices;
-        }
-#else
-        std::vector<Vec3f> vtx;
-        std::vector<uint32_t>& idxs = m_indices;
-        float ss = 0.1f;
-  
-        for (auto& v : m_vertices)
-        {
-            vtx.push_back(Vec3f(v.m_x *ss, v.m_y *ss, v.m_z*ss));
-        }
-#endif
-
-//#define HACD 1
-#ifdef HACD
-        Simplify::vertices.clear();
-        Simplify::triangles.clear();
-        for (auto& v : vtx)
-        {
-            Simplify::Vertex p;
-            p.p.x = v[0];
-            p.p.y = v[1];
-            p.p.z = v[2];
-            Simplify::vertices.push_back(p);
-        }
-
-        for (int i = 0; i < idxs.size(); i += 3)
-        {
-            Simplify::Triangle t;
-            t.v[0] = m_indices[i+2];
-            t.v[1] = m_indices[i + 1];
-            t.v[2] = m_indices[i];
-            Simplify::triangles.push_back(t);
-        }
-
-        Simplify::simplify_mesh(100,8);
-
-        std::vector<Vec3f> pts(Simplify::vertices.size());
-        VHACD::IVHACD* pVHACD = VHACD::CreateVHACD();
-        auto it1 = Simplify::vertices.begin();
-        auto it2 = pts.begin();
-        for (; it1 != Simplify::vertices.end(); ++it1, ++it2)
-        {
-            it2->mData[0] = it1->p.x;
-            it2->mData[1] = it1->p.y;
-            it2->mData[2] = it1->p.z;
-        }
-        std::vector<uint32_t> ind;
-        ind.reserve(Simplify::triangles.size() * 3);
-        for (auto& t : Simplify::triangles)
-        {
-            ind.push_back(t.v[0]);
-            ind.push_back(t.v[1]);
-            ind.push_back(t.v[2]);
-        }
-
-        VHACD::IVHACD::Parameters p;
-        p.m_oclAcceleration = false;
-        pVHACD->Compute((const float*)pts.data(), pts.size(), ind.data(), ind.size() / 3,
-            p);
-
-
-        pVHACD->Release();
-#endif
 
         const uint32_t* pI = (const uint32_t*)m_indices.data();
         const PosTexcoordNrmVertex* pV = m_vertices.data();
@@ -373,8 +311,6 @@ namespace sam
         }
         else
         {
-            std::vector<ldr::LdrConnection> connections;
-            pLoader->loadConnections(name.c_str(), connections);
             result = pLoader->createModel(name.c_str(), LDR_TRUE, &model);
         }
 
@@ -443,56 +379,34 @@ namespace sam
         ofs.close();
     }
 
-
-    struct ConnectorInfo
-    {
-        ConnectorType type;
-        std::vector<Vec3f> offsets;
-    };
-
-    static ConnectorInfo connectorInfo[] =
-    {
-        { ConnectorType::Unknown, { Vec3f(0,0,0) }},
-        { ConnectorType::Stud, { Vec3f(0,0,0) }},
-        { ConnectorType::InvStud, { Vec3f(0,-4,0), Vec3f(10,-4,10), Vec3f(-10,-4,10), Vec3f(10,-4,-10), Vec3f(-10,-4,-10) }},
-        { ConnectorType::InvStud, { Vec3f(0,0,0) }},
-        { ConnectorType::InvStud, { Vec3f(0,0,0) }},
-        { ConnectorType::InvStud, { Vec3f(0,0,0) }},
-        { ConnectorType::InvStud, { Vec3f(10,-4,0), Vec3f(-10,-4,0) }},
-        { ConnectorType::InvStud, { Vec3f(0,0,0)}},
-        { ConnectorType::InvStud, { Vec3f(0,0,0)}},
-    };
-
-    std::map<std::string, int> sConnectorMap =
-    { { "stud.dat", 1 },
-        { "stud4.dat", 2 },
-        { "connect.dat", 3},
-        { "stud2a.dat", 4},
-        { "stud2.dat", 5},
-        { "stud3.dat", 6},
-        { "stud6.dat", 7},
-        { "1-4ring3.dat", 8}
-    };
-
     void Brick::LoadPrimitives(ldr::Loader* pLoader)
     {
-        std::vector<ldr::LdrConnection> connections;
-        pLoader->loadPrimitives(m_name.c_str());
+        std::vector<ldr::LdrPrimitive> primitives;
+        pLoader->loadPrimitives(m_name.c_str(),
+            std::set<std::string>(), primitives);
     }
+
     void Brick::LoadConnectors(ldr::Loader* pLoader)
     {
         if (m_connectorsLoaded)
             return;
-        std::vector<ldr::LdrConnection> connections;
-        pLoader->loadConnections(m_name.c_str(), connections);
-        for (auto& connection : connections)
+        InitConnectorNames();
+     
+        std::vector<ldr::LdrPrimitive> primitives;
+        pLoader->loadPrimitives(m_name.c_str(),
+            sConnectorNames, primitives);
+        for (auto& prim : primitives)
         {
+            const std::string &name = pLoader->getPrimitiveName(prim.idx);
+            auto itconnection = sConnectorMap.find(name);
+            if (itconnection == sConnectorMap.end())
+                continue;
             Connector c;
-            ConnectorInfo& ci = connectorInfo[connection.type];
+            ConnectorInfo& ci = itconnection->second;
             c.type = ci.type;
 
             Matrix44f m;
-            memcpy(m.mData, connection.transform.values, sizeof(float) * 16);
+            memcpy(m.mData, prim.transform.values, sizeof(float) * 16);
             m.mState = Matrix44f::AFFINE;
             Vec4f p;
             xform(p, m, Vec4f(0, 0, 0, 1));

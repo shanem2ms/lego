@@ -460,6 +460,28 @@ namespace sam
         std::shared_ptr<OctTile> tile;
     };
 
+    bool OctTileSelection::CanAddPart(const PartInst& pi, const AABoxf &inBbox)
+    {
+        bool canAdd = true;
+        for (auto& pair : m_tiles)
+        {
+            if (pair.second->IsEmpty())
+                continue;
+            AABoxf bbox = pair.first.GetBBox();
+            if (intersect(inBbox, bbox))
+            {
+                PartInst p2 = pi;
+                Point3f cpos = (bbox.mMin + bbox.mMax) * 0.5f;
+                p2.pos -= cpos;
+                AABoxf bbox2 = inBbox;
+                bbox2.mMin -= cpos;
+                bbox2.mMax -= cpos;
+                canAdd &= pair.second->CanAddPart(p2, bbox2);
+            }
+        }
+        return canAdd;
+    }
+
     void OctTileSelection::AddPartInst(const PartInst& pi)
     {
         for (auto& pair : m_tiles)
@@ -470,6 +492,20 @@ namespace sam
                 PartInst p2 = pi;
                 p2.pos -= (bbox.mMin + bbox.mMax) * 0.5f;
                 pair.second->AddPartInst(p2);
+            }
+        }
+    }
+
+    void OctTileSelection::RemovePart(const PartInst& pi)
+    {
+        for (auto& pair : m_tiles)
+        {
+            AABoxf bbox = pair.first.GetBBox();
+            if (isInVolume(bbox, Point3f(pi.pos)))
+            {
+                PartInst p2 = pi;
+                p2.pos -= (bbox.mMin + bbox.mMax) * 0.5f;
+                pair.second->RemovePart(p2);
             }
         }
     }

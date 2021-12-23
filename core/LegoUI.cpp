@@ -134,12 +134,18 @@ namespace sam
             });
     }
 
-    void LegoUI::ActivateUI(const std::function<void()>& deactivateFn)
+    void LegoUI::OpenInventory(const std::function<void()>& deactivateFn)
     {
         if (m_mainMenu)
             m_mainMenu->Show();
         m_isActive = true;
         m_deactivateFn = deactivateFn;        
+    }
+
+    void LegoUI::CloseInventory()
+    {
+        m_mainMenu->Close();
+        m_isActive = false;
     }
 
     bool LegoUI::MouseDown(float x, float y, int buttonId)

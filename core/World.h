@@ -29,6 +29,7 @@ namespace sam
         float m_tiltVel;
         bool m_flymode;
         bool m_inspectmode;
+        int m_debugDraw;
 
         float m_gravityVel;
 
