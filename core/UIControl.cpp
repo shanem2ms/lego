@@ -299,13 +299,17 @@ namespace sam
             int curIdx = startIdx;
             for (auto& item : tableItemsCache)
             {
-                if (m_selectedIdx == curIdx)
+                if (item.colorRect != 0)
+                    ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(item.colorRect));
+                else if (m_selectedIdx == curIdx)
                     ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(0.6f, 0.2, 0.4, 0.75f));
                 if (bgfx::isValid(item.image))
                     ImGui::ImageButton(item.image, ImVec2(128, 128));
                 else
-                    ImGui::Button(item.text.c_str());
-                if (m_selectedIdx == curIdx)
+                    ImGui::Button(item.text.c_str(), ImVec2(-1, 0));
+                if (item.colorRect != 0)
+                    ImGui::PopStyleColor();
+                else if (m_selectedIdx == curIdx)
                     ImGui::PopStyleColor();
                 if (ImGui::IsItemActive())
                 {

@@ -14,11 +14,13 @@ class UIManager;
 class LegoUI;
 struct DrawContext;
 class BrickManager;
+class Audio;
 class Application
 {
     std::unique_ptr<World> m_world;
     std::unique_ptr<Engine> m_engine;
     std::unique_ptr<LegoUI> m_legoUI;
+    std::unique_ptr<Audio> m_audio;
     std::unique_ptr<BrickManager> m_brickManager;
     int m_width;
     int m_height;
@@ -44,6 +46,8 @@ public:
     void Resize(int w, int h);
     void Tick(float time);
     void Draw();
+    Audio &GetAudio() 
+    { return *m_audio; }
     void Initialize(const char *folder);
     const std::string &Documents() const
     { return m_documentsPath; }    

@@ -24,7 +24,7 @@ namespace gmtl
 {
    /**
     * Tests if the given AABoxes intersect with each other. Sharing an edge IS
-    * NOT considered intersection by this algorithm.
+    * considered intersection by this algorithm.
     *
     * @param box1    the first AA box to test
     * @param box2    the second AA box to test
@@ -35,13 +35,13 @@ namespace gmtl
    bool intersect(const AABox<DATA_TYPE>& box1, const AABox<DATA_TYPE>& box2)
    {
       // Look for a separating axis on each box for each axis
-      if (box1.getMin()[0] >= box2.getMax()[0])  return false;
-      if (box1.getMin()[1] >= box2.getMax()[1])  return false;
-      if (box1.getMin()[2] >= box2.getMax()[2])  return false;
+      if (box1.getMin()[0] > box2.getMax()[0])  return false;
+      if (box1.getMin()[1] > box2.getMax()[1])  return false;
+      if (box1.getMin()[2] > box2.getMax()[2])  return false;
 
-      if (box2.getMin()[0] >= box1.getMax()[0])  return false;
-      if (box2.getMin()[1] >= box1.getMax()[1])  return false;
-      if (box2.getMin()[2] >= box1.getMax()[2])  return false;
+      if (box2.getMin()[0] > box1.getMax()[0])  return false;
+      if (box2.getMin()[1] > box1.getMax()[1])  return false;
+      if (box2.getMin()[2] > box1.getMax()[2])  return false;
 
       // No separating axis ... they must intersect
       return true;

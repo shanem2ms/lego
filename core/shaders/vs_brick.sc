@@ -16,9 +16,8 @@ SAMPLER2D(s_brickPalette, 0);
 void main()
 { 
 	if (a_texcoord0.x < 0) a_texcoord0.x = u_params[0];
-	float u = fmod(a_texcoord0.x, 16) / 16.0;
+	float u = fmod(a_texcoord0.x, 16) / 16.0 ;
 	float v = (floor(a_texcoord0.x / 16) / 16.0);
-	v = 1-v;
 	vec4 col = texture2DLod(s_brickPalette, vec2(u,v), 0);
 	v_vtxcolor = col;
 	v_normal = a_normal;  

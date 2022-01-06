@@ -104,7 +104,9 @@ namespace sam
         {
             std::string text;
             bgfx::TextureHandle image;
-            TableItem() : image({ bgfx::kInvalidHandle })
+            uint32_t colorRect;
+            TableItem() : image({ bgfx::kInvalidHandle }),
+                colorRect(0)
                 {}
         };
     

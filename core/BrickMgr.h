@@ -17,11 +17,13 @@ class btBvhTriangleMeshShape;
 namespace ldr
 {
     struct Loader;
+    struct LdrPrimitive;
 }
 namespace sam
 {
     class BrickThreadPool;
     void DestroyBrickThreadPool(BrickThreadPool*);
+    struct ConnectorInfo;
 }
 
 void std::default_delete<sam::BrickThreadPool>::operator()(sam::BrickThreadPool* ptr) const noexcept
@@ -156,9 +158,19 @@ namespace sam
         ConnectorType type;
         Vec3f pos;
         Vec3f scl;
-        Quatf dir;
+        Vec3f dir;
         int pickIdx;
 
+        Quatf GetDirAsQuat()
+        {
+            if (dot(Vec3f(0, 1, 0), dir) > 0.999f)
+                return Quatf(QUAT_MULT_IDENTITYF);
+            else
+            {
+                Matrix44f mat = makeRot<Matrix44f>(Vec3f(0, 1, 0), dir);
+                return make<Quatf>(mat);
+            }
+        }
         static bool CanConnect(ConnectorType a, ConnectorType b)
         {
             if (a > b)
@@ -231,6 +243,7 @@ namespace sam
         void Load(ldr::Loader* pLoader,
             const std::string& name, std::filesystem::path& cachePath);
         void LoadConnectors(ldr::Loader* pLoader);
+        void LoadConnectors2(const std::filesystem::path &connectorPath);
         void LoadPrimitives(ldr::Loader* pLoader);
         void GenerateCacheItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
             const std::string& name, std::filesystem::path& cachePath, 
@@ -287,6 +300,14 @@ namespace sam
             return ittype->second;
         }
 
+        size_t NumColors() const
+        { return m_colors.size(); }
+
+        const BrickColor& GetColor(size_t idx) const
+        {
+            int key = m_colors.keys()[idx];
+            return m_colors.find(key)->second; }
+
         bgfx::TextureHandle Palette() const
         {
             return m_colorPalette;
@@ -302,11 +323,12 @@ namespace sam
         index_map<PartId, PartDesc> m_partsMap;
         index_map<std::string, std::vector<PartId>> m_typesMap;
         std::filesystem::path m_cachePath;
+        std::filesystem::path m_connectorPath;
         std::unique_ptr<BrickThreadPool> m_threadPool;
         std::vector<Brick*> m_brickRenderQueue;
         bgfxh<bgfx::TextureHandle> m_iconDepth;
         bgfxh<bgfx::TextureHandle> m_colorPalette;
         size_t m_mruCtr;
-        std::map<int, BrickColor> m_colors;
+        index_map<int, BrickColor> m_colors;
     };
 }

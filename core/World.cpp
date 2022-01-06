@@ -12,6 +12,8 @@
 #include "PartDefs.h"
 #include "BrickMgr.h"
 #include "Physics.h"
+#include "Audio.h"
+#include "PlayerView.h"
 #define NOMINMAX
 
 
@@ -84,29 +86,46 @@ namespace sam
             Matrix44f mat = m_pPickedBrick->GetWorldMatrix();
             Brick *pBrick = m_pPickedBrick->GetBrick();
             Matrix44f wm = m_pPickedBrick->GetWorldMatrix();
+            Vec3f c0 = Vec3f(&wm.mData[0]);
+            normalize(c0);
+            Vec3f c1 = Vec3f(&wm.mData[4]);
+            normalize(c1);
+            Vec3f c2 = Vec3f(&wm.mData[8]);
+            normalize(c2);            
+            Matrix33f rotmat = makeAxes<Matrix33f>(c0, c1, c2);
+            Quatf pickedDir = make<Quatf>(rotmat);
+            normalize(pickedDir);
             int connectorIdx = m_pPickedBrick->GetHighlightedConnector();
             if (connectorIdx >= 0)
             {
                 auto& connector = pBrick->m_connectors[connectorIdx];
-                
+                Quatf cq = pickedDir * connector.GetDirAsQuat();
+
                 Vec4f cwpos;
                 xform(cwpos, wm, Vec4f(connector.pos,1));
 
-                Brick* pMyBrick = BrickManager::Inst().GetBrick(m_rightHandPartInst.id);
+                Brick* pMyBrick = BrickManager::Inst().GetBrick(m_player->GetRightHandPart().id);
                 BrickManager::Inst().LoadConnectors(pBrick);
                 for (auto& myconnect : pMyBrick->m_connectors)
                 {
                     if (Connector::CanConnect(connector.type, myconnect.type))
                     {
-                        PartInst pi = m_rightHandPartInst;
-                        Vec3f pos = Vec3f(cwpos) - (myconnect.pos * BrickManager::Scale);
+                        
+                        Vec3f newpos = cq * myconnect.pos;
+
+                        PartInst pi = m_player->GetRightHandPart();
+                        pi.rot = cq;
+                        Vec3f pos = Vec3f(cwpos) - (newpos * BrickManager::Scale);
                         pi.pos = pos;
 
                         AABoxf cbox = pMyBrick->m_collisionBox;
                         cbox.mMin = cbox.mMin * BrickManager::Scale + pi.pos;
                         cbox.mMax = cbox.mMax * BrickManager::Scale + pi.pos;
                         if (m_octTileSelection.CanAddPart(pi, cbox))
+                        {
                             m_octTileSelection.AddPartInst(pi);
+                            Application::Inst().GetAudio().PlayOnce("click-7.wav");
+                        }
                         break;
                     }
                 }
@@ -120,6 +139,7 @@ namespace sam
             Vec4f offset;
             xform(offset, wm, Vec4f(0, 0, 0, 1));
             pi.pos = Vec3f(offset);
+            Application::Inst().GetAudio().PlayOnce("break.mp3");
             m_octTileSelection.RemovePart(pi);
         }
     }
@@ -171,7 +191,7 @@ namespace sam
         {
         case 'P':
             BrickManager::Inst().LoadPrimitives(
-                BrickManager::Inst().GetBrick(m_rightHandPartInst.id));
+                BrickManager::Inst().GetBrick(m_player->GetRightHandPart().id));
             break;
         case LeftShift:
             m_camVel[1] -= speed;
@@ -207,10 +227,11 @@ namespace sam
         case 'L':
             partChange = -1;
             break;
-        case 'Q':            
-            m_rightHandPartInst.rot *= make<Quatf>(AxisAnglef(
+        case 'Q':
+                PartInst part = m_player->GetRightHandPart();
+                part.rot *= make<Quatf>(AxisAnglef(
                 -Math::PI_OVER_2, Vec3f(1, 0, 0)));
-            SetRightHandPart(m_rightHandPartInst);
+                m_player->SetRightHandPart(part);
             break;
         }
         if (k >= '1' && k <= '9')
@@ -255,8 +276,8 @@ namespace sam
             e.Root()->AddItem(m_octTiles);
             m_frustum = std::make_shared<Frustum>();
             e.Root()->AddItem(m_frustum);
-            m_playerGroup = std::make_shared<SceneGroup>();
-            e.Root()->AddItem(m_playerGroup);
+            m_player = std::make_shared<Player>();
+            e.Root()->AddItem(m_player->GetPlayerGroup());
             Camera::Fly fly;
             Camera::Fly dfly;
             Level::PlayerData playerdata;
@@ -279,16 +300,9 @@ namespace sam
             }
             e.DrawCam().SetFly(dfly);
             e.ViewCam().SetFly(fly);
-
-            m_rightHand = std::make_shared<SceneGroup>();
-            m_rightHand->SetOffset(Vec3f(1.3f, -0.65f, 1.005f));
-            m_rightHand->SetRotate(make<Quatf>(AxisAnglef(gmtl::Math::PI, 0.0f, 1.0f, 0.0f)) *
-                make<Quatf>(AxisAnglef(-gmtl::Math::PI / 8.0f, 0.0f, 0.0f, 1.0f)) *
-                make<Quatf>(AxisAnglef(gmtl::Math::PI / 8.0f, 1.0f, 0.0f, 0.0f)));
-            m_rightHand->AddItem(std::make_shared<LegoBrick>("3820", 14));
-            m_playerGroup->AddItem(m_rightHand);
+            m_player->Initialize();
+            m_player->SetRightHandPart(righthandpart);
             m_octTiles->BeforeDraw([this](DrawContext& ctx) { ctx.m_pgm = BGFX_INVALID_HANDLE; return true; });
-            SetRightHandPart(righthandpart);
             m_physics = std::make_shared<Physics>();
         }
     
@@ -415,9 +429,9 @@ namespace sam
             m_gravityVel = 0;
         }
 
-
-        m_playerGroup->SetOffset(newPos);
-        m_playerGroup->SetRotate(fly.Quat());
+        auto playerGrp = m_player->GetPlayerGroup();
+        playerGrp->SetOffset(newPos);
+        playerGrp->SetRotate(fly.Quat());
         dfly.pos = newPos;
         dcam.SetFly(dfly);
 
@@ -430,28 +444,12 @@ namespace sam
             playerdata.inspect = m_inspectmode;
             playerdata.inspectpos = dfly.pos;
             playerdata.inspectdir = dfly.dir;
-            playerdata.rightHandPart = m_rightHandPartInst;
+            playerdata.rightHandPart = m_player->GetRightHandPart();
             
             m_level.WritePlayerData(playerdata);
         }
     }
-
-    void World::SetRightHandPart(const PartInst& part)
-    {
-        if (m_rightHandPart != nullptr)
-        {
-            m_rightHand->RemoveItem(m_rightHandPart);
-            m_rightHandPart = nullptr;
-        }
-        m_rightHandPartInst = part;
-        if (!part.id.IsNull())
-        {
-            m_rightHandPart = std::make_shared<LegoBrick>(part.id, part.paletteIdx, LegoBrick::Physics::None, true);
-            m_rightHandPart->SetOffset(part.pos);
-            m_rightHandPart->SetRotate(part.rot);
-            m_rightHand->AddItem(m_rightHandPart);
-        }
-    }
+   
 
     void World::Layout(int w, int h)
     {

@@ -86,7 +86,6 @@ namespace sam
         typesTable->OnItemSelected([this](int itemIdx)
             { BuildPartsTable(itemIdx); });
 
-        //auto typesTable = std::make_shared<UITable>(numColumns);
         auto typesPanel = std::make_shared<UIPanel>(0, 0, 150, 0);
         typesPanel->AddControl(typesTable);
         menu->AddControl(typesPanel);
@@ -94,9 +93,27 @@ namespace sam
         int padding = 20;
         int numColumns = 1280 / (128 + padding);
         m_partsTable = std::make_shared<UITable>(numColumns);
-        auto panel = std::make_shared<UIPanel>(0, 0, 0, 0);
-        panel->AddControl(m_partsTable);
-        menu->AddControl(panel);
+        auto partsPanel = std::make_shared<UIPanel>(0, 0, -150, 0);
+        partsPanel->AddControl(m_partsTable);
+        menu->AddControl(partsPanel);
+
+        auto colorsTable = std::make_shared<UITable>(2);
+        int numcolors = BrickManager::Inst().NumColors();
+        colorsTable->SetItems(numcolors, [](int start, int count, UITable::TableItem items[])
+            {
+                for (int r = 0; r < count; r++)
+                {
+                    items[r].colorRect = (uint32_t&)BrickManager::Inst().GetColor(r + start).fill;
+                    items[r].text = std::to_string(BrickManager::Inst().GetColor(r + start).atlasidx);
+                }
+            });
+        colorsTable->OnItemSelected([this](int idx)
+            { m_colortSelectedFn(BrickManager::Inst().GetColor(idx).atlasidx); });
+
+        auto colorsPanel = std::make_shared<UIPanel>(0, 0, 150, 0);
+        colorsPanel->AddControl(colorsTable);
+        menu->AddControl(colorsPanel);
+
         top->AddControl(menu);
         m_mainMenu = menu;
 

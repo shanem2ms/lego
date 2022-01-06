@@ -6,10 +6,10 @@
 #include "LegoUI.h"
 #include "BrickMgr.h"
 #include "World.h"
+#include "PlayerView.h"
+#include "Audio.h"
 #include "imgui.h"
 #include <chrono>
-#define MINIAUDIO_IMPLEMENTATION
-#include "miniaudio/miniaudio.h"
 
 #define WATCHDOGTHREAD 0
 
@@ -48,6 +48,7 @@ namespace sam
         s_pInst = this;
         m_engine = std::make_unique<Engine>();
         m_world = std::make_unique<World>();
+        m_audio = std::make_unique<Audio>();
 #if WATCHDOGTHREAD
         sWatchdogThread = std::thread(WatchDogFunc);
 #endif
@@ -94,13 +95,16 @@ namespace sam
 
         m_legoUI->OnPartSelected([this](const PartId& partname)
             {
-                PartInst pi;
+                PartInst pi = m_world->GetPlayer()->GetRightHandPart();
                 pi.id = partname;
-                pi.paletteIdx = 16;
-                pi.pos = Vec3f(0, 0, -1.0f);
-                pi.rot = Quatf(QUAT_MULT_IDENTITYF);
-                pi.connected = false;
-                m_world->SetRightHandPart(pi);
+                m_world->GetPlayer()->SetRightHandPart(pi);
+            });
+
+        m_legoUI->OnColorSelected([this](int idx)
+            {
+                PartInst pi = m_world->GetPlayer()->GetRightHandPart();
+                pi.paletteIdx = idx;
+                m_world->GetPlayer()->SetRightHandPart(pi);
             });
     }
 

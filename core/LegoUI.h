@@ -12,6 +12,7 @@ namespace sam
         bool m_isActive;
         std::shared_ptr<UITable> m_partsTable;
         std::function<void(const PartId&)> m_partSelectedFn;
+        std::function<void(int)> m_colortSelectedFn;
     public:
         LegoUI() :
             m_isActive(false) {}
@@ -33,5 +34,7 @@ namespace sam
         void BuildPartsTable(int itemIdx);
         void OnPartSelected(const std::function<void(const PartId&)>& partSelectedFn)
         { m_partSelectedFn = partSelectedFn; }
+        void OnColorSelected(const std::function<void(int)>& colorSelectedFn)
+        { m_colortSelectedFn = colorSelectedFn; }
     };
 }

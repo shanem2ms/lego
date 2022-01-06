@@ -3863,14 +3863,14 @@ namespace ldr {
         model.raw = { 0, 0 };
     }
 
-    LdrResult Loader::loadPrimitives(const char* filename, const std::set<std::string>& primitiveFiles, std::vector<LdrPrimitive>& primitives)
+    LdrResult Loader::loadPrimitives(const char* filename, const std::set<std::string>& primitiveFiles, bool debugPrint, std::vector<LdrPrimitive>& primitives)
     {
-        std::string dbg = std::string("loadConnections: ") + filename;
+        std::string dbg = std::string("loadPrimitives: ") + filename;
         DbgPrint(dbg.c_str());
         //#endif
         LdrBbox bbox;
         LdrResult result = loadPrimitive(filename, 0, mat_identity(), false, false, primitiveFiles,
-            primitives, bbox);
+            debugPrint, primitives, bbox);
 
         return result;
     }
@@ -3883,7 +3883,7 @@ namespace ldr {
         LdrBbox bbox;
         std::vector<LdrPrimitive> primitives;
         LdrResult result = loadPrimitive(filename, 0, mat_identity(), false, true, excludePrimitives,
-            primitives, bbox);
+            false, primitives, bbox);
 
         return bbox;
     }
@@ -3897,7 +3897,7 @@ namespace ldr {
     }
 
     LdrResult Loader::loadPrimitive(const char* filename, int level, const LdrMatrix& intransform, bool isInverted,
-        bool exludePrimitives, const std::set<std::string>& primitiveFiles, std::vector<LdrPrimitive>& primitives, LdrBbox& wsBbox)
+        bool exludePrimitives, const std::set<std::string>& primitiveFiles, bool debugPrint, std::vector<LdrPrimitive>& primitives, LdrBbox& wsBbox)
     {
         std::string foundname;
         bool isprimfolder;
@@ -3990,7 +3990,7 @@ namespace ldr {
                     bool childHasGeometry = false;
                     LdrBbox childBbox;
                     loadPrimitive(subfilename, level + 1, transform, isInverted ^ invertNext, exludePrimitives, primitiveFiles,
-                        primitives, childBbox);
+                        debugPrint, primitives, childBbox);
 
                     bbox_merge(wsBbox, childBbox);
                 }
@@ -4051,12 +4051,13 @@ namespace ldr {
             prm.bbox = wsBbox;
             primitives.push_back(prm);
 
-            #ifdef DBGPRINT
-            std::string dbg = std::string(level * 2, ' ') + (isInverted ? std::string("-") : std::string()) +
-                std::string(filename) + " " +
-                std::to_string(isprim);
-            DbgPrint(dbg.c_str());
-            #endif
+            if (debugPrint)
+            {
+                std::string dbg = std::string(level * 2, ' ') + (isInverted ? std::string("-") : std::string()) +
+                    std::string(filename) + " " +
+                    std::to_string(isprim);
+                DbgPrint(dbg.c_str());
+            }
         }
         return LDR_SUCCESS;
     }

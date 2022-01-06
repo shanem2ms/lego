@@ -18,6 +18,7 @@ add_subdirectory(fmt)
 set(Header_Files
     "StdIncludes.h"
     "Application.h"
+    "Audio.h"
     "BrickMgr.h"
     "World.h"
     "Engine.h"
@@ -49,6 +50,7 @@ endif()
 
 set(Source_Files
     "Application.cpp"
+    "Audio.cpp"
     "BrickMgr.cpp"
     "World.cpp"
     "Engine.cpp"
@@ -60,10 +62,10 @@ set(Source_Files
     "UIControl.cpp"
     "ConvexHull.cpp"
     "Mesh.cpp"
-    "PlayerView.cpp"
     "Physics.cpp"
     "Level.cpp"
     "LegoBrick.cpp"
+    "PlayerView.cpp"
     "ConnectionWidget.cpp"
     "LegoUI.cpp"
     "ldrawloader.cpp"

@@ -62,6 +62,12 @@ public:
        this->mData[SIZE - 1] = v;
    }
 
+   Vec(const DATA_TYPE* pData)
+   {
+       for (unsigned i = 0; i < SIZE; ++i)
+           this->mData[i] = pData[i];
+   }
+
    Vec(const Vec<DATA_TYPE, SIZE + 1>& other)
    {
        for (unsigned i = 0; i < SIZE; ++i)

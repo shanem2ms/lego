@@ -141,7 +141,7 @@ namespace sam
         SceneItem* m_pParent;
         SceneItem();
 
-        Matrix44f CalcMat() const;
+        virtual Matrix44f CalcMat() const;
     public:
         
         std::shared_ptr<SceneItem> ptr() {

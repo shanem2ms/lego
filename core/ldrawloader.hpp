@@ -95,7 +95,7 @@ namespace ldr {
         LdrResult loadDeferredParts(uint32_t numParts, const LdrPartID* parts, size_t partStride);
 
         LdrResult loadPrimitives(const char* filename, 
-            const std::set<std::string> &primitiveFiles, std::vector<LdrPrimitive>& connections);
+            const std::set<std::string> &primitiveFiles, bool debugPrint, std::vector<LdrPrimitive>& connections);
         const std::string& getPrimitiveName(int idx) const;
         
         LdrBbox getBboxWithExlcusions(const char* filename, const std::set<std::string>& excludePrimitives);
@@ -550,7 +550,7 @@ namespace ldr {
         LdrResult loadModel(LdrModel& model, const char* filename, LdrBool32 autoResolve);
         LdrResult loadPart(LdrModel& model, const char* filename, LdrBool32 autoResolve);
         LdrResult loadPrimitive(const char* filename, int level, const LdrMatrix& matrix, bool isInverted, bool excludePrimitive,
-            const std::set<std::string>& primitiveFiles, std::vector<LdrPrimitive>& connections, LdrBbox& wsBbox);
+            const std::set<std::string>& primitiveFiles, bool debugPrint, std::vector<LdrPrimitive>& connections, LdrBbox& wsBbox);
         LdrResult makeRenderModel(LdrRenderModel& rmodel, LdrModelHDL model, LdrBool32 autoResolve);
 
         LdrResult appendSubModel(BuilderModel& builder, Text& text, const LdrMatrix& transform, LdrMaterialID material, LdrBool32 autoResolve);

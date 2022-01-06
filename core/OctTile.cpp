@@ -176,6 +176,7 @@ namespace sam
                 auto brick = std::make_shared<LegoBrick>(part.id, part.paletteIdx, 
                     part.connected ? LegoBrick::Physics::Static : LegoBrick::Physics::Dynamic, false);
                 brick->SetOffset(part.pos);
+                brick->SetRotate(part.rot);
                 AddItem(brick);
             }
             m_needsRefresh = false;
@@ -237,6 +238,26 @@ namespace sam
 
     }
 
+    constexpr float epsilon = 1e-5f;
+
+    bool ge(const float& a, const float& b)
+    { return (a - b > -epsilon); }
+
+    bool intersectepsilon(const AABox<float>& box1, const AABox<float>& box2)
+    {
+        // Look for a separating axis on each box for each axis
+        if (ge(box1.getMin()[0], box2.getMax()[0]))  return false;
+        if (ge(box1.getMin()[1], box2.getMax()[1]))  return false;
+        if (ge(box1.getMin()[2], box2.getMax()[2]))  return false;
+
+        if (ge(box2.getMin()[0], box1.getMax()[0]))  return false;
+        if (ge(box2.getMin()[1], box1.getMax()[1]))  return false;
+        if (ge(box2.getMin()[2], box1.getMax()[2]))  return false;
+
+        // No separating axis ... they must intersect
+        return true;
+    }
+
     bool OctTile::CanAddPart(const PartInst& pi, const AABoxf& bbox)
     {
         auto itBrick = m_bricks.begin();
@@ -246,7 +267,7 @@ namespace sam
             AABox cb = (*itBrick)->m_collisionBox;
             cb.mMin = cb.mMin * BrickManager::Scale + itPart->pos;
             cb.mMax = cb.mMax * BrickManager::Scale + itPart->pos;
-            if (intersect(bbox, cb))
+            if (intersectepsilon(bbox, cb))
                 return false;
         }
         return true;

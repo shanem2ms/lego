@@ -34,6 +34,7 @@ namespace sam
         const PartId &GetPartId() const
         { return m_partid; }
     private:
+        Matrix44f CalcMat() const override;
         PartId m_partid;
         Brick* m_pBrick;
         int m_paletteIdx;

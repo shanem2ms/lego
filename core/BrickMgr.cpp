@@ -18,7 +18,9 @@
 #include "Simplify.h"
 #include "bullet/btBulletCollisionCommon.h"
 #include "bullet/btBulletDynamicsCommon.h"
+#include "rapidxml/rapidxml.hpp"
 
+using namespace gmtl;
 
 namespace sam
 {
@@ -176,6 +178,7 @@ namespace sam
     std::map<std::string, ConnectorInfo> sConnectorMap =
     { { "stud.dat", { ConnectorType::Stud, { Vec3f(0,0,0) }}},
         { "stud4.dat", { ConnectorType::InvStud, { Vec3f(0,-4,0), Vec3f(10,-4,10), Vec3f(-10,-4,10), Vec3f(10,-4,-10), Vec3f(-10,-4,-10) }}},
+        { "stud4o.dat", { ConnectorType::InvStud, { Vec3f(0,-4,0) }}},
         { "connect.dat", { ConnectorType::InvStud, { Vec3f(0,0,0) }}},
         { "stud2a.dat",{ ConnectorType::Stud, { Vec3f(0,0,0) }}},
         { "stud2.dat", { ConnectorType::InvStud, { Vec3f(0,0,0) }}},
@@ -224,6 +227,8 @@ namespace sam
             for (; curVtx != endVtx; ++curVtx)
             {
                 curVtx->m_y = -curVtx->m_y;
+                if (curVtx->m_u == 16)
+                    curVtx->m_u = -1;
                 m_bounds += Point3f(curVtx->m_x, curVtx->m_y, curVtx->m_z);
             }
             Vec3f ext = m_bounds.mMax - m_bounds.mMin;
@@ -383,7 +388,35 @@ namespace sam
     {
         std::vector<ldr::LdrPrimitive> primitives;
         pLoader->loadPrimitives(m_name.c_str(),
-            std::set<std::string>(), primitives);
+            std::set<std::string>(), true, primitives);
+    }
+
+    inline bool epEquals(float a, float b)
+    {
+        constexpr float epsilon = 1e-5f;
+        float c = (a - b);
+        return c < epsilon || c >(-epsilon);
+    }
+    inline bool BoundsXZSizeEq(const LdrBbox& bb, const Vec2f& v)
+    {
+        if (epEquals(bb.max.x - bb.min.x, v[0]) &&
+            epEquals(bb.max.z - bb.min.z, v[1]))
+            return true;
+        else
+            return false;
+    }
+
+    ConnectorInfo GetConnectorForPrimitive(ldr::Loader* pLoader, const ldr::LdrPrimitive &prim)
+    {
+        const std::string& name = pLoader->getPrimitiveName(prim.idx);
+        auto itconnection = sConnectorMap.find(name);
+        if (itconnection != sConnectorMap.end())
+            return itconnection->second;
+
+        if (name == "box5.dat" && prim.inverted && BoundsXZSizeEq(prim.bbox, Vec2f(12, 12)))
+            return ConnectorInfo{ ConnectorType::InvStud, { Vec3f(0,0,0) }};
+
+            return ConnectorInfo { ConnectorType::Unknown };
     }
 
     void Brick::LoadConnectors(ldr::Loader* pLoader)
@@ -394,15 +427,14 @@ namespace sam
      
         std::vector<ldr::LdrPrimitive> primitives;
         pLoader->loadPrimitives(m_name.c_str(),
-            sConnectorNames, primitives);
+            sConnectorNames, false, primitives);
+
         for (auto& prim : primitives)
         {
-            const std::string &name = pLoader->getPrimitiveName(prim.idx);
-            auto itconnection = sConnectorMap.find(name);
-            if (itconnection == sConnectorMap.end())
-                continue;
             Connector c;
-            ConnectorInfo& ci = itconnection->second;
+            ConnectorInfo ci = GetConnectorForPrimitive(pLoader, prim);
+            if (ci.type == ConnectorType::Unknown)
+                continue;
             c.type = ci.type;
 
             Matrix44f m;
@@ -416,7 +448,10 @@ namespace sam
                 length(Vec3f(v[1], v[5], v[9])),
                 length(Vec3f(v[2], v[6], v[10])));
             Quatf q = gmtl::make<Quatf>(m);
-            c.dir = q;
+            normalize(q);
+            Vec3f nrm = q * Vec3f(0, 1, 0);
+            normalize(nrm);
+            c.dir = nrm;
 
             for (auto& offset : ci.offsets)
             {
@@ -424,6 +459,67 @@ namespace sam
                 c2.pos += offset * c.scl;
                 m_connectors.push_back(c2);
             }
+        }
+        std::sort(m_connectors.begin(), m_connectors.end());
+        auto itunique = std::unique(m_connectors.begin(), m_connectors.end());
+        m_connectors.erase(itunique, m_connectors.end());
+        if (m_connectors.size() > 0)
+        {
+            std::vector<Vec3f> pts;
+            for (auto& c : m_connectors)
+            {
+                c.pickIdx = pts.size();
+                pts.push_back(c.pos);
+            }
+            m_connectorCL = std::make_shared<CubeList>();
+            m_connectorCL->Create(pts, 5);
+        }
+        m_connectorsLoaded = true;
+    }
+
+
+    void Brick::LoadConnectors2(const std::filesystem::path& connectorPath)
+    {
+        //open file
+        std::ifstream infile(connectorPath);
+
+        //get length of file
+        infile.seekg(0, std::ios::end);
+        size_t length = infile.tellg();
+        infile.seekg(0, std::ios::beg);
+        std::string str;
+        str.resize(length);
+        infile.read(str.data(), length);
+        rapidxml::xml_document<> doc;    // character type defaults to char
+        doc.parse<0>(const_cast<char*>(str.c_str()));
+        rapidxml::xml_node<char>* connectionsNode =
+            doc.first_node("connections");
+        for (rapidxml::xml_node<char>* node = connectionsNode->first_node("cpoint");
+            node; node = node->next_sibling("cpoint"))
+        {
+            Connector c;
+            std::string ctype(node->first_attribute("type")->value());
+            if (ctype == "STUD")
+                c.type = ConnectorType::Stud;
+            else if (ctype == "R_STUD")
+                c.type = ConnectorType::InvStud;
+            else
+                continue;
+            
+            auto basenode = node->first_node("base");
+            c.pos = Vec3f(
+                std::atof(basenode->first_attribute("x")->value()),
+                -std::atof(basenode->first_attribute("y")->value()),
+                std::atof(basenode->first_attribute("z")->value()));
+            auto dirnode = node->first_node("dir");
+            c.scl = Vec3f(1, 1, 1);
+            c.dir = Vec3f(std::atof(dirnode->first_attribute("x")->value()),
+                -std::atof(dirnode->first_attribute("y")->value()),
+                std::atof(dirnode->first_attribute("z")->value()));
+            c.dir -= c.pos;
+            normalize(c.dir);
+                
+            m_connectors.push_back(c);
         }
         std::sort(m_connectors.begin(), m_connectors.end());
         auto itunique = std::unique(m_connectors.begin(), m_connectors.end());
@@ -467,6 +563,7 @@ namespace sam
         spLoader = m_ldrLoader.get();
         spMgr = this;
         m_cachePath = Application::Inst().Documents() + "/ldrcache";
+        m_connectorPath = Application::Inst().Documents() + "/ldrconn";
         std::filesystem::create_directory(m_cachePath);
         LoadColors(ldrpath);
         LoadAllParts(ldrpath);
@@ -479,7 +576,15 @@ namespace sam
     }
     void BrickManager::LoadConnectors(Brick* pBrick)
     {
-        pBrick->LoadConnectors(m_ldrLoader.get());
+        std::filesystem::path connectorPath = m_connectorPath / pBrick->m_name;
+        connectorPath.replace_extension("cxml");
+
+        if (std::filesystem::exists(connectorPath))
+        {
+            pBrick->LoadConnectors2(connectorPath);
+        }
+        else
+            pBrick->LoadConnectors(m_ldrLoader.get());
     }
 
     void BrickManager::LoadPrimitives(Brick* pBrick)
@@ -558,11 +663,14 @@ namespace sam
 
 
                 std::filesystem::path filepath = m_cachePath / filename;
+                std::filesystem::path connectorPath = m_connectorPath / filename;
+                connectorPath.replace_extension("cxml");
                 filepath.replace_extension("mesh");
                 char* p_end;
                 int val = std::strtol(filename.data(), &p_end, 10);
-                if (std::filesystem::exists(filepath))
-                {
+                if (std::filesystem::exists(filepath) &&
+                    std::filesystem::exists(connectorPath))
+                {                                        
                     PartDesc pd;
                     pd.index = val;
                     pd.type = ptype;
@@ -696,7 +804,7 @@ namespace sam
         std::vector<PartId> misc;
         for (auto itType = m_typesMap.begin(); itType != m_typesMap.end(); )
         {
-            if (itType->second.size() < 64)
+            if (itType->second.size() < 16)
             {
                 misc.insert(misc.end(), itType->second.begin(), itType->second.end());
                 itType = m_typesMap.erase(itType);
@@ -733,7 +841,7 @@ namespace sam
                 );
         }
 
-        Vec4f color = Vec4f(16, 0, 0, 0);
+        Vec4f color = Vec4f(15, 0, 0, 0);
         PosTexcoordNrmVertex::init();
         std::vector<Brick*> brickRenderQueue;
         std::swap(brickRenderQueue, m_brickRenderQueue);
@@ -760,8 +868,8 @@ namespace sam
             bgfx::setViewName(viewId, "brickicons");
             bgfx::setViewFrameBuffer(viewId, iconFB);
             Matrix44f view, proj;
-            identity(view);
-            identity(proj);
+            gmtl::identity(view);
+            gmtl::identity(proj);
             bgfx::setUniform(sUparams, &color, 1);
             bgfx::setViewRect(viewId, 0, 0, bgfx::BackbufferRatio::Equal);
             bgfx::setViewTransform(viewId, view.getData(), proj.getData());
@@ -777,7 +885,7 @@ namespace sam
                 makeTrans<Matrix44f>(Vec3f(0, 0, 0.75f)) *
                 makeRot<Matrix44f>(AxisAnglef(gmtl::Math::PI, Vec3f(1, 0, 0))) *
                 makeRot<Matrix44f>(AxisAnglef(gmtl::Math::PI_OVER_4, Vec3f(1, 0, 0))) *
-                makeRot<Matrix44f>(AxisAnglef(gmtl::Math::PI_OVER_4, Vec3f(0, 1, 0))) *
+                makeRot<Matrix44f>(AxisAnglef(3 * gmtl::Math::PI_OVER_4, Vec3f(0, 1, 0))) *
                 makeScale<Matrix44f>(1.0f / brick->m_scale) *
                 makeTrans<Matrix44f>(-brick->m_center);
             bgfx::setTransform(m.getData());
@@ -797,8 +905,6 @@ namespace sam
             bgfx::setVertexBuffer(0, brick->m_vbh);
             bgfx::setIndexBuffer(brick->m_ibh);
             bgfx::submit(viewId, sShader);
-
-
         }
     }
 

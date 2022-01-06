@@ -49,7 +49,6 @@ namespace sam
         if (!sUparams.isValid())
             sUparams = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 1);
 
-        SetScale(Vec3f(BrickManager::Scale, BrickManager::Scale, BrickManager::Scale));
         //SetRotate();
 
         BrickManager::Inst().LoadConnectors(m_pBrick);
@@ -59,7 +58,7 @@ namespace sam
             {
                 auto connectWidget = std::make_shared<ConnectionWidget>(c.type);
                 connectWidget->SetOffset(c.pos);
-                connectWidget->SetRotate(c.dir);
+                connectWidget->SetRotate(c.GetDirAsQuat());
                 AddItem(connectWidget);
             }
         }
@@ -98,12 +97,20 @@ namespace sam
                 auto& c = m_pBrick->m_connectors[connectorIdx];
                 auto connectWidget = std::make_shared<ConnectionWidget>(c.type);
                 connectWidget->SetOffset(c.pos);
-                connectWidget->SetRotate(c.dir);
+                connectWidget->SetRotate(c.GetDirAsQuat());
                 AddItem(connectWidget);
                 m_connectorPickWidget = connectWidget;
             }
         }
         m_connectorPickIdx = connectorIdx;
+    }
+
+    Matrix44f LegoBrick::CalcMat() const
+    {
+        return makeTrans<Matrix44f>(m_offset) *
+            makeRot<Matrix44f>(m_rotate) *
+            makeScale<Matrix44f>(m_scale) *
+            makeScale<Matrix44f>(Vec3f(BrickManager::Scale, BrickManager::Scale, BrickManager::Scale));
     }
 
     void LegoBrick::Draw(DrawContext& ctx)
@@ -115,9 +122,8 @@ namespace sam
             BrickManager::Inst().MruUpdate(m_pBrick);
         PosTexcoordNrmVertex::init();
         Matrix44f m = ctx.m_mat *
-            makeTrans<Matrix44f>(m_offset) *
-            makeRot<Matrix44f>(m_rotate) *
-            makeScale<Matrix44f>(m_scale);
+            CalcMat();
+            
         // Set render states.l
 
         bool drawBBoxes = (ctx.debugDraw == 1);
