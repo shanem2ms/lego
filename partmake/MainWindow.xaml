@@ -1,0 +1,41 @@
+﻿<Window x:Class="partmake.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:partmake"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="800">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200" />
+            <ColumnDefinition Width="200" />
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <TextBox Height="30" TextChanged="TextBox_TextChanged" />
+            <ListBox Grid.Row="1" ItemsSource="{Binding LDrawParts}" SelectedItem="{Binding Path=SelectedItem}" />
+        </Grid>
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <TextBlock Height="30" Text="{Binding Path=SelectedItemDesc}" />
+            <TreeView Grid.Row="1" Background="AliceBlue" ItemsSource="{Binding Path=CurrentPart}" 
+                      SelectedItemChanged="TreeView_SelectedItemChanged">
+                <TreeView.Resources>
+                    <HierarchicalDataTemplate DataType="{x:Type local:LDrawDatNode}"
+                                   ItemsSource="{Binding Path=File.Children}">
+                        <TextBlock Text="{Binding Path=File.Name}" />
+                    </HierarchicalDataTemplate>
+                </TreeView.Resources>
+            </TreeView>
+        </Grid>
+        <local:ThreeD x:Name="threeD" Grid.Column="2" />
+    </Grid>
+</Window>
