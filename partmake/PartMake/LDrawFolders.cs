@@ -9,16 +9,18 @@ using System.Text.RegularExpressions;
 
 namespace partmake
 {
-    
+
     public static class LDrawFolders
     {
         public class Entry : IComparable<Entry>
         {
             public string type;
+            public string name;
             public string path;
             public LDrawDatFile file;
             public string desc;
             public float[] dims;
+            public bool ismainpart;
 
             public int CompareTo(Entry other)
             {
@@ -35,7 +37,16 @@ namespace partmake
         static string rootFolder;
         static List<Entry> ldrawParts = new List<Entry>();
         static Dictionary<string, Entry> partPaths = new Dictionary<string, Entry>();
-
+        static string selectedType;
+        static public string SelectedType
+        {
+            get => selectedType;
+            set { selectedType = value; }
+        }
+        public static List<Entry> LDrawParts { get => selectedType == null ? new List<Entry>() : 
+                lDrawGroups[selectedType]; }
+        public static IEnumerable<string> LDrawGroups => lDrawGroups.Keys;
+        static Dictionary<string, List<Entry>> lDrawGroups = new Dictionary<string, List<Entry>>();
         static void GetFilesRecursive(DirectoryInfo di, List<string> filepaths)
         {
             foreach (DirectoryInfo dichild in di.GetDirectories())
@@ -48,8 +59,6 @@ namespace partmake
                 filepaths.Add(fi.FullName);
             }
         }
-
-        public static List<Entry> LDrawParts { get => ldrawParts; }
         public static void SetRoot(string folder)
         {
             string descFile = "partdesc.txt";
@@ -62,14 +71,14 @@ namespace partmake
 
                 StreamWriter sw = new StreamWriter(Path.Combine(folder, descFile + ".tmp"));
                 Regex r = new Regex(@"0\s[~=]?(\w+)");
-                Regex rdim = new Regex(@"([\d\.])+(\s+x\s+([\d\.]+))+");
+                Regex rdim = new Regex(@"([\d\.]+)(\s+x\s+([\d\.]+))+");
                 foreach (string fullName in allFiles)
                 {
                     string relname = Path.GetRelativePath(folder, fullName);
                     string name = Path.GetFileName(relname);
                     string reldir = Path.GetDirectoryName(relname);
                     string line = "";
-                    string dim = "";                                                                                     
+                    string dim = "";
                     string typestr;
                     string desc;
                     using (StreamReader sr = new StreamReader(fullName))
@@ -86,12 +95,13 @@ namespace partmake
                             }
                             if (descline == null && line.Length > 0)
                                 descline = line;
-                            if (line.StartsWith(@"0 ~Moved to") || 
+                            /*
+                            if (line.StartsWith(@"0 ~Moved to") ||
                                 line.StartsWith(@"0 // Alias of"))
                             {
                                 skip = true;
                                 break;
-                            }
+                            } */
                         }
                         if (skip)
                             continue;
@@ -102,7 +112,7 @@ namespace partmake
                         typestr = typestr.TrimStart('_');
                         descline = descline.Substring(tm.Index + tm.Length);
 
-                        Match psm = rdim.Match(descline);                                     
+                        Match psm = rdim.Match(descline);
                         string[] dims = null;
                         if (psm.Groups.Count > 1)
                         {
@@ -124,12 +134,13 @@ namespace partmake
                 File.Move(Path.Combine(folder, descFile + ".tmp"), Path.Combine(folder, descFile));
             }
 
+
             using (StreamReader sr = new StreamReader(Path.Combine(folder, descFile)))
             {
                 while (!sr.EndOfStream)
                 {
                     string line = sr.ReadLine();
-                    string []vals = line.Split("//");
+                    string[] vals = line.Split("//");
                     string name = vals[0];
                     float[] dims = null;
                     if (vals[2].Length > 0)
@@ -142,14 +153,65 @@ namespace partmake
                         }
                     }
                     Entry e = new Entry()
-                    { path = Path.Combine(rootFolder, vals[4], name), type = vals[1], desc = vals[3], dims = dims };
-                    if (vals[4] == "parts")
-                        ldrawParts.Add(e);
+                    {
+                        path = Path.Combine(rootFolder, vals[4], name),
+                        name = name,
+                        type = vals[1],
+                        desc = vals[3],
+                        dims = dims,
+                        ismainpart = (vals[4] == "parts")
+                    };
+
                     partPaths.Add(Path.Combine(vals[4], name).ToLower(), e);
                 }
             }
 
+            
             ldrawParts.Sort();
+            string nomats = "nomaterials.txt";
+            if (!File.Exists(Path.Combine(folder, nomats)))
+            {
+                StreamWriter sw = new StreamWriter(Path.Combine(folder, nomats + ".tmp"));
+                foreach (var kv in partPaths)
+                {
+                    if (!kv.Value.ismainpart)
+                        continue;
+                    LDrawDatFile df = GetPart(kv.Value);
+                    if (!df.IsMultiColor)
+                        sw.WriteLine(kv.Key);
+                }
+                sw.Close();
+                File.Move(Path.Combine(folder, nomats + ".tmp"), Path.Combine(folder, nomats));
+            }
+
+            using (StreamReader sr = new StreamReader(Path.Combine(folder, nomats)))
+            {
+                while (!sr.EndOfStream)
+                {
+                    string line = sr.ReadLine();
+                    ldrawParts.Add(partPaths[line]);
+                }
+            }
+
+            ldrawParts.Sort();
+
+            foreach (var part in ldrawParts)
+            {
+                List<Entry> dictGroups;
+                if (!lDrawGroups.TryGetValue(part.type, out dictGroups))
+                {
+                    dictGroups = new List<Entry>();
+                    lDrawGroups.Add(part.type, dictGroups);
+                }
+                dictGroups.Add(part);
+            }
+
+            var stayGrps = lDrawGroups.Where(kv => kv.Value.Count > 100);
+            Dictionary<string, List<Entry>> newGrps = new Dictionary<string, List<Entry>>(
+                lDrawGroups.Where(kv => kv.Value.Count > 100));
+            var result = lDrawGroups.Where(kv => kv.Value.Count <= 100).SelectMany(kv => kv.Value).ToList();
+            newGrps.Add("misc", result);
+            lDrawGroups = newGrps;
         }
 
         public static void LoadAll()
@@ -159,14 +221,20 @@ namespace partmake
                 if (i % 100 == 0)
                     Debug.WriteLine(i);
                 LDrawDatFile df = GetPart(ldrawParts[i]);
-                Topology.Mesh m = new Topology.Mesh();
-                df.GetTopoMesh(m);
-                var loops = m.FindSquares();
-                if (loops.Count > 0)
-                {
-                    Debug.WriteLine(ldrawParts[i] + " " + loops.Count.ToString());
-                }
             }
+        }
+
+        public static void WriteAll()
+        {
+            string path = @"C:\homep4\lego\connectors";
+            for (int i = 0; i < ldrawParts.Count; i++)
+            {
+                if (i % 100 == 0)
+                    Debug.WriteLine(i);
+                LDrawDatFile df = GetPart(ldrawParts[i]);
+                df.WriteConnectorFile(path);
+            }
+            
         }
 
         public static Entry GetEntry(string name)

@@ -16,7 +16,8 @@ namespace partmake
     public partial class RenderControl : System.Windows.Controls.UserControl, IDisposable
     {
         private readonly VeldridControl _veldridControl;
-
+        
+        public bool ShowBisector { get => Vis.ShowBisector; set => Vis.ShowBisector = value; }
         public PartVis Vis => _veldridControl.Vis;
         public RenderControl()
         {
@@ -48,7 +49,7 @@ namespace partmake
         private bool _isAnimated;
 
         PartVis _partVis = null;
-        public PartVis Vis => _partVis;
+        public PartVis Vis => _partVis;        
         public VeldridControl()
         {
             _partVis = new PartVis(this);
@@ -149,19 +150,21 @@ namespace partmake
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
-            _partVis.MouseMove(e.X, e.Y);
+            _partVis.MouseMove(e.X, e.Y, System.Windows.Forms.Control.ModifierKeys);
             base.OnMouseMove(e);
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
         {
-            _partVis.MouseDown(0, e.X, e.Y);
+            int btn = e.Button == MouseButtons.Left ? 0 : 1;
+            _partVis.MouseDown(btn, e.X, e.Y, System.Windows.Forms.Control.ModifierKeys);
             base.OnMouseDown(e);
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
         {
-            _partVis.MouseUp(0, e.X, e.Y);
+            int btn = e.Button == MouseButtons.Left ? 0 : 1;
+            _partVis.MouseUp(btn, e.X, e.Y);
             base.OnMouseUp(e);
         }
         protected override void OnKeyDown(KeyEventArgs e)

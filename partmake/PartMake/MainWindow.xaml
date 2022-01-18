@@ -16,9 +16,11 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="30" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="30" />
             </Grid.RowDefinitions>
-            <TextBox Height="30" TextChanged="TextBox_TextChanged" />
+            <ComboBox Height="30" ItemsSource="{Binding LDrawGroups}" SelectedItem="{Binding Path=SelectedType}" />
             <ListBox Grid.Row="1" ItemsSource="{Binding LDrawParts}" SelectedItem="{Binding Path=SelectedItem}" />
+            <Button Content="Write All" Grid.Row="2" Click="Button_Click"/>
         </Grid>
         <Grid Grid.Column="1">
             <Grid.RowDefinitions>
@@ -31,11 +33,25 @@
                 <TreeView.Resources>
                     <HierarchicalDataTemplate DataType="{x:Type local:LDrawDatNode}"
                                    ItemsSource="{Binding Path=File.Children}">
-                        <TextBlock Text="{Binding Path=File.Name}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="40" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <CheckBox Grid.Column="0" IsChecked="{Binding Path=IsEnabled}" Checked="CheckBox_Checked" Unchecked="CheckBox_Checked"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Path=File.Name}" />
+                        </Grid>
                     </HierarchicalDataTemplate>
                 </TreeView.Resources>
             </TreeView>
         </Grid>
-        <local:RenderControl x:Name="_RenderControl" Grid.Column="2"/>
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30" />
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <CheckBox Content="Show Bisector" IsChecked="{Binding Path=ShowBisector, ElementName=_RenderControl}"/>
+            <local:RenderControl x:Name="_RenderControl" Grid.Row="1"/>
+        </Grid>
     </Grid>
 </Window>

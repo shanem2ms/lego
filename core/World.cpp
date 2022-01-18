@@ -104,24 +104,24 @@ namespace sam
                 Vec4f cwpos;
                 xform(cwpos, wm, Vec4f(connector.pos,1));
 
-                Brick* pMyBrick = BrickManager::Inst().GetBrick(m_player->GetRightHandPart().id);
+                Brick* pRHandBrick = BrickManager::Inst().GetBrick(m_player->GetRightHandPart().id);
                 BrickManager::Inst().LoadConnectors(pBrick);
-                for (auto& myconnect : pMyBrick->m_connectors)
+                for (auto& rhandconnect : pRHandBrick->m_connectors)
                 {
-                    if (Connector::CanConnect(connector.type, myconnect.type))
+                    if (Connector::CanConnect(connector.type, rhandconnect.type))
                     {
                         
-                        Vec3f newpos = cq * myconnect.pos;
+                        Vec3f newpos = cq * rhandconnect.pos;
 
                         PartInst pi = m_player->GetRightHandPart();
                         pi.rot = cq;
                         Vec3f pos = Vec3f(cwpos) - (newpos * BrickManager::Scale);
                         pi.pos = pos;
 
-                        AABoxf cbox = pMyBrick->m_collisionBox;
+                        AABoxf cbox = pRHandBrick->m_collisionBox;
                         cbox.mMin = cbox.mMin * BrickManager::Scale + pi.pos;
                         cbox.mMax = cbox.mMax * BrickManager::Scale + pi.pos;
-                        if (m_octTileSelection.CanAddPart(pi, cbox))
+                        if (true)//m_octTileSelection.CanAddPart(pi, cbox))
                         {
                             m_octTileSelection.AddPartInst(pi);
                             Application::Inst().GetAudio().PlayOnce("click-7.wav");

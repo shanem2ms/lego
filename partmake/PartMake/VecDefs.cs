@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Numerics;
 
 namespace partmake
@@ -20,6 +21,8 @@ namespace partmake
         public bool invert;
         public LDrawDatFile File { get; set; }
         public bool IsSelected { get; set; }
+        public bool IsEnabled { get; 
+            set; } = true;
     }
 
     public class Plane
@@ -106,7 +109,17 @@ namespace partmake
                     System.Diagnostics.Debug.WriteLine("Non-conplanar {0}", p.DistFromPlane(vtx));
             }
         }
-        public void GetVertices(List<Vtx> vertices, Matrix4x4 transform, bool inverted)
+        public void GetVertices(List<Vector3> vertices, Matrix4x4 transform, bool inverted)
+        {
+            Vector3 nrm = Normal(inverted);
+            for (int _idx = 0; _idx < v.Length; ++_idx)
+            {
+                int idx = inverted ? v.Length - _idx - 1 : _idx;
+                vertices.Add(V3T(v[idx], transform));
+            }
+        }
+
+        public void GetTriangleVertices(List<Vtx> vertices, Matrix4x4 transform, bool inverted)
         {
             Vector3 nrm = Normal(inverted);
             if (v.Length == 4)
@@ -150,5 +163,200 @@ namespace partmake
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Provides XNA-like axis-aligned bounding box functionality.
+    /// </summary>
+    public struct AABB
+    {
+        /// <summary>
+        /// Location with the lowest X, Y, and Z coordinates in the axis-aligned bounding box.
+        /// </summary>
+        public System.Numerics.Vector3 Min;
+
+        /// <summary>
+        /// Location with the highest X, Y, and Z coordinates in the axis-aligned bounding box.
+        /// </summary>
+        public System.Numerics.Vector3 Max;
+
+        /// <summary>
+        /// Constructs a bounding box from the specified minimum and maximum.
+        /// </summary>
+        /// <param name="min">Location with the lowest X, Y, and Z coordinates contained by the axis-aligned bounding box.</param>
+        /// <param name="max">Location with the highest X, Y, and Z coordinates contained by the axis-aligned bounding box.</param>
+        public AABB(System.Numerics.Vector3 min, System.Numerics.Vector3 max)
+        {
+            this.Min = min;
+            this.Max = max;
+        }
+
+        /// <summary>
+        /// Gets an array of locations corresponding to the 8 corners of the bounding box.
+        /// </summary>
+        /// <returns>Corners of the bounding box.</returns>
+        public System.Numerics.Vector3[] GetCorners()
+        {
+            var toReturn = new System.Numerics.Vector3[8];
+            toReturn[0] = new System.Numerics.Vector3(Min.X, Max.Y, Max.Z);
+            toReturn[1] = Max;
+            toReturn[2] = new System.Numerics.Vector3(Max.X, Min.Y, Max.Z);
+            toReturn[3] = new System.Numerics.Vector3(Min.X, Min.Y, Max.Z);
+            toReturn[4] = new System.Numerics.Vector3(Min.X, Max.Y, Min.Z);
+            toReturn[5] = new System.Numerics.Vector3(Max.X, Max.Y, Min.Z);
+            toReturn[6] = new System.Numerics.Vector3(Max.X, Min.Y, Min.Z);
+            toReturn[7] = Min;
+            return toReturn;
+        }
+
+
+        /// <summary>
+        /// Determines if a bounding box intersects another bounding box.
+        /// </summary>
+        /// <param name="boundingBox">Bounding box to test against.</param>
+        /// <returns>Whether the bounding boxes intersected.</returns>
+        public bool Intersects(AABB boundingBox)
+        {
+            if (boundingBox.Min.X > Max.X || boundingBox.Min.Y > Max.Y || boundingBox.Min.Z > Max.Z)
+                return false;
+            if (Min.X > boundingBox.Max.X || Min.Y > boundingBox.Max.Y || Min.Z > boundingBox.Max.Z)
+                return false;
+            return true;
+
+        }
+
+        /// <summary>
+        /// Determines if a bounding box intersects another bounding box.
+        /// </summary>
+        /// <param name="boundingBox">Bounding box to test against.</param>
+        /// <param name="intersects">Whether the bounding boxes intersect.</param>
+        public void Intersects(ref AABB boundingBox, out bool intersects)
+        {
+            if (boundingBox.Min.X > Max.X || boundingBox.Min.Y > Max.Y || boundingBox.Min.Z > Max.Z)
+            {
+                intersects = false;
+                return;
+            }
+            if (Min.X > boundingBox.Max.X || Min.Y > boundingBox.Max.Y || Min.Z > boundingBox.Max.Z)
+            {
+                intersects = false;
+                return;
+            }
+            intersects = true;
+        }
+
+
+        public enum ContainmentType
+        {
+            Disjoint,
+            Contains,
+            Intersects
+        }
+        //public bool Intersects(BoundingFrustum frustum)
+        //{
+        //    bool intersects;
+        //    frustum.Intersects(ref this, out intersects);
+        //    return intersects;
+        //}
+
+        public ContainmentType Contains(ref AABB boundingBox)
+        {
+            if (Max.X < boundingBox.Min.X || Min.X > boundingBox.Max.X ||
+                Max.Y < boundingBox.Min.Y || Min.Y > boundingBox.Max.Y ||
+                Max.Z < boundingBox.Min.Z || Min.Z > boundingBox.Max.Z)
+                return ContainmentType.Disjoint;
+            //It is known to be at least intersecting. Is it contained?
+            if (Min.X <= boundingBox.Min.X && Max.X >= boundingBox.Max.X &&
+                Min.Y <= boundingBox.Min.Y && Max.Y >= boundingBox.Max.Y &&
+                Min.Z <= boundingBox.Min.Z && Max.Z >= boundingBox.Max.Z)
+                return ContainmentType.Contains;
+            return ContainmentType.Intersects;
+        }
+
+        public ContainmentType Contains(Vector3 v)
+        {
+            if (v.X < Min.X || v.X > Max.X)
+                return ContainmentType.Disjoint;
+            if (v.Y < Min.Y || v.Y > Max.Y)
+                return ContainmentType.Disjoint;
+            if (v.Z < Min.Z || v.Z > Max.Z)
+                return ContainmentType.Disjoint;
+            return ContainmentType.Intersects;
+        }
+
+
+        /// <summary>
+        /// Creates the smallest possible bounding box that contains a list of points.
+        /// </summary>
+        /// <param name="points">Points to enclose with a bounding box.</param>
+        /// <returns>Bounding box which contains the list of points.</returns>
+        public static AABB CreateFromPoints(IEnumerable<System.Numerics.Vector3> points)
+        {
+            AABB aabb;
+            var ee = points.GetEnumerator();
+            bool cont = ee.MoveNext();
+            aabb.Min = ee.Current;
+            aabb.Max = aabb.Min;
+            while (ee.MoveNext())
+            {
+                System.Numerics.Vector3 v = ee.Current;
+                if (v.X < aabb.Min.X)
+                    aabb.Min.X = v.X;
+                else if (v.X > aabb.Max.X)
+                    aabb.Max.X = v.X;
+
+                if (v.Y < aabb.Min.Y)
+                    aabb.Min.Y = v.Y;
+                else if (v.Y > aabb.Max.Y)
+                    aabb.Max.Y = v.Y;
+
+                if (v.Z < aabb.Min.Z)
+                    aabb.Min.Z = v.Z;
+                else if (v.Z > aabb.Max.Z)
+                    aabb.Max.Z = v.Z;
+            }
+            return aabb;
+        }
+
+
+
+        /// <summary>
+        /// Creates the smallest bounding box which contains two other bounding boxes.
+        /// </summary>
+        /// <param name="a">First bounding box to be contained.</param>
+        /// <param name="b">Second bounding box to be contained.</param>
+        /// <param name="merged">Smallest bounding box which contains the two input bounding boxes.</param>
+        public static void CreateMerged(ref AABB a, ref AABB b, out AABB merged)
+        {
+            if (a.Min.X < b.Min.X)
+                merged.Min.X = a.Min.X;
+            else
+                merged.Min.X = b.Min.X;
+            if (a.Min.Y < b.Min.Y)
+                merged.Min.Y = a.Min.Y;
+            else
+                merged.Min.Y = b.Min.Y;
+            if (a.Min.Z < b.Min.Z)
+                merged.Min.Z = a.Min.Z;
+            else
+                merged.Min.Z = b.Min.Z;
+
+            if (a.Max.X > b.Max.X)
+                merged.Max.X = a.Max.X;
+            else
+                merged.Max.X = b.Max.X;
+            if (a.Max.Y > b.Max.Y)
+                merged.Max.Y = a.Max.Y;
+            else
+                merged.Max.Y = b.Max.Y;
+            if (a.Max.Z > b.Max.Z)
+                merged.Max.Z = a.Max.Z;
+            else
+                merged.Max.Z = b.Max.Z;
+        }
+
+
+       
+
     }
 }

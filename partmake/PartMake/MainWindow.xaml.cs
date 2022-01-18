@@ -18,6 +18,8 @@ namespace partmake
                 return LDrawFolders.LDrawParts;
             } }
 
+        public IEnumerable<string> LDrawGroups { get => LDrawFolders.LDrawGroups; }
+
         LDrawFolders.Entry selectedItem = null;
         LDrawDatFile selectedPart = null;
         string textFilter = "";
@@ -28,6 +30,11 @@ namespace partmake
 
         public event PropertyChangedEventHandler PropertyChanged;
 
+        public string SelectedType { get => LDrawFolders.SelectedType; 
+            set { LDrawFolders.SelectedType = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("LDrawParts"));
+            }
+        }
         public LDrawFolders.Entry SelectedItem
         {
             get { return selectedItem; }
@@ -47,11 +54,17 @@ namespace partmake
             LDrawFolders.SetRoot(@"c:\ldraw");
             this.DataContext = this;
             InitializeComponent();
-            SelectedItem = LDrawFolders.GetEntry("4733.dat");
+            string part = "4733.dat";
+            if (File.Exists("PartMake.ini"))
+            {
+                string[] lines = File.ReadAllLines("PartMake.ini");
+                if (lines.Length > 0)
+                    part = lines[0];
+            }
+            SelectedItem = LDrawFolders.GetEntry(part);
             vis = _RenderControl.Vis;
             if (selectedItem != null)
                 vis.Part = selectedItem;
-            //LDrawFolders.LoadAll();
         }
 
 
@@ -61,6 +74,7 @@ namespace partmake
                 return;
             selectedPart = LDrawFolders.GetPart(item);
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentPart"));
+            File.WriteAllLines("PartMake.ini", new string[] { item.name });
         }
 
         private void TextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -77,6 +91,16 @@ namespace partmake
             if (e.OldValue != null)
                 (e.OldValue as LDrawDatNode).IsSelected = false;
             //threeD.Refresh();
+        }
+
+        private void CheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            vis.Part = selectedItem;
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            LDrawFolders.WriteAll();
         }
     }
 }

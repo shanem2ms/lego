@@ -1,10 +1,12 @@
-﻿using AssetPrimitives;
+﻿using System;
+using AssetPrimitives;
 using SampleBase;
 using System.Numerics;
 using System.Text;
 using Veldrid;
 using Veldrid.SPIRV;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace partmake
 {
@@ -13,8 +15,12 @@ namespace partmake
         private DeviceBuffer _projectionBuffer;
         private DeviceBuffer _viewBuffer;
         private DeviceBuffer _worldBuffer;
+        private DeviceBuffer _materialBuffer;
         private DeviceBuffer _vertexBuffer;
         private DeviceBuffer _indexBuffer;
+        private DeviceBuffer _cubeVertexBuffer;
+        private DeviceBuffer _cubeIndexBuffer;
+        uint _cubeIndexCount;
         private CommandList _cl;
         private Pipeline _pipeline;
         private ResourceSet _projViewSet;
@@ -23,9 +29,26 @@ namespace partmake
         Vector2 lookDir;
         int mouseDown = 0;
         Vector2 lMouseDownPt;
+        Vector2 rMouseDownPt;
         Vector2 mouseDownLookDir;
         Vector3 partOffset;
+        Vector3 cameraPos = new Vector3(0, 0, -8.5f);
+        Vector3 mouseDownCameraPos;
         float partScale;
+        float zoom = 0;
+        float mouseDownZoom = 0;
+        public bool ShowBisector {get;set;}
+        Vector4[] edgePalette;
+
+        class ConnectorVis
+        {
+            public LDrawDatFile.ConnectorType type;
+            public Matrix4x4 mat;
+        }
+        List<ConnectorVis> connectorVizs = new List<ConnectorVis>();
+        List<Topology.Edge> edges = new List<Topology.Edge>();
+        List<Vector3> candidateRStuds = new List<Vector3>();
+        List<Tuple<Vector3, Vector3>> bisectors = new List<Tuple<Vector3, Vector3>>();
 
         LDrawFolders.Entry _part;
         ResourceFactory _factory;
@@ -33,23 +56,43 @@ namespace partmake
 
         public PartVis(ApplicationWindow window) : base(window)
         {
+            edgePalette = new Vector4[100];
+            Random r = new Random();
+            for (int idx = 0; idx < edgePalette.Length; ++idx)
+            {
+                edgePalette[idx] = new Vector4((float)r.NextDouble(),
+                    (float)r.NextDouble(), (float)r.NextDouble(), 1);
+            }
         }
 
-
-        public void MouseDown(int btn, int X, int Y)
+        public void MouseDown(int btn, int X, int Y, System.Windows.Forms.Keys keys)
         {
             mouseDown |= 1 << btn;
             mouseDownLookDir = lookDir;
-            lMouseDownPt = new Vector2(X, Y);
+            mouseDownZoom = zoom;
+            rMouseDownPt = lMouseDownPt = new Vector2(X, Y);
+            mouseDownCameraPos = cameraPos;
         }
         public void MouseUp(int btn, int X, int Y)
         {
             mouseDown &= ~(1 << btn);
         }
-        public void MouseMove(int X, int Y)
+        public void MouseMove(int X, int Y, System.Windows.Forms.Keys keys)
         {
             if ((mouseDown & 1) != 0)
                 lookDir = mouseDownLookDir + (new Vector2(X, Y) - lMouseDownPt) * 0.01f;
+            if ((mouseDown & 2) != 0)
+            {
+                if ((keys & System.Windows.Forms.Keys.Shift) != 0)
+                {
+                    float tscale = 0.01f;
+                    cameraPos = mouseDownCameraPos - new Vector3(-X + lMouseDownPt.X, Y - lMouseDownPt.Y, 0) * tscale;
+                }
+                else
+                {
+                    zoom = mouseDownZoom + (Y - rMouseDownPt.Y) * 0.005f;
+                }
+            }
         }
 
         void OnPartUpdated()
@@ -59,21 +102,18 @@ namespace partmake
             LDrawDatFile part = LDrawFolders.GetPart(_part);
             List<Vtx> vlist = new List<Vtx>();
             part.GetVertices(vlist, false);
-            Vtx[] vertices = vlist.ToArray();
-            Vector3 min = vertices[0].pos, max = vertices[0].pos;
-            foreach (Vtx v in vertices)
+
+            if (vlist.Count == 0)
             {
-                if (v.pos.X < min.X) min.X = v.pos.X;
-                if (v.pos.Y < min.Y) min.Y = v.pos.Y;
-                if (v.pos.Z < min.Z) min.Z = v.pos.Z;
-                if (v.pos.X > max.X) max.X = v.pos.X;
-                if (v.pos.Y > max.Y) max.Y = v.pos.Y;
-                if (v.pos.Z > max.Z) max.Z = v.pos.Z;
+                return;
             }
 
-            partOffset = (min + max) * 0.5f;
-            Vector3 vecScale = (max - min);
-            partScale = 1 / System.MathF.Max(System.MathF.Max(vecScale.X, vecScale.Y), vecScale.Z);
+            Vtx[] vertices = vlist.ToArray();
+            AABB aabb = AABB.CreateFromPoints(vertices.Select(v => v.pos));
+
+            partOffset = (aabb.Min + aabb.Max) * 0.5f;
+            Vector3 vecScale = (aabb.Max - aabb.Min);
+            partScale = 0.025f;// 1 / MathF.Max(MathF.Max(vecScale.X, vecScale.Y), vecScale.Z);
             uint[] indices = new uint[vlist.Count];
             for (uint i = 0; i < indices.Length; ++i)
             {
@@ -87,6 +127,21 @@ namespace partmake
             GraphicsDevice.UpdateBuffer(_indexBuffer, 0, indices);
             _indexCount = indices.Length;
 
+            List<LDrawDatFile.Connector> connectors = part.GetConnectors();
+            connectorVizs.Clear();
+            foreach (var conn in connectors)
+            {
+                if (conn.type == LDrawDatFile.ConnectorType.Stud || conn.type == LDrawDatFile.ConnectorType.RStud)
+                    connectorVizs.Add(new ConnectorVis() { type = conn.type, mat = conn.mat });
+            }
+
+            /*
+            this.edges.Clear();
+            m.GetBottomEdges(edges);
+            this.edges.Sort((a, b) => b.len.CompareTo(a.len));
+            this.candidateRStuds.Clear();
+            this.bisectors.Clear();
+            m.GetRStuds(candidateRStuds, bisectors);*/
         }
         protected unsafe override void CreateResources(ResourceFactory factory)
         {
@@ -94,6 +149,16 @@ namespace partmake
            _projectionBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _viewBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _worldBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
+            _materialBuffer = factory.CreateBuffer(new BufferDescription(16, BufferUsage.UniformBuffer));
+
+            var cubeVertices = GetCubeVertices();
+            _cubeVertexBuffer = factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * cubeVertices.Length), BufferUsage.VertexBuffer));
+            GraphicsDevice.UpdateBuffer(_cubeVertexBuffer, 0, cubeVertices);
+
+            var cubeIndices = GetCubeIndices();
+            _cubeIndexBuffer = factory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)cubeIndices.Length, BufferUsage.IndexBuffer));
+            _cubeIndexCount = (uint)cubeIndices.Length;
+            GraphicsDevice.UpdateBuffer(_cubeIndexBuffer, 0, cubeIndices);
 
             ShaderSetDescription shaderSet = new ShaderSetDescription(
                 new[]
@@ -114,12 +179,13 @@ namespace partmake
 
             ResourceLayout worldTextureLayout = factory.CreateResourceLayout(
                 new ResourceLayoutDescription(
-                    new ResourceLayoutElementDescription("WorldBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex)));
+                    new ResourceLayoutElementDescription("WorldBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex),
+                    new ResourceLayoutElementDescription("MeshColor", ResourceKind.UniformBuffer, ShaderStages.Fragment)));
 
             _pipeline = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
                 BlendStateDescription.SingleOverrideBlend,
                 DepthStencilStateDescription.DepthOnlyLessEqual,
-                new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, true, false),
+                new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
                 PrimitiveTopology.TriangleList,
                 shaderSet,
                 new[] { projViewLayout, worldTextureLayout },
@@ -132,7 +198,8 @@ namespace partmake
 
             _worldTextureSet = factory.CreateResourceSet(new ResourceSetDescription(
                 worldTextureLayout,
-                _worldBuffer));
+                _worldBuffer,
+                _materialBuffer));
 
             _cl = factory.CreateCommandList();
             if (this._part != null)
@@ -156,14 +223,16 @@ namespace partmake
                 0.5f,
                 100f));
 
-            _cl.UpdateBuffer(_viewBuffer, 0, Matrix4x4.CreateLookAt(Vector3.UnitZ * 2.5f - Vector3.UnitY * 2.5f, Vector3.Zero, Vector3.UnitY));
+            _cl.UpdateBuffer(_viewBuffer, 0, Matrix4x4.CreateTranslation(cameraPos));
 
-            Matrix4x4 mat = 
+            Matrix4x4 mat =
                 Matrix4x4.CreateTranslation(-partOffset) *
-                Matrix4x4.CreateScale(partScale) *
+                Matrix4x4.CreateScale(partScale * System.MathF.Pow(2.0f, zoom)) *
                 Matrix4x4.CreateRotationY(lookDir.X) *
                 Matrix4x4.CreateRotationX(lookDir.Y);
             _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
+            Vector4 col = new Vector4(1, 1, 0, 1) * 0.5f;
+            _cl.UpdateBuffer(_materialBuffer, 0, ref col);
 
             _cl.SetFramebuffer(MainSwapchain.Framebuffer);
             _cl.ClearColorTarget(0, RgbaFloat.Black);
@@ -175,6 +244,94 @@ namespace partmake
             _cl.SetGraphicsResourceSet(1, _worldTextureSet);
             _cl.DrawIndexed((uint)_indexCount);
 
+            _cl.ClearDepthStencil(1f);
+            Dictionary<LDrawDatFile.ConnectorType, Vector4> colors = new Dictionary<LDrawDatFile.ConnectorType, Vector4>()
+                { { LDrawDatFile.ConnectorType.Stud, new Vector4(0.8f, 0.1f, 0, 1) }, { LDrawDatFile.ConnectorType.RStud, new Vector4(0.1f, 0.1f, 0.8f, 1) }};
+            _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+            _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+            foreach (var c in connectorVizs)
+            {
+                Vector4 ccol = colors[c.type];
+                const float lsize = 0.05f;
+                _cl.UpdateBuffer(_materialBuffer, 0, ref ccol);
+                {                    
+                    Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(0, 0, -0.5f)) *
+                        Matrix4x4.CreateScale(new Vector3(lsize, lsize, 0.5f)) * c.mat * mat;
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                    _cl.DrawIndexed((uint)_cubeIndexCount);
+                }
+                {
+                    Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(-0.5f, 0, 0)) *
+                        Matrix4x4.CreateScale(new Vector3(0.5f, lsize, lsize)) * c.mat * mat;
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                    _cl.DrawIndexed((uint)_cubeIndexCount);
+                }
+                {
+                    Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(0, -0.5f, 0)) *
+                        Matrix4x4.CreateScale(new Vector3(lsize, 1.0f, lsize)) * c.mat * mat;
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                    _cl.DrawIndexed((uint)_cubeIndexCount);
+                }
+            }
+
+            int palidx = 0;
+            foreach (var edge in edges)
+            {
+                _cl.UpdateBuffer(_materialBuffer, 0, ref edgePalette[palidx++]);
+                palidx = palidx % 100;
+                Vector3 pt0 = edge.v0.pt;
+                Vector3 pt1 = edge.v1.pt;
+                float len = (pt1 - pt0).Length();
+                Vector3 dir = Vector3.Normalize(pt1 - pt0);
+                Vector3 a = Vector3.Cross(Vector3.UnitZ, dir);
+                float w = 1 + Vector3.Dot(Vector3.UnitZ, dir);
+                Quaternion q = a.LengthSquared() != 0 ? new Quaternion(a, w) : Quaternion.Identity;
+                q = Quaternion.Normalize(q);
+                Vector3 offset = (pt0 + pt1) * 0.5f;
+                Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(0.2f, 0.2f, len)) *
+                    Matrix4x4.CreateFromQuaternion(q) *
+                    Matrix4x4.CreateTranslation(offset);
+
+                Matrix4x4 cm = m * mat;
+                _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                _cl.DrawIndexed((uint)_cubeIndexCount);
+            }
+
+            if (ShowBisector)
+            {
+                Vector4 bisectorColor = new Vector4(1.0f, 0f, 0f, 1.0f);
+                _cl.UpdateBuffer(_materialBuffer, 0, ref bisectorColor);
+                foreach (var edge in bisectors)
+                {
+                    Vector3 pt0 = edge.Item1;
+                    Vector3 pt1 = edge.Item2;
+                    float len = (pt1 - pt0).Length();
+                    Vector3 dir = Vector3.Normalize(pt1 - pt0);
+                    Vector3 a = Vector3.Cross(Vector3.UnitZ, dir);
+                    float w = 1 + Vector3.Dot(Vector3.UnitZ, dir);
+                    Quaternion q = a.LengthSquared() != 0 ? new Quaternion(a, w) : Quaternion.Identity;
+                    q = Quaternion.Normalize(q);
+                    Vector3 offset = (pt0 + pt1) * 0.5f;
+                    Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(0.2f, 0.2f, len)) *
+                        Matrix4x4.CreateFromQuaternion(q) *
+                        Matrix4x4.CreateTranslation(offset);
+
+                    Matrix4x4 cm = m * mat;
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                    _cl.DrawIndexed((uint)_cubeIndexCount);
+                }
+
+            }
+            Vector4 candidateColor = new Vector4(0f, 0.5f, 1.0f, 1.0f);
+            _cl.UpdateBuffer(_materialBuffer, 0, ref candidateColor);
+            foreach (var cnd in candidateRStuds)
+            {
+                Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(1.0f, 1.0f, 1.0f)) *
+                    Matrix4x4.CreateTranslation(cnd);
+                Matrix4x4 cm = m * mat;
+                _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                _cl.DrawIndexed((uint)_cubeIndexCount);
+            }
             _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
             GraphicsDevice.SwapBuffers(MainSwapchain);
@@ -221,6 +378,10 @@ layout(location = 0) in vec2 fsin_texCoords;
 layout(location = 1) in vec3 fsin_normal;
 layout(location = 0) out vec4 fsout_color;
 
+layout(set = 1, binding = 1) uniform MeshColor
+{
+    vec4 col;
+};
 
 void main()
 {
@@ -229,29 +390,66 @@ void main()
         pow(clamp(dot(normalize(vec3(-1, 1, 0)), fsin_normal),0,1), p) +
         pow(clamp(dot(normalize(vec3(1, 0, -1)), fsin_normal),0,1), p) +
         pow(clamp(dot(normalize(vec3(0, -1, 1)), fsin_normal),0,1), p);
-    vec3 c = vec3(1,1,0) * (light * 0.7 + 0.1);
+    vec3 c = col.xyz * (light * 0.7 + 0.1);
     fsout_color =  vec4(c,1);
 }";
-    }
 
-    public struct VertexPositionTexture
-    {
-        public const uint SizeInBytes = 20;
 
-        public float PosX;
-        public float PosY;
-        public float PosZ;
-
-        public float TexU;
-        public float TexV;
-
-        public VertexPositionTexture(Vector3 pos, Vector2 uv)
+        private Vtx[] GetCubeVertices()
         {
-            PosX = pos.X;
-            PosY = pos.Y;
-            PosZ = pos.Z;
-            TexU = uv.X;
-            TexV = uv.Y;
+            Vtx[] vertices = new Vtx[]
+            {
+                // Top
+                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector2(0, 0)),
+                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector2(1, 0)),
+                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f), new Vector2(1, 1)),
+                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector2(0, 1)),
+                // Bottom                                                             
+                new Vtx(new Vector3(-0.5f,-0.5f, +0.5f),  new Vector2(0, 0)),
+                new Vtx(new Vector3(+0.5f,-0.5f, +0.5f),  new Vector2(1, 0)),
+                new Vtx(new Vector3(+0.5f,-0.5f, -0.5f),  new Vector2(1, 1)),
+                new Vtx(new Vector3(-0.5f,-0.5f, -0.5f),  new Vector2(0, 1)),
+                // Left                                                               
+                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector2(0, 0)),
+                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector2(1, 0)),
+                new Vtx(new Vector3(-0.5f, -0.5f, +0.5f), new Vector2(1, 1)),
+                new Vtx(new Vector3(-0.5f, -0.5f, -0.5f), new Vector2(0, 1)),
+                // Right                                                              
+                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f), new Vector2(0, 0)),
+                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector2(1, 0)),
+                new Vtx(new Vector3(+0.5f, -0.5f, -0.5f), new Vector2(1, 1)),
+                new Vtx(new Vector3(+0.5f, -0.5f, +0.5f), new Vector2(0, 1)),
+                // Back                                                               
+                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector2(0, 0)),
+                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector2(1, 0)),
+                new Vtx(new Vector3(-0.5f, -0.5f, -0.5f), new Vector2(1, 1)),
+                new Vtx(new Vector3(+0.5f, -0.5f, -0.5f), new Vector2(0, 1)),
+                // Front                                                              
+                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector2(0, 0)),
+                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f), new Vector2(1, 0)),
+                new Vtx(new Vector3(+0.5f, -0.5f, +0.5f), new Vector2(1, 1)),
+                new Vtx(new Vector3(-0.5f, -0.5f, +0.5f), new Vector2(0, 1)),
+            };
+
+            return vertices;
+        }
+
+        private static ushort[] GetCubeIndices()
+        {
+            ushort[] indices =
+            {
+                0,1,2, 0,2,3,
+                4,5,6, 4,6,7,
+                8,9,10, 8,10,11,
+                12,13,14, 12,14,15,
+                16,17,18, 16,18,19,
+                20,21,22, 20,22,23,
+            };
+
+            return indices;
         }
     }
+
+
+    
 }

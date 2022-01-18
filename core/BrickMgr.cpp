@@ -19,8 +19,10 @@
 #include "bullet/btBulletCollisionCommon.h"
 #include "bullet/btBulletDynamicsCommon.h"
 #include "rapidxml/rapidxml.hpp"
+#include "nlohmann/json.hpp"
 
 using namespace gmtl;
+using namespace nlohmann;
 
 namespace sam
 {
@@ -480,6 +482,11 @@ namespace sam
 
     void Brick::LoadConnectors2(const std::filesystem::path& connectorPath)
     {
+        std::map<int, ConnectorType> cTypeMap =
+            { { 1, ConnectorType::Stud }, 
+                { 2, ConnectorType::Unknown }, 
+                { 4, ConnectorType::Unknown }, 
+                { 8, ConnectorType::InvStud } };
         //open file
         std::ifstream infile(connectorPath);
 
@@ -490,37 +497,40 @@ namespace sam
         std::string str;
         str.resize(length);
         infile.read(str.data(), length);
-        rapidxml::xml_document<> doc;    // character type defaults to char
-        doc.parse<0>(const_cast<char*>(str.c_str()));
-        rapidxml::xml_node<char>* connectionsNode =
-            doc.first_node("connections");
-        for (rapidxml::xml_node<char>* node = connectionsNode->first_node("cpoint");
-            node; node = node->next_sibling("cpoint"))
+        json doc = json::parse(str);
+
+        for (json elem : doc)
         {
             Connector c;
-            std::string ctype(node->first_attribute("type")->value());
-            if (ctype == "STUD")
-                c.type = ConnectorType::Stud;
-            else if (ctype == "R_STUD")
-                c.type = ConnectorType::InvStud;
-            else
-                continue;
-            
-            auto basenode = node->first_node("base");
-            c.pos = Vec3f(
-                std::atof(basenode->first_attribute("x")->value()),
-                -std::atof(basenode->first_attribute("y")->value()),
-                std::atof(basenode->first_attribute("z")->value()));
-            auto dirnode = node->first_node("dir");
-            c.scl = Vec3f(1, 1, 1);
-            c.dir = Vec3f(std::atof(dirnode->first_attribute("x")->value()),
-                -std::atof(dirnode->first_attribute("y")->value()),
-                std::atof(dirnode->first_attribute("z")->value()));
-            c.dir -= c.pos;
+            Matrix44f trans;
+            float *vals = trans.mData;
+            int type = elem["type"];
+            json mat = elem["mat"];
+            vals[0] = mat["M11"];
+            vals[1] = mat["M12"];
+            vals[2] = mat["M13"];
+            vals[3] = mat["M14"];
+            vals[4] = mat["M21"];
+            vals[5] = mat["M22"];
+            vals[6] = mat["M23"];
+            vals[7] = mat["M24"];
+            vals[8] = mat["M31"];
+            vals[9] = mat["M32"];
+            vals[10] = mat["M33"];
+            vals[11] = mat["M34"];
+            vals[12] = mat["M41"];
+            vals[13] = mat["M42"];
+            vals[14] = mat["M43"];
+            vals[15] = mat["M44"];
+            c.pos = Vec3f(vals[12], -vals[13], vals[14]);
+            Vec4f out;
+            xform(out, trans, Vec4f(0, -1, 0, 0));
+            c.dir = Vec3f(out);
             normalize(c.dir);
-                
+            c.type = cTypeMap[type];
             m_connectors.push_back(c);
         }
+        
         std::sort(m_connectors.begin(), m_connectors.end());
         auto itunique = std::unique(m_connectors.begin(), m_connectors.end());
         m_connectors.erase(itunique, m_connectors.end());
@@ -563,7 +573,7 @@ namespace sam
         spLoader = m_ldrLoader.get();
         spMgr = this;
         m_cachePath = Application::Inst().Documents() + "/ldrcache";
-        m_connectorPath = Application::Inst().Documents() + "/ldrconn";
+        m_connectorPath = Application::Inst().Documents() + "/connectors";
         std::filesystem::create_directory(m_cachePath);
         LoadColors(ldrpath);
         LoadAllParts(ldrpath);
@@ -577,7 +587,7 @@ namespace sam
     void BrickManager::LoadConnectors(Brick* pBrick)
     {
         std::filesystem::path connectorPath = m_connectorPath / pBrick->m_name;
-        connectorPath.replace_extension("cxml");
+        connectorPath.replace_extension("json");
 
         if (std::filesystem::exists(connectorPath))
         {
@@ -664,7 +674,7 @@ namespace sam
 
                 std::filesystem::path filepath = m_cachePath / filename;
                 std::filesystem::path connectorPath = m_connectorPath / filename;
-                connectorPath.replace_extension("cxml");
+                connectorPath.replace_extension("json");
                 filepath.replace_extension("mesh");
                 char* p_end;
                 int val = std::strtol(filename.data(), &p_end, 10);
