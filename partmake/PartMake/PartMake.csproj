@@ -21,6 +21,20 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="fs.glsl" />
+    <None Remove="raycast.glsl" />
+    <None Remove="vs.glsl" />
+    <None Remove="vsfullscreen.glsl" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="raycast.glsl" />
+    <EmbeddedResource Include="fs.glsl" />
+    <EmbeddedResource Include="vsfullscreen.glsl" />
+    <EmbeddedResource Include="vs.glsl" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="KdTree" Version="1.4.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />

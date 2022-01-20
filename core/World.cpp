@@ -14,6 +14,7 @@
 #include "Physics.h"
 #include "Audio.h"
 #include "PlayerView.h"
+#include "gmtl/AABoxOps.h"
 #define NOMINMAX
 
 
@@ -30,7 +31,8 @@ namespace sam
         m_flymode(true),
         m_inspectmode(false),
         m_pPickedBrick(nullptr),
-        m_debugDraw(0)
+        m_debugDraw(0),
+        m_disableCollisionCheck(false)
     {        
     }  
 
@@ -78,6 +80,19 @@ namespace sam
     //https://shanetest-cos-earth.s3.us-east.cloud-object-storage.appdomain.cloud/world9m_whqt/Q0/L0/R0/C0
     //https://shanetest-cos-earth.s3.us-east.cloud-object-storage.appdomain.cloud/world9m_whqt/Q1/L3/R1/Q1_L3_R1_C0.png
 
+    AABoxf RotateAABox(const AABoxf& in, const Quatf& q)
+    {
+        AABoxf outBox;
+        Vec3f p[2] = { in.mMin,  in.mMax };
+        for (int i = 0; i < 8; ++i)
+        {
+            Point3f op(p[i / 4][0], p[(i / 2) & 0x1][1], p[i & 0x1][2]);
+            xform(op, q, op);
+            outBox += op;
+        }
+        return outBox;
+    }
+
     bool cursormode = false;
     void World::MouseDown(float x, float y, int buttonId)
     {
@@ -109,8 +124,7 @@ namespace sam
                 for (auto& rhandconnect : pRHandBrick->m_connectors)
                 {
                     if (Connector::CanConnect(connector.type, rhandconnect.type))
-                    {
-                        
+                    {                      
                         Vec3f newpos = cq * rhandconnect.pos;
 
                         PartInst pi = m_player->GetRightHandPart();
@@ -119,9 +133,13 @@ namespace sam
                         pi.pos = pos;
 
                         AABoxf cbox = pRHandBrick->m_collisionBox;
-                        cbox.mMin = cbox.mMin * BrickManager::Scale + pi.pos;
-                        cbox.mMax = cbox.mMax * BrickManager::Scale + pi.pos;
-                        if (true)//m_octTileSelection.CanAddPart(pi, cbox))
+                        
+                        cbox.mMin = cbox.mMin * BrickManager::Scale;// +pi.pos;
+                        cbox.mMax = cbox.mMax * BrickManager::Scale;// +pi.pos;
+                        cbox = RotateAABox(cbox, cq);
+                        cbox.mMin += pi.pos;
+                        cbox.mMax += pi.pos;
+                        if (m_disableCollisionCheck || m_octTileSelection.CanAddPart(pi, cbox))
                         {
                             m_octTileSelection.AddPartInst(pi);
                             Application::Inst().GetAudio().PlayOnce("click-7.wav");
@@ -174,6 +192,7 @@ namespace sam
     static int prevPartIdx = -1;
 
     const int LeftShift = 16;
+    const int LeftCtrl = 17;
     const int SpaceBar = 32;
     const int AButton = 'A';
     const int DButton = 'D';
@@ -228,10 +247,15 @@ namespace sam
             partChange = -1;
             break;
         case 'Q':
-                PartInst part = m_player->GetRightHandPart();
-                part.rot *= make<Quatf>(AxisAnglef(
+        {
+            PartInst part = m_player->GetRightHandPart();
+            part.rot *= make<Quatf>(AxisAnglef(
                 -Math::PI_OVER_2, Vec3f(1, 0, 0)));
-                m_player->SetRightHandPart(part);
+            m_player->SetRightHandPart(part);
+            break;
+        }
+        case LeftCtrl:
+            m_disableCollisionCheck = true;
             break;
         }
         if (k >= '1' && k <= '9')
@@ -247,6 +271,9 @@ namespace sam
         case LeftShift:
         case SpaceBar:
             m_camVel[1] = 0;
+            break;
+        case LeftCtrl:
+            m_disableCollisionCheck = false;
             break;
         case AButton:
         case DButton:

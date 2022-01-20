@@ -7,6 +7,8 @@ using Veldrid;
 using Veldrid.SPIRV;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
+using System.Reflection;
 
 namespace partmake
 {
@@ -15,16 +17,22 @@ namespace partmake
         private DeviceBuffer _projectionBuffer;
         private DeviceBuffer _viewBuffer;
         private DeviceBuffer _worldBuffer;
+        private DeviceBuffer _raycastBuffer;
         private DeviceBuffer _materialBuffer;
         private DeviceBuffer _vertexBuffer;
         private DeviceBuffer _indexBuffer;
         private DeviceBuffer _cubeVertexBuffer;
         private DeviceBuffer _cubeIndexBuffer;
+        private DeviceBuffer _planeVertexBuffer;
+        private DeviceBuffer _planeIndexBuffer;
         uint _cubeIndexCount;
+        uint _planeIndexCount;
         private CommandList _cl;
         private Pipeline _pipeline;
+        private Pipeline _pipelineRaycast;
         private ResourceSet _projViewSet;
         private ResourceSet _worldTextureSet;
+        private ResourceSet _raycastSet;
         private int _indexCount;
         Vector2 lookDir;
         int mouseDown = 0;
@@ -37,7 +45,7 @@ namespace partmake
         float partScale;
         float zoom = 0;
         float mouseDownZoom = 0;
-        public bool ShowBisector {get;set;}
+        public bool ShowBisector { get; set; }
         Vector4[] edgePalette;
 
         class ConnectorVis
@@ -131,8 +139,9 @@ namespace partmake
             connectorVizs.Clear();
             foreach (var conn in connectors)
             {
-                if (conn.type == LDrawDatFile.ConnectorType.Stud || conn.type == LDrawDatFile.ConnectorType.RStud)
-                    connectorVizs.Add(new ConnectorVis() { type = conn.type, mat = conn.mat });
+                LDrawDatFile.ConnectorType mask = (LDrawDatFile.ConnectorType.Stud | LDrawDatFile.ConnectorType.RStud);
+                if ((conn.type & mask) != 0)
+                    connectorVizs.Add(new ConnectorVis() { type = conn.type & mask, mat = conn.mat });
             }
 
             /*
@@ -146,50 +155,49 @@ namespace partmake
         protected unsafe override void CreateResources(ResourceFactory factory)
         {
             _factory = factory;
-           _projectionBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
+            _projectionBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _viewBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _worldBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _materialBuffer = factory.CreateBuffer(new BufferDescription(16, BufferUsage.UniformBuffer));
+            _raycastBuffer = factory.CreateBuffer(new BufferDescription(16, BufferUsage.UniformBuffer));
 
-            var cubeVertices = GetCubeVertices();
-            _cubeVertexBuffer = factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * cubeVertices.Length), BufferUsage.VertexBuffer));
-            GraphicsDevice.UpdateBuffer(_cubeVertexBuffer, 0, cubeVertices);
+            {
+                var cubeVertices = GetCubeVertices();
+                _cubeVertexBuffer = factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * cubeVertices.Length), BufferUsage.VertexBuffer));
+                GraphicsDevice.UpdateBuffer(_cubeVertexBuffer, 0, cubeVertices);
 
-            var cubeIndices = GetCubeIndices();
-            _cubeIndexBuffer = factory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)cubeIndices.Length, BufferUsage.IndexBuffer));
-            _cubeIndexCount = (uint)cubeIndices.Length;
-            GraphicsDevice.UpdateBuffer(_cubeIndexBuffer, 0, cubeIndices);
+                var cubeIndices = GetCubeIndices();
+                _cubeIndexBuffer = factory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)cubeIndices.Length, BufferUsage.IndexBuffer));
+                _cubeIndexCount = (uint)cubeIndices.Length;
+                GraphicsDevice.UpdateBuffer(_cubeIndexBuffer, 0, cubeIndices);
+            }
+            {
+                var planeVertices = GetPlaneVertices();
+                _planeVertexBuffer = factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * planeVertices.Length), BufferUsage.VertexBuffer));
+                GraphicsDevice.UpdateBuffer(_planeVertexBuffer, 0, planeVertices);
 
-            ShaderSetDescription shaderSet = new ShaderSetDescription(
-                new[]
-                {
-                    new VertexLayoutDescription(
-                        new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
-                        new VertexElementDescription("Normal", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
-                        new VertexElementDescription("TexCoords", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2))
-                },
-                factory.CreateFromSpirv(
-                    new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(VertexCode), "main"),
-                    new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(FragmentCode), "main")));
+                var planeIndices = GetPlaneIndices();
+                _planeIndexBuffer = factory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)planeIndices.Length, BufferUsage.IndexBuffer));
+                _planeIndexCount = (uint)planeIndices.Length;
+                GraphicsDevice.UpdateBuffer(_planeIndexBuffer, 0, planeIndices);
+            }
+
+            var assembly = Assembly.GetExecutingAssembly();
+         
 
             ResourceLayout projViewLayout = factory.CreateResourceLayout(
-                new ResourceLayoutDescription(
-                    new ResourceLayoutElementDescription("ProjectionBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex),
-                    new ResourceLayoutElementDescription("ViewBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex)));
+          new ResourceLayoutDescription(
+              new ResourceLayoutElementDescription("ProjectionBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex),
+              new ResourceLayoutElementDescription("ViewBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex)));
 
             ResourceLayout worldTextureLayout = factory.CreateResourceLayout(
                 new ResourceLayoutDescription(
                     new ResourceLayoutElementDescription("WorldBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex),
                     new ResourceLayoutElementDescription("MeshColor", ResourceKind.UniformBuffer, ShaderStages.Fragment)));
 
-            _pipeline = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
-                BlendStateDescription.SingleOverrideBlend,
-                DepthStencilStateDescription.DepthOnlyLessEqual,
-                new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
-                PrimitiveTopology.TriangleList,
-                shaderSet,
-                new[] { projViewLayout, worldTextureLayout },
-                MainSwapchain.Framebuffer.OutputDescription));
+            ResourceLayout raycastLayout = factory.CreateResourceLayout(
+                new ResourceLayoutDescription(
+                    new ResourceLayoutElementDescription("RaycastInfo", ResourceKind.UniformBuffer, ShaderStages.Fragment)));
 
             _projViewSet = factory.CreateResourceSet(new ResourceSetDescription(
                 projViewLayout,
@@ -201,6 +209,93 @@ namespace partmake
                 _worldBuffer,
                 _materialBuffer));
 
+            _raycastSet = factory.CreateResourceSet(new ResourceSetDescription(
+                raycastLayout,
+                _raycastBuffer));
+
+            {
+                var vsfile = "partmake.vs.glsl";
+                var fsfile = "partmake.fs.glsl";
+
+                string VertexCode;
+                string FragmentCode;
+                using (Stream stream = assembly.GetManifestResourceStream(vsfile))
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    VertexCode = reader.ReadToEnd();
+                }
+                using (Stream stream = assembly.GetManifestResourceStream(fsfile))
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    FragmentCode = reader.ReadToEnd();
+                }
+
+                ShaderSetDescription shaderSet = new ShaderSetDescription(
+                    new[]
+                    {
+                    new VertexLayoutDescription(
+                        new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
+                        new VertexElementDescription("Normal", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
+                        new VertexElementDescription("TexCoords", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2))
+                    },
+                    factory.CreateFromSpirv(
+                        new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(VertexCode), "main"),
+                        new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(FragmentCode), "main")));
+
+
+
+                _pipeline = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
+                    BlendStateDescription.SingleOverrideBlend,
+                    DepthStencilStateDescription.DepthOnlyLessEqual,
+                    new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
+                    PrimitiveTopology.TriangleList,
+                    shaderSet,
+                    new[] { projViewLayout, worldTextureLayout },
+                    MainSwapchain.Framebuffer.OutputDescription));
+
+            }
+
+
+            {
+                var vsfile = "partmake.vsfullscreen.glsl";
+                var fsfile = "partmake.raycast.glsl";
+
+                string VertexCode;
+                string FragmentCode;
+                using (Stream stream = assembly.GetManifestResourceStream(vsfile))
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    VertexCode = reader.ReadToEnd();
+                }
+                using (Stream stream = assembly.GetManifestResourceStream(fsfile))
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    FragmentCode = reader.ReadToEnd();
+                }
+
+                ShaderSetDescription shaderSet = new ShaderSetDescription(
+                    new[]
+                    {
+                    new VertexLayoutDescription(
+                        new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
+                        new VertexElementDescription("Normal", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
+                        new VertexElementDescription("TexCoords", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2))
+                    },
+                    factory.CreateFromSpirv(
+                        new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(VertexCode), "main"),
+                        new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(FragmentCode), "main")));
+
+
+                _pipelineRaycast = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
+                    BlendStateDescription.SingleOverrideBlend,
+                    DepthStencilStateDescription.DepthOnlyLessEqual,
+                    new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
+                    PrimitiveTopology.TriangleList,
+                    shaderSet,
+                    new[] { raycastLayout },
+                    MainSwapchain.Framebuffer.OutputDescription));
+
+            }
             _cl = factory.CreateCommandList();
             if (this._part != null)
                 OnPartUpdated();
@@ -254,7 +349,7 @@ namespace partmake
                 Vector4 ccol = colors[c.type];
                 const float lsize = 0.05f;
                 _cl.UpdateBuffer(_materialBuffer, 0, ref ccol);
-                {                    
+                {
                     Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(0, 0, -0.5f)) *
                         Matrix4x4.CreateScale(new Vector3(lsize, lsize, 0.5f)) * c.mat * mat;
                     _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
@@ -332,68 +427,20 @@ namespace partmake
                 _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
                 _cl.DrawIndexed((uint)_cubeIndexCount);
             }
+
+            Vector4 v4 = new Vector4( Window.Width, Window.Height, 0, 0 );
+            _cl.UpdateBuffer(_raycastBuffer, 0, ref v4);
+            _cl.SetPipeline(_pipelineRaycast);
+            _cl.SetGraphicsResourceSet(0, _raycastSet);
+            _cl.SetVertexBuffer(0, _planeVertexBuffer);
+            _cl.SetIndexBuffer(_planeIndexBuffer, IndexFormat.UInt16);
+            _cl.DrawIndexed((uint)_planeIndexCount);
+
             _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
             GraphicsDevice.SwapBuffers(MainSwapchain);
             GraphicsDevice.WaitForIdle();
         }
-
-    
-        private const string VertexCode = @"
-#version 450
-layout(set = 0, binding = 0) uniform ProjectionBuffer
-{
-    mat4 Projection;
-};
-layout(set = 0, binding = 1) uniform ViewBuffer
-{
-    mat4 View;
-};
-
-layout(set = 1, binding = 0) uniform WorldBuffer
-{
-    mat4 World;
-};
-
-layout(location = 0) in vec3 Position;
-layout(location = 1) in vec3 Normal;
-layout(location = 2) in vec2 TexCoords;
-layout(location = 0) out vec2 fsin_texCoords;
-layout(location = 1) out vec3 fsin_normal;
-
-void main()
-{
-    vec4 worldPosition = World * vec4(Position, 1);
-    vec4 viewPosition = View * worldPosition;
-    vec4 clipPosition = Projection * viewPosition;
-    gl_Position = clipPosition;
-    fsin_texCoords = TexCoords;
-    fsin_normal = Normal;
-}";
-
-        private const string FragmentCode = @"
-#version 450
-
-layout(location = 0) in vec2 fsin_texCoords;
-layout(location = 1) in vec3 fsin_normal;
-layout(location = 0) out vec4 fsout_color;
-
-layout(set = 1, binding = 1) uniform MeshColor
-{
-    vec4 col;
-};
-
-void main()
-{
-    float p = 1.0;
-    float light = pow(clamp(dot(normalize(vec3(1, 1, 0)), fsin_normal),0,1), p) +
-        pow(clamp(dot(normalize(vec3(-1, 1, 0)), fsin_normal),0,1), p) +
-        pow(clamp(dot(normalize(vec3(1, 0, -1)), fsin_normal),0,1), p) +
-        pow(clamp(dot(normalize(vec3(0, -1, 1)), fsin_normal),0,1), p);
-    vec3 c = col.xyz * (light * 0.7 + 0.1);
-    fsout_color =  vec4(c,1);
-}";
-
 
         private Vtx[] GetCubeVertices()
         {
@@ -448,8 +495,32 @@ void main()
 
             return indices;
         }
+
+        private Vtx[] GetPlaneVertices()
+        {
+            Vtx[] vertices = new Vtx[]
+            {
+                // Back                                                               
+                new Vtx(new Vector3(+1.0f, +1.0f, 0.0f), new Vector2(0, 0)),
+                new Vtx(new Vector3(-1.0f, +1.0f, 0.0f), new Vector2(1, 0)),
+                new Vtx(new Vector3(-1.0f, -1.0f, 0.0f), new Vector2(1, 1)),
+                new Vtx(new Vector3(+1.0f, -1.0f, 0.0f), new Vector2(0, 1)),
+            };
+
+            return vertices;
+        }
+
+        private static ushort[] GetPlaneIndices()
+        {
+            ushort[] indices =
+            {
+                0,1,2, 0,2,3
+            };
+
+            return indices;
+        }
     }
 
 
-    
+
 }

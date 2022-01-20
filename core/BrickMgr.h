@@ -242,8 +242,7 @@ namespace sam
     private:
         void Load(ldr::Loader* pLoader,
             const std::string& name, std::filesystem::path& cachePath);
-        void LoadConnectors(ldr::Loader* pLoader);
-        void LoadConnectors2(const std::filesystem::path &connectorPath);
+        void LoadConnectors(const std::filesystem::path &connectorPath);
         void LoadPrimitives(ldr::Loader* pLoader);
         void GenerateCacheItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
             const std::string& name, std::filesystem::path& cachePath, 

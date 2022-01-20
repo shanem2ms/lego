@@ -421,67 +421,12 @@ namespace sam
             return ConnectorInfo { ConnectorType::Unknown };
     }
 
-    void Brick::LoadConnectors(ldr::Loader* pLoader)
+
+    void Brick::LoadConnectors(const std::filesystem::path& connectorPath)
     {
         if (m_connectorsLoaded)
             return;
-        InitConnectorNames();
-     
-        std::vector<ldr::LdrPrimitive> primitives;
-        pLoader->loadPrimitives(m_name.c_str(),
-            sConnectorNames, false, primitives);
 
-        for (auto& prim : primitives)
-        {
-            Connector c;
-            ConnectorInfo ci = GetConnectorForPrimitive(pLoader, prim);
-            if (ci.type == ConnectorType::Unknown)
-                continue;
-            c.type = ci.type;
-
-            Matrix44f m;
-            memcpy(m.mData, prim.transform.values, sizeof(float) * 16);
-            m.mState = Matrix44f::AFFINE;
-            Vec4f p;
-            xform(p, m, Vec4f(0, 0, 0, 1));
-            c.pos = Vec3f(p[0], -p[1], p[2]);
-            float* v = m.mData;
-            c.scl = Vec3f(length(Vec3f(v[0], v[4], v[8])),
-                length(Vec3f(v[1], v[5], v[9])),
-                length(Vec3f(v[2], v[6], v[10])));
-            Quatf q = gmtl::make<Quatf>(m);
-            normalize(q);
-            Vec3f nrm = q * Vec3f(0, 1, 0);
-            normalize(nrm);
-            c.dir = nrm;
-
-            for (auto& offset : ci.offsets)
-            {
-                Connector c2 = c;
-                c2.pos += offset * c.scl;
-                m_connectors.push_back(c2);
-            }
-        }
-        std::sort(m_connectors.begin(), m_connectors.end());
-        auto itunique = std::unique(m_connectors.begin(), m_connectors.end());
-        m_connectors.erase(itunique, m_connectors.end());
-        if (m_connectors.size() > 0)
-        {
-            std::vector<Vec3f> pts;
-            for (auto& c : m_connectors)
-            {
-                c.pickIdx = pts.size();
-                pts.push_back(c.pos);
-            }
-            m_connectorCL = std::make_shared<CubeList>();
-            m_connectorCL->Create(pts, 5);
-        }
-        m_connectorsLoaded = true;
-    }
-
-
-    void Brick::LoadConnectors2(const std::filesystem::path& connectorPath)
-    {
         std::map<int, ConnectorType> cTypeMap =
             { { 1, ConnectorType::Stud }, 
                 { 2, ConnectorType::Unknown }, 
@@ -522,12 +467,16 @@ namespace sam
             vals[13] = mat["M42"];
             vals[14] = mat["M43"];
             vals[15] = mat["M44"];
-            c.pos = Vec3f(vals[12], -vals[13], vals[14]);
+            trans.mState = Matrix44f::AFFINE;
+            trans = makeScale<Matrix44f>(Vec3f(1, -1, 1)) * trans;
+            c.pos = Vec3f(vals[12], vals[13], vals[14]);
             Vec4f out;
             xform(out, trans, Vec4f(0, -1, 0, 0));
             c.dir = Vec3f(out);
             normalize(c.dir);
-            c.type = cTypeMap[type];
+            if (type & 1) c.type = ConnectorType::Stud;
+            else if (type & 8) c.type = ConnectorType::InvStud;
+            else c.type = ConnectorType::Unknown;
             m_connectors.push_back(c);
         }
         
@@ -590,11 +539,7 @@ namespace sam
         connectorPath.replace_extension("json");
 
         if (std::filesystem::exists(connectorPath))
-        {
-            pBrick->LoadConnectors2(connectorPath);
-        }
-        else
-            pBrick->LoadConnectors(m_ldrLoader.get());
+            pBrick->LoadConnectors(connectorPath);
     }
 
     void BrickManager::LoadPrimitives(Brick* pBrick)

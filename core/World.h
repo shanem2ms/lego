@@ -31,6 +31,7 @@ namespace sam
         bool m_flymode;
         bool m_inspectmode;
         int m_debugDraw;
+        bool m_disableCollisionCheck;
 
         float m_gravityVel;
 

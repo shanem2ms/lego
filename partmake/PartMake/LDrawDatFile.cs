@@ -234,38 +234,6 @@ namespace partmake
                 "stud4f1w", "stud4f2n","stud4f2s", "stud4f2w", "stud4f3s", "stud4f4s", "stud4f4n", "stud4f5n" };
 
 
-        /*
-        <primitive checkdup="1">
-            <!-- minitalia underside cross stud --> 
-            <name p="stud12.dat"/>
-            <cp type="R_STUD" bx="10" by="-4" bz="10" hx="10" hy="-2" hz="10"></cp>
-            <cp type="R_STUD" bx="-10" by="-4" bz="10" hx="-10" hy="-2" hz="10"></cp>
-            <cp type="R_STUD" bx="10" by="-4" bz="-10" hx="10" hy="-2" hz="-10"></cp>
-            <cp type="R_STUD" bx="-10" by="-4" bz="-10" hx="-10" hy="-2" hz="-10"></cp>
-          </primitive>
-          <primitive checkdup="1">
-            <name p="stud4h.dat"/>
-            <name p="stud18a.dat"/>
-            <cp type="R_STUD" bx="0" by="-4" bz="0" hx="0" hy="-2" hz="0"></cp>
-            <cp type="R_STUD" bx="10" by="-4" bz="10" hx="10" hy="-2" hz="10"></cp>
-            <cp type="R_STUD" bx="-10" by="-4" bz="10" hx="-10" hy="-2" hz="10"></cp>
-            <cp type="R_STUD" bx="10" by="-4" bz="-10" hx="10" hy="-2" hz="-10"></cp>
-            <cp type="R_STUD" bx="-10" by="-4" bz="-10" hx="-10" hy="-2" hz="-10"></cp>
-            <cp type="PEGHOLE" bx="0" by="-4" bz="0" hx="0" hy="4" hz="0"></cp>
-            <cp type="PEGHOLE" bx="0" by="4" bz="0" hx="0" hy="-4" hz="0"></cp>
-            <!-- can receive a STUD in center hole -->
-            <cp type="R_STUD" bx="0" by="4" bz="0" hx="0" hy="-4" hz="0"></cp>
-            <!-- can receive an axle -->
-            <cp type="R_AXLE" bx="0" by="4" bz="0" hx="0" hy="-4" hz="0"></cp>
-          </primitive>
-          <primitive checkdup="1">
-            <name p="stud3.dat"/>
-            <name p="stud3a.dat"/>
-            <cp type="R_STUDJ" bx="0" by="-4" bz="0" hx="0" hy="-2" hz="0"></cp>
-            <cp type="R_STUD" bx="10" by="-4" bz="0" hx="10" hy="-2" hz="0"></cp>
-            <cp type="R_STUD" bx="-10" by="-4" bz="0" hx="-10" hy="-2" hz="0"></cp>
-          </primitive>
-        */
         public List<Connector> GetConnectors()
         {
             List<Connector> connectors = new List<Connector>();
@@ -276,7 +244,7 @@ namespace partmake
                 GetTopoMesh().GetRStuds(rStudCandidates.Select(s => Vector3.Transform(Vector3.Zero, s.mat)).ToArray(), bisectors);
             foreach (Vector3 rstud in rStuds)
             {
-                connectors.Add(new Connector() { mat = Matrix4x4.CreateScale(4, -4, 4) * 
+                connectors.Add(new Connector() { mat = Matrix4x4.CreateScale(4, 4, 4) * 
                     Matrix4x4.CreateTranslation(rstud), type = ConnectorType.RStud });
             }
             return connectors.Distinct().ToList();
@@ -301,9 +269,8 @@ namespace partmake
             }
             else if (studclipj.Contains(this.name))
             {
-                connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 2, 0) * transform, ConnectorType.Stud));
-                connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 2, 0) * transform, ConnectorType.StudJ));
-                connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 2, 0) * transform, ConnectorType.Clip));
+                connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 2, 0) * transform, 
+                    ConnectorType.Stud | ConnectorType.StudJ | ConnectorType.Clip));
             }
             else if (rstud.Contains(this.name))
             {
