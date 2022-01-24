@@ -38,7 +38,10 @@ extern int g_buttonDown;
 
         Engine& e = Engine::Inst();
         Camera::Fly la = e.ViewCam().GetFly();
-        bgfx::dbgTextPrintf(0, 4, 0x0f, "Cam [%f %f %f]", la.pos[0], la.pos[1], la.pos[2]);
+        Vec3f r, u, f;
+        la.GetDirs(r, u, f);
+        bgfx::dbgTextPrintf(0, 4, 0x0f, "Pos [%f %f %f]", la.pos[0], la.pos[1], la.pos[2]);
+        bgfx::dbgTextPrintf(0, 5, 0x0f, "Dir [%f %f %f]", f[0], f[1], f[2]);
 
         //bgfx::setTransform(m.getData());
         Quad::init();

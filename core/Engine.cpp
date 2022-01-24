@@ -187,18 +187,21 @@ namespace sam
       
         Physics::Inst().DebugRender(dc);
         
-        bgfx::setViewFrameBuffer(5, BGFX_INVALID_HANDLE);
-        bgfx::setTexture(0, m_blitTexRef, m_pickColorTex, 0);         
-        state = 0
-            | BGFX_STATE_WRITE_RGB
-            | BGFX_STATE_WRITE_A
-            | BGFX_STATE_MSAA;
-        // Set render states.l
-        bgfx::setState(state);
-        bgfx::setVertexBuffer(0, Quad::vbh);
-        bgfx::setIndexBuffer(Quad::ibh);
-        bgfx::submit(5, sBlit);
-        
+        bool drawPickBuffer = false;
+        if (drawPickBuffer)
+        {
+            bgfx::setViewFrameBuffer(5, BGFX_INVALID_HANDLE);
+            bgfx::setTexture(0, m_blitTexRef, m_pickColorTex, 0);
+            state = 0
+                | BGFX_STATE_WRITE_RGB
+                | BGFX_STATE_WRITE_A
+                | BGFX_STATE_MSAA;
+            // Set render states.l
+            bgfx::setState(state);
+            bgfx::setVertexBuffer(0, Quad::vbh);
+            bgfx::setIndexBuffer(Quad::ibh);
+            bgfx::submit(5, sBlit);
+        }
         m_nextView = 6;
         for (auto draw : m_externalDraws)
         {

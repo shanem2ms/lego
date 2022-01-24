@@ -130,8 +130,6 @@ namespace partmake
                 }
             }
         }
-
-
         public class Mesh
         {
             public KdTree<float, Vertex> kdTree = new KdTree<float, Vertex>(3, new KdTree.Math.FloatMath());
@@ -228,6 +226,16 @@ namespace partmake
                 //SplitEdges();
                 RemoveDuplicateFaces();
                 FixWindings();
+                List<Face> removeFaces = new List<Face>();
+                GetNonManifoldFaces(removeFaces);
+                foreach (Face f in removeFaces)
+                {
+                    foreach (var eptr in f.edges)
+                    {
+                        eptr.e.edgePtrs.Remove(eptr);                        
+                    }
+                    faces.Remove(f);
+                }
             }
 
             void SplitEdges()
@@ -258,6 +266,31 @@ namespace partmake
                 }
             }
 
+            public void GetNonManifold(List<Edge> edges)
+            {
+                foreach (Edge e in edgeDict.Values)
+                {
+                    if (e.edgePtrs.Count != 2)
+                        edges.Add(e);
+                }
+            }
+
+            public void GetNonManifoldFaces(List<Face> faces)
+            {
+                foreach (Face f in faces)
+                {
+                    int nonManifoldEdges = 0;
+                    foreach (var eptr in f.edges)
+                    {
+                        if (eptr.e.edgePtrs.Count != 2)
+                            nonManifoldEdges++;
+                    }
+                    if (nonManifoldEdges > 1)
+                        faces.Add(f);
+
+                }
+            }
+
             public void FixWindings()
             {
                 if (faces.Count == 0)
@@ -274,6 +307,9 @@ namespace partmake
                 if (f.visited)
                     return;
                 f.visited = true;
+                foreach (var eptr in f.edges)
+                {
+                }
             }
 
             bool epsEq(float a, float b)
@@ -424,6 +460,63 @@ namespace partmake
                 }
 
                 return outPts;
+            }
+
+            bool FollowCoplanarEdges(List<Edge> edges, Vector3 nrm)
+            {
+                Edge cur = edges.Last();
+                if (cur.instack)
+                {
+                    if (edges[0] == cur && edges.Count > 3)
+                        return true;
+                    else
+                        return false;
+                }
+                cur.instack = true;
+                foreach (Edge e in cur.v1.edges)
+                {
+                    if (e.flag == 0 &&
+                        Vector3.Dot(nrm, e.dir) == 0)
+                    {
+                        edges.Add(e);
+                        if (FollowCoplanarEdges(edges, nrm))
+                        {
+                            cur.instack = false;
+                            return true;
+                        }
+                        edges.Remove(e);
+                    }
+                }
+
+                cur.instack = false;
+                return false;
+            }
+
+            public List<Loop> FindLoops()
+            {
+                List<Loop> foundLoops = new List<Loop>();
+                foreach (Face f in faces)
+                {
+                    Vector3 nrm = f.Normal;
+                    foreach (EdgePtr eptr in f.edges)
+                    {
+                        Edge e = eptr.e;
+                        if (e.flag == 0)
+                        {
+                            List<Edge> edges = new List<Edge>() { e };
+                            if (FollowCoplanarEdges(edges, nrm))                     
+                            {
+                                foreach (Edge fe in edges)
+                                {
+                                    fe.flag = 1;
+                                }
+                                foundLoops.Add(new Loop() { edges = edges });
+                            }
+                        }
+                    }
+                }
+
+                return foundLoops;
             }
 
             public void GetBottomEdges(List<Edge> edges)

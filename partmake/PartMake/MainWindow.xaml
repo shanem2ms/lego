@@ -50,7 +50,10 @@
                 <RowDefinition Height="30" />
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <CheckBox Content="Show Bisector" IsChecked="{Binding Path=ShowBisector, ElementName=_RenderControl}"/>
+            <StackPanel Orientation="Horizontal">
+                <CheckBox Content="Show Bisector" IsChecked="{Binding Path=ShowBisector, ElementName=_RenderControl}"/>
+                <CheckBox Content="Raycast" IsChecked="{Binding Path=DoRaycast, ElementName=_RenderControl}"/>
+            </StackPanel>
             <local:RenderControl x:Name="_RenderControl" Grid.Row="1"/>
         </Grid>
     </Grid>

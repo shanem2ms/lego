@@ -18,6 +18,7 @@ namespace partmake
         private readonly VeldridControl _veldridControl;
         
         public bool ShowBisector { get => Vis.ShowBisector; set => Vis.ShowBisector = value; }
+        public bool DoRaycast { get => Vis.DoRaycast; set => Vis.DoRaycast = value; }
         public PartVis Vis => _veldridControl.Vis;
         public RenderControl()
         {

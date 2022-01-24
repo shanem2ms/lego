@@ -7,7 +7,7 @@ layout(location = 0) out vec4 fsout_color;
 layout(set = 0, binding = 0) uniform RaycastInfo
 {
     vec4 res;
-    vec4 campos;
+    mat4x4 viewmat;
 };
 
 #define AA 2   // make this 2 or 3 for antialiasing
@@ -312,9 +312,10 @@ vec2 map( in vec3 pos )
     vec2 res = vec2( 1e10, 0.0 );
 
     {
-      res = opU( res, vec2( sdSphere(    pos-vec3(-2.0,0.25, 0.0), 0.25 ), 26.9 ) );
+      res = opU( res, vec2( sdBox(pos-vec3(0,0, 0.0), vec3(1,1,1)), 3.0));
     }
 
+    /*
     // bounding box
     if( sdBox( pos-vec3(0.0,0.3,-1.0),vec3(0.35,0.3,2.5) )<res.x )
     {
@@ -358,7 +359,7 @@ vec2 map( in vec3 pos )
     res = opU( res, vec2( sdRoundCone(   pos-vec3( 2.0,0.15, 0.0), vec3(0.1,0.0,0.0), vec3(-0.1,0.35,0.1), 0.15, 0.05), 51.7 ) );
     res = opU( res, vec2( sdRoundCone(   pos-vec3( 2.0,0.20, 1.0), 0.2, 0.1, 0.3 ), 37.0 ) );
     }
-    
+    */
     return res;
 }
 
@@ -382,7 +383,7 @@ vec2 raycast( in vec3 ro, in vec3 rd )
     float tmax = 20.0;
 
     // raytrace floor plane
-    float tp1 = (0.0-ro.y)/rd.y;
+    float tp1 = (-1.0-ro.y)/rd.y;
     if( tp1>0.0 )
     {
         tmax = min( tmax, tp1 );
@@ -391,7 +392,7 @@ vec2 raycast( in vec3 ro, in vec3 rd )
     //else return res;
     
     // raymarch primitives   
-    vec2 tb = iBox( ro-vec3(0.0,0.4,-0.5), rd, vec3(2.5,0.41,3.0) );
+    vec2 tb = iBox( ro-vec3(0.0,0,0), rd, vec3(2.5,2.5,2.5) );
     if( tb.x<tb.y && tb.y>0.0 && tb.x<tmax)
     {
         //return vec2(tb.x,2.0);
@@ -490,6 +491,7 @@ vec3 render( in vec3 ro, in vec3 rd, in vec3 rdx, in vec3 rdy )
     vec2 res = raycast(ro,rd);
     float t = res.x;
 	float m = res.y;
+
     if( m>-0.5 )
     {
         vec3 pos = ro + t*rd;
@@ -568,7 +570,7 @@ mat3 setCamera( in vec3 ro, in vec3 ta, float cr )
 	vec3 cw = normalize(ta-ro);
 	vec3 cp = vec3(sin(cr), cos(cr),0.0);
 	vec3 cu = normalize( cross(cw,cp) );
-	vec3 cv =          ( cross(cu,cw) );
+	vec3 cv =          ( cross(cw,cu) );
     return mat3( cu, cv, cw );
 }
 
@@ -577,13 +579,14 @@ int iTime = 0;
 
 void main()
 {
-    vec2 mo = iMouse.xy/res.xy;
 	float time = 32.0 + iTime*1.5;
 
     vec2 fragCoord = fsin_texCoords.xy * res.xy;
+    vec4 pos = viewmat * vec4(0,0,0,1);
+    vec4 rot = viewmat * vec4(0,0,1,0);
     // camera	
-    vec3 ta = vec3( 0.5, -0.5, -0.6 );
-    vec3 ro = ta + vec3( 4.5*cos(0.1*time + 7.0*mo.x), 1.3 + 2.0*mo.y, 4.5*sin(0.1*time + 7.0*mo.x) );
+    vec3 ta = pos.xyz;
+    vec3 ro = ta + rot.xyz;
     // camera-to-world transformation
     mat3 ca = setCamera( ro, ta, 0.0 );
 

@@ -98,6 +98,11 @@ namespace sam
     {
         if (buttonId == 1 && m_pPickedBrick != nullptr)
         {
+            Engine& e = Engine::Inst();
+            Camera::Fly la = e.DrawCam().GetFly();
+            Vec3f r, u, camLookDir;
+            la.GetDirs(r, u, camLookDir);
+
             Matrix44f mat = m_pPickedBrick->GetWorldMatrix();
             Brick *pBrick = m_pPickedBrick->GetBrick();
             Matrix44f wm = m_pPickedBrick->GetWorldMatrix();
@@ -114,10 +119,10 @@ namespace sam
             if (connectorIdx >= 0)
             {
                 auto& connector = pBrick->m_connectors[connectorIdx];
-                Quatf cq = pickedDir * connector.GetDirAsQuat();
+                Quatf wsPickedConnectorDir = pickedDir * connector.GetDirAsQuat();
 
-                Vec4f cwpos;
-                xform(cwpos, wm, Vec4f(connector.pos,1));
+                Vec4f wsPickedConnectorPos;
+                xform(wsPickedConnectorPos, wm, Vec4f(connector.pos,1));
 
                 Brick* pRHandBrick = BrickManager::Inst().GetBrick(m_player->GetRightHandPart().id);
                 BrickManager::Inst().LoadConnectors(pBrick);
@@ -125,18 +130,27 @@ namespace sam
                 {
                     if (Connector::CanConnect(connector.type, rhandconnect.type))
                     {                      
-                        Vec3f newpos = cq * rhandconnect.pos;
+                        Vec3f constraintPlane = wsPickedConnectorDir * Vec3f(0, 1, 0);
+                        Vec3f lookPlane = camLookDir - dot(camLookDir, constraintPlane) * constraintPlane;
 
+                        normalize(lookPlane);
+                        Vec3f rightDir;
+                        cross(rightDir, constraintPlane, lookPlane);
+                        Matrix33f m33 = makeAxes<Matrix33f>(rightDir, constraintPlane, lookPlane);
+                        Quatf qv = make<Quatf>(m33);
                         PartInst pi = m_player->GetRightHandPart();
-                        pi.rot = cq;
-                        Vec3f pos = Vec3f(cwpos) - (newpos * BrickManager::Scale);
+                        pi.rot = qv;
+
+                        Vec3f newpos = qv * rhandconnect.pos;
+                        Vec3f pos = Vec3f(wsPickedConnectorPos) - (newpos * BrickManager::Scale);
                         pi.pos = pos;
+
 
                         AABoxf cbox = pRHandBrick->m_collisionBox;
                         
                         cbox.mMin = cbox.mMin * BrickManager::Scale;// +pi.pos;
                         cbox.mMax = cbox.mMax * BrickManager::Scale;// +pi.pos;
-                        cbox = RotateAABox(cbox, cq);
+                        cbox = RotateAABox(cbox, wsPickedConnectorDir);
                         cbox.mMin += pi.pos;
                         cbox.mMax += pi.pos;
                         if (m_disableCollisionCheck || m_octTileSelection.CanAddPart(pi, cbox))
@@ -251,6 +265,14 @@ namespace sam
             PartInst part = m_player->GetRightHandPart();
             part.rot *= make<Quatf>(AxisAnglef(
                 -Math::PI_OVER_2, Vec3f(1, 0, 0)));
+            m_player->SetRightHandPart(part);
+            break;
+        }
+        case 'R':
+        {
+            PartInst part = m_player->GetRightHandPart();
+            part.rot *= make<Quatf>(AxisAnglef(
+                -Math::PI_OVER_2, Vec3f(0, 1, 0)));
             m_player->SetRightHandPart(part);
             break;
         }

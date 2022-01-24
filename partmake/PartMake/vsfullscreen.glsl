@@ -9,6 +9,6 @@ layout(location = 1) out vec3 fsin_normal;
 void main()
 {
     gl_Position = vec4(Position, 1);
-    fsin_texCoords = vec2(TexCoords.x, 1 - TexCoords.y);
+    fsin_texCoords = vec2(TexCoords.x, TexCoords.y);
     fsin_normal = Normal;
 }
