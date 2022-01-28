@@ -23,6 +23,8 @@ namespace partmake
         public bool IsSelected { get; set; }
         public bool IsEnabled { get; 
             set; } = true;
+
+        public IEnumerable<Face> Faces => File.Faces;
     }
 
     public class Plane
@@ -78,6 +80,12 @@ namespace partmake
         public Vector3[] v;
         public Vector2[] t;
 
+        public bool IsSelected { get; set; }
+        public bool IsEnabled
+        {
+            get;
+            set;
+        } = true;
 
         Vector3 V3T(Vector3 v, Matrix4x4 m)
         {

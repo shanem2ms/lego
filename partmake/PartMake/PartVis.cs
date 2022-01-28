@@ -143,7 +143,7 @@ namespace partmake
             {
                 LDrawDatFile.ConnectorType mask = (LDrawDatFile.ConnectorType.Stud | LDrawDatFile.ConnectorType.RStud);
                 if ((conn.type & mask) != 0)
-                    connectorVizs.Add(new ConnectorVis() { type = conn.type & mask, mat = conn.mat });
+                    connectorVizs.Add(new ConnectorVis() { type = conn.type & mask, mat = conn.mat });                                                                           
             }
 
             this.edges.Clear();

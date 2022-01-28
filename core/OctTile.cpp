@@ -258,6 +258,20 @@ namespace sam
         return true;
     }
 
+    void OctTile::GetInterectingParts(const Spheref& sphere, std::vector<PartInst>& piList)
+    {
+        auto itBrick = m_bricks.begin();
+        auto itPart = m_parts.begin();
+        for (; itPart != m_parts.end(); ++itPart, ++itBrick)
+        {
+            AABox cb = (*itBrick)->m_bounds;
+            cb.mMin = cb.mMin * BrickManager::Scale + itPart->pos;
+            cb.mMax = cb.mMax * BrickManager::Scale + itPart->pos;
+            if (intersect(sphere, cb))
+                piList.push_back(*itPart);
+        }
+    }
+
     bool OctTile::CanAddPart(const PartInst& pi, const AABoxf& bbox)
     {
         auto itBrick = m_bricks.begin();

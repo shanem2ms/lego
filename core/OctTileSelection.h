@@ -46,6 +46,7 @@ namespace sam
         bool CanAddPart(const PartInst& pi, const AABoxf& bbox);
         void AddPartInst(const PartInst& pi);
         void RemovePart(const PartInst& pi);
+        void GetInterectingParts(const Spheref& sphere, std::vector<PartInst>& piList);
 
     public:
         OctTileSelection();

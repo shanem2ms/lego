@@ -222,10 +222,16 @@ namespace sam
     struct Brick
     {
         std::string m_name;
-        std::vector<PosTexcoordNrmVertex> m_vertices;
-        std::vector<uint32_t> m_indices;
-        bgfxh<bgfx::VertexBufferHandle> m_vbh;
-        bgfxh<bgfx::IndexBufferHandle> m_ibh;
+        std::vector<PosTexcoordNrmVertex> m_verticesLR;
+        std::vector<uint32_t> m_indicesLR;
+        bgfxh<bgfx::VertexBufferHandle> m_vbhLR;
+        bgfxh<bgfx::IndexBufferHandle> m_ibhLR;
+
+        std::vector<PosTexcoordNrmVertex> m_verticesHR;
+        std::vector<uint32_t> m_indicesHR;
+        bgfxh<bgfx::VertexBufferHandle> m_vbhHR;
+        bgfxh<bgfx::IndexBufferHandle> m_ibhHR;
+
         AABoxf m_bounds;
         AABoxf m_collisionBox;
         float m_scale;
@@ -240,8 +246,9 @@ namespace sam
         void LoadCollisionMesh();
 
     private:
-        void Load(ldr::Loader* pLoader,
+        void LoadLores(ldr::Loader* pLoader,
             const std::string& name, std::filesystem::path& cachePath);
+        void LoadHires(const std::string& name, std::filesystem::path& cachePath);
         void LoadConnectors(const std::filesystem::path &connectorPath);
         void LoadPrimitives(ldr::Loader* pLoader);
         void GenerateCacheItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
@@ -272,9 +279,8 @@ namespace sam
         // Lego unit = 20, this makes each 1x1 space equal 16x16 legos
         static constexpr float Scale = 1 / 20.0f;
 
-        
         static BrickManager& Inst();
-        Brick *GetBrick(const PartId& name);
+        Brick *GetBrick(const PartId& name, bool hires = false);
         BrickManager(const std::string& ldrpath);
         static Vec4f Color(uint32_t hex);
         const PartId& GetPartId(size_t idx);
@@ -318,7 +324,8 @@ namespace sam
 
         std::map<PartId, Brick> m_bricks;
         bgfxh<bgfx::UniformHandle> m_paletteHandle;
-        std::shared_ptr<ldr::Loader> m_ldrLoader;
+        std::shared_ptr<ldr::Loader> m_ldrLoaderHR;
+        std::shared_ptr<ldr::Loader> m_ldrLoaderLR;
         index_map<PartId, PartDesc> m_partsMap;
         index_map<std::string, std::vector<PartId>> m_typesMap;
         std::filesystem::path m_cachePath;

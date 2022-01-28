@@ -23,6 +23,7 @@ namespace partmake
         public List<LDrawDatNode> Children { get => children; }
 
         Face[] faces;
+        public Face[] Faces => faces;
         string name;
         AABB? aabb;
 
@@ -202,6 +203,8 @@ namespace partmake
             {
                 foreach (var f in this.faces)
                 {
+                    if (!f.IsEnabled)
+                        continue;
                     f.GetTriangleVertices(vertices, transform, inverted);
                 }
             }

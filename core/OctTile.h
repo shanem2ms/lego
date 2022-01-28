@@ -5,6 +5,7 @@
 #include "SceneItem.h"
 #include "Loc.h"
 #include "PartDefs.h"
+#include "gmtl/Sphere.h"
 
 struct VoxCube;
 
@@ -74,7 +75,7 @@ namespace sam
         void AddPartInst(const PartInst& pi);
         bool CanAddPart(const PartInst& pi, const AABoxf& bbox);
         void RemovePart(const PartInst& pi);
-        
+        void GetInterectingParts(const Spheref& sphere, std::vector<PartInst>& piList);        
     };
 
     class TargetCube : public SceneItem

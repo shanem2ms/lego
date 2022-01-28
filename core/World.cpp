@@ -80,88 +80,14 @@ namespace sam
     //https://shanetest-cos-earth.s3.us-east.cloud-object-storage.appdomain.cloud/world9m_whqt/Q0/L0/R0/C0
     //https://shanetest-cos-earth.s3.us-east.cloud-object-storage.appdomain.cloud/world9m_whqt/Q1/L3/R1/Q1_L3_R1_C0.png
 
-    AABoxf RotateAABox(const AABoxf& in, const Quatf& q)
-    {
-        AABoxf outBox;
-        Vec3f p[2] = { in.mMin,  in.mMax };
-        for (int i = 0; i < 8; ++i)
-        {
-            Point3f op(p[i / 4][0], p[(i / 2) & 0x1][1], p[i & 0x1][2]);
-            xform(op, q, op);
-            outBox += op;
-        }
-        return outBox;
-    }
-
+   
     bool cursormode = false;
     void World::MouseDown(float x, float y, int buttonId)
     {
         if (buttonId == 1 && m_pPickedBrick != nullptr)
         {
-            Engine& e = Engine::Inst();
-            Camera::Fly la = e.DrawCam().GetFly();
-            Vec3f r, u, camLookDir;
-            la.GetDirs(r, u, camLookDir);
-
-            Matrix44f mat = m_pPickedBrick->GetWorldMatrix();
-            Brick *pBrick = m_pPickedBrick->GetBrick();
-            Matrix44f wm = m_pPickedBrick->GetWorldMatrix();
-            Vec3f c0 = Vec3f(&wm.mData[0]);
-            normalize(c0);
-            Vec3f c1 = Vec3f(&wm.mData[4]);
-            normalize(c1);
-            Vec3f c2 = Vec3f(&wm.mData[8]);
-            normalize(c2);            
-            Matrix33f rotmat = makeAxes<Matrix33f>(c0, c1, c2);
-            Quatf pickedDir = make<Quatf>(rotmat);
-            normalize(pickedDir);
-            int connectorIdx = m_pPickedBrick->GetHighlightedConnector();
-            if (connectorIdx >= 0)
-            {
-                auto& connector = pBrick->m_connectors[connectorIdx];
-                Quatf wsPickedConnectorDir = pickedDir * connector.GetDirAsQuat();
-
-                Vec4f wsPickedConnectorPos;
-                xform(wsPickedConnectorPos, wm, Vec4f(connector.pos,1));
-
-                Brick* pRHandBrick = BrickManager::Inst().GetBrick(m_player->GetRightHandPart().id);
-                BrickManager::Inst().LoadConnectors(pBrick);
-                for (auto& rhandconnect : pRHandBrick->m_connectors)
-                {
-                    if (Connector::CanConnect(connector.type, rhandconnect.type))
-                    {                      
-                        Vec3f constraintPlane = wsPickedConnectorDir * Vec3f(0, 1, 0);
-                        Vec3f lookPlane = camLookDir - dot(camLookDir, constraintPlane) * constraintPlane;
-
-                        normalize(lookPlane);
-                        Vec3f rightDir;
-                        cross(rightDir, constraintPlane, lookPlane);
-                        Matrix33f m33 = makeAxes<Matrix33f>(rightDir, constraintPlane, lookPlane);
-                        Quatf qv = make<Quatf>(m33);
-                        PartInst pi = m_player->GetRightHandPart();
-                        pi.rot = qv;
-
-                        Vec3f newpos = qv * rhandconnect.pos;
-                        Vec3f pos = Vec3f(wsPickedConnectorPos) - (newpos * BrickManager::Scale);
-                        pi.pos = pos;
-
-
-                        AABoxf cbox = pRHandBrick->m_collisionBox;
-                        
-                        cbox.mMin = cbox.mMin * BrickManager::Scale;// +pi.pos;
-                        cbox.mMax = cbox.mMax * BrickManager::Scale;// +pi.pos;
-                        cbox = RotateAABox(cbox, wsPickedConnectorDir);
-                        cbox.mMin += pi.pos;
-                        cbox.mMax += pi.pos;
-                        if (m_disableCollisionCheck || m_octTileSelection.CanAddPart(pi, cbox))
-                        {
-                            m_octTileSelection.AddPartInst(pi);
-                            Application::Inst().GetAudio().PlayOnce("click-7.wav");
-                        }
-                        break;
-                    }
-                }
-            }
+            m_connectionLogic.PlaceBrick(m_player, m_pPickedBrick,
+                m_octTileSelection, !m_disableCollisionCheck);
         }
         else if (buttonId == 0 && m_pPickedBrick != nullptr)
         {

@@ -86,6 +86,19 @@ inline bool isEqual( const AABox<DATA_TYPE>& b1, const AABox<DATA_TYPE>& b2, con
 }
 /** @} */
 
+template< class DATA_TYPE >
+inline void getCorners(const AABox<DATA_TYPE>& a, Point<DATA_TYPE, 3> corners[8])
+{
+    corners[0] = Point<DATA_TYPE, 3>(a.mMin[0], a.mMin[1], a.mMin[2]);
+    corners[1] = Point<DATA_TYPE, 3>(a.mMin[0], a.mMin[1], a.mMax[2]);
+    corners[2] = Point<DATA_TYPE, 3>(a.mMin[0], a.mMax[1], a.mMin[2]);
+    corners[3] = Point<DATA_TYPE, 3>(a.mMin[0], a.mMax[1], a.mMax[2]);
+    corners[4] = Point<DATA_TYPE, 3>(a.mMax[0], a.mMin[1], a.mMin[2]);
+    corners[5] = Point<DATA_TYPE, 3>(a.mMax[0], a.mMin[1], a.mMax[2]);
+    corners[6] = Point<DATA_TYPE, 3>(a.mMax[0], a.mMax[1], a.mMin[2]);
+    corners[7] = Point<DATA_TYPE, 3>(a.mMax[0], a.mMax[1], a.mMax[2]);
+}
+
 }
 
 #endif

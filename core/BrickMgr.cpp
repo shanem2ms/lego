@@ -202,14 +202,14 @@ namespace sam
         }
     }
 
-    void Brick::Load(ldr::Loader* pLoader, const std::string& name, std::filesystem::path& cachePath)
+    void Brick::LoadLores(ldr::Loader* pLoader, const std::string& name, std::filesystem::path& cachePath)
     {
         m_name = name;
         m_connectorsLoaded = false;
         static bool sEnableDirectLoad = true;
         PosTexcoordNrmVertex::init();
         std::filesystem::path filepath = cachePath / name;
-        filepath.replace_extension("mesh");
+        filepath.replace_extension("lr_mesh");
         if (std::filesystem::exists(filepath))
         {
             std::ifstream ifs(filepath, std::ios_base::binary);
@@ -218,13 +218,13 @@ namespace sam
             ifs.read((char*)&numvtx, sizeof(numvtx));
             if (numvtx == 0)
                 return;
-            m_vertices.resize(numvtx);
-            ifs.read((char*)m_vertices.data(), sizeof(PosTexcoordNrmVertex) * numvtx);
+            m_verticesLR.resize(numvtx);
+            ifs.read((char*)m_verticesLR.data(), sizeof(PosTexcoordNrmVertex) * numvtx);
             ifs.read((char*)&numidx, sizeof(numidx));
-            m_indices.resize(numidx);
-            ifs.read((char*)m_indices.data(), sizeof(uint32_t) * numidx);
+            m_indicesLR.resize(numidx);
+            ifs.read((char*)m_indicesLR.data(), sizeof(uint32_t) * numidx);
 
-            PosTexcoordNrmVertex* curVtx = m_vertices.data();
+            PosTexcoordNrmVertex* curVtx = m_verticesLR.data();
             PosTexcoordNrmVertex* endVtx = curVtx + numvtx;
             for (; curVtx != endVtx; ++curVtx)
             {
@@ -250,22 +250,54 @@ namespace sam
             return;
 
         //LoadConnectors(pLoader, name);
-        m_vbh = bgfx::createVertexBuffer(bgfx::makeRef(m_vertices.data(), m_vertices.size() * sizeof(PosTexcoordNrmVertex)), PosTexcoordNrmVertex::ms_layout);
-        m_ibh = bgfx::createIndexBuffer(bgfx::makeRef(m_indices.data(), m_indices.size() * sizeof(uint32_t)), BGFX_BUFFER_INDEX32);
+        m_vbhLR = bgfx::createVertexBuffer(bgfx::makeRef(m_verticesLR.data(), m_verticesLR.size() * sizeof(PosTexcoordNrmVertex)), PosTexcoordNrmVertex::ms_layout);
+        m_ibhLR = bgfx::createIndexBuffer(bgfx::makeRef(m_indicesLR.data(), m_indicesLR.size() * sizeof(uint32_t)), BGFX_BUFFER_INDEX32);
     }
 
-    static ldr::Loader* spLoader = nullptr;
+    void Brick::LoadHires(const std::string& name, std::filesystem::path& cachePath)
+    {
+        PosTexcoordNrmVertex::init();
+        std::filesystem::path filepath = cachePath / name;
+        filepath.replace_extension("hr_mesh");
+        if (std::filesystem::exists(filepath))
+        {
+            std::ifstream ifs(filepath, std::ios_base::binary);
+            uint32_t numvtx = 0;
+            uint32_t numidx = 0;
+            ifs.read((char*)&numvtx, sizeof(numvtx));
+            if (numvtx == 0)
+                return;
+            m_verticesHR.resize(numvtx);
+            ifs.read((char*)m_verticesHR.data(), sizeof(PosTexcoordNrmVertex) * numvtx);
+            ifs.read((char*)&numidx, sizeof(numidx));
+            m_indicesHR.resize(numidx);
+            ifs.read((char*)m_indicesHR.data(), sizeof(uint32_t) * numidx);
+            PosTexcoordNrmVertex* curVtx = m_verticesHR.data();
+            PosTexcoordNrmVertex* endVtx = curVtx + numvtx;
+            for (; curVtx != endVtx; ++curVtx)
+            {
+                curVtx->m_y = -curVtx->m_y;
+                if (curVtx->m_u == 16)
+                    curVtx->m_u = -1;
+            }
+        }
+        else
+            return;
+
+        m_vbhHR = bgfx::createVertexBuffer(bgfx::makeRef(m_verticesHR.data(), m_verticesHR.size() * sizeof(PosTexcoordNrmVertex)), PosTexcoordNrmVertex::ms_layout);
+        m_ibhHR = bgfx::createIndexBuffer(bgfx::makeRef(m_indicesHR.data(), m_indicesHR.size() * sizeof(uint32_t)), BGFX_BUFFER_INDEX32);
+    }
 
     void Brick::LoadCollisionMesh()
     {
         if (m_collisionShape != nullptr)
             return;
 
-        const uint32_t* pI = (const uint32_t*)m_indices.data();
-        const PosTexcoordNrmVertex* pV = m_vertices.data();
+        const uint32_t* pI = (const uint32_t*)m_indicesLR.data();
+        const PosTexcoordNrmVertex* pV = m_verticesLR.data();
         btTriangleMesh* pMesh = new btTriangleMesh();
         constexpr float s = 1.0f;// BrickManager::Scale;
-        for (uint32_t i = 0; i < m_indices.size(); i += 3) {
+        for (uint32_t i = 0; i < m_indicesLR.size(); i += 3) {
             if (pI[i] == (uint32_t)(-1) ||
                 pI[i + 1] == (uint32_t)(-1) ||
                 pI[i + 2] == (uint32_t)(-1))
@@ -335,7 +367,7 @@ namespace sam
             const LdrInstance& instance = model->instances[i];
             const LdrRenderPart& rpart = pLoader->getRenderPart(instance.part);
             numvtx += rpart.num_vertices;
-            numidx += rpart.num_triangles * 3;
+            numidx += rpart.num_trianglesC * 3;
         }
 
         std::vector<PosTexcoordNrmVertex> vtx;
@@ -357,15 +389,15 @@ namespace sam
                 m_bounds += Point3f(curVtx->m_x, curVtx->m_y, curVtx->m_z);
                 curVtx++;
             }
-            memcpy(curIdx, rpart.triangles, rpart.num_triangles * 3 * sizeof(uint32_t));
-            for (uint32_t idx = 0; idx < rpart.num_triangles * 3; ++idx, curIdx++)
+            memcpy(curIdx, rpart.trianglesC, rpart.num_trianglesC * 3 * sizeof(uint32_t));
+            for (uint32_t idx = 0; idx < rpart.num_trianglesC * 3; ++idx, curIdx++)
                 *curIdx = *curIdx + vtxOffset;
             if (rpart.materials != nullptr)
             {
                 PosTexcoordNrmVertex* pvtx = (PosTexcoordNrmVertex*)vtx.data();
                 LdrMaterialID* curMat = rpart.materials;
-                LdrVertexIndex* pVtxIdx = rpart.triangles;
-                for (uint32_t idx = 0; idx < rpart.num_triangles * 3; ++idx, pVtxIdx++)
+                LdrVertexIndex* pVtxIdx = rpart.trianglesC;
+                for (uint32_t idx = 0; idx < rpart.num_trianglesC * 3; ++idx, pVtxIdx++)
                 {
 
                     if (*pVtxIdx != LDR_INVALID_ID)
@@ -408,7 +440,7 @@ namespace sam
             return false;
     }
 
-    ConnectorInfo GetConnectorForPrimitive(ldr::Loader* pLoader, const ldr::LdrPrimitive &prim)
+    ConnectorInfo GetConnectorForPrimitive(ldr::Loader* pLoader, const ldr::LdrPrimitive& prim)
     {
         const std::string& name = pLoader->getPrimitiveName(prim.idx);
         auto itconnection = sConnectorMap.find(name);
@@ -416,9 +448,9 @@ namespace sam
             return itconnection->second;
 
         if (name == "box5.dat" && prim.inverted && BoundsXZSizeEq(prim.bbox, Vec2f(12, 12)))
-            return ConnectorInfo{ ConnectorType::InvStud, { Vec3f(0,0,0) }};
+            return ConnectorInfo{ ConnectorType::InvStud, { Vec3f(0,0,0) } };
 
-            return ConnectorInfo { ConnectorType::Unknown };
+        return ConnectorInfo{ ConnectorType::Unknown };
     }
 
 
@@ -428,10 +460,10 @@ namespace sam
             return;
 
         std::map<int, ConnectorType> cTypeMap =
-            { { 1, ConnectorType::Stud }, 
-                { 2, ConnectorType::Unknown }, 
-                { 4, ConnectorType::Unknown }, 
-                { 8, ConnectorType::InvStud } };
+        { { 1, ConnectorType::Stud },
+            { 2, ConnectorType::Unknown },
+            { 4, ConnectorType::Unknown },
+            { 8, ConnectorType::InvStud } };
         //open file
         std::ifstream infile(connectorPath);
 
@@ -448,7 +480,7 @@ namespace sam
         {
             Connector c;
             Matrix44f trans;
-            float *vals = trans.mData;
+            float* vals = trans.mData;
             int type = elem["type"];
             json mat = elem["mat"];
             vals[0] = mat["M11"];
@@ -479,7 +511,7 @@ namespace sam
             else c.type = ConnectorType::Unknown;
             m_connectors.push_back(c);
         }
-        
+
         std::sort(m_connectors.begin(), m_connectors.end());
         auto itunique = std::unique(m_connectors.begin(), m_connectors.end());
         m_connectors.erase(itunique, m_connectors.end());
@@ -501,7 +533,8 @@ namespace sam
     constexpr int iconH = 256;
     static BrickManager* spMgr = nullptr;
     BrickManager::BrickManager(const std::string& ldrpath) :
-        m_ldrLoader(std::make_shared<ldr::Loader>()),
+        m_ldrLoaderHR(std::make_shared<ldr::Loader>()),
+        m_ldrLoaderLR(std::make_shared<ldr::Loader>()),
         m_mruCtr(0)
     {
         // initialize library
@@ -511,15 +544,19 @@ namespace sam
         createInfo.partFixMode = LDR_PART_FIX_NONE;
         createInfo.renderpartBuildMode = LDR_RENDERPART_BUILD_ONLOAD;
         // required for chamfering
-        createInfo.partFixTjunctions = LDR_FALSE;
+        createInfo.partFixTjunctions = LDR_TRUE;
         // optionally look for higher subdivided ldraw primitives
-        createInfo.partHiResPrimitives = LDR_FALSE;
+        createInfo.partHiResPrimitives = LDR_TRUE;
         // leave 0 to disable
-        createInfo.renderpartChamfer = 0.0f;
+        createInfo.renderpartChamfer = 0.35f;
         // installation path of the LDraw Part Library
         createInfo.basePath = ldrpath.c_str();
-        m_ldrLoader->init(&createInfo);
-        spLoader = m_ldrLoader.get();
+        m_ldrLoaderHR->init(&createInfo);
+
+        createInfo.partFixTjunctions = LDR_FALSE;
+        createInfo.partHiResPrimitives = LDR_FALSE;
+        createInfo.renderpartChamfer = 0.2f;
+        m_ldrLoaderLR->init(&createInfo);
         spMgr = this;
         m_cachePath = Application::Inst().Documents() + "/ldrcache";
         m_connectorPath = Application::Inst().Documents() + "/connectors";
@@ -544,7 +581,7 @@ namespace sam
 
     void BrickManager::LoadPrimitives(Brick* pBrick)
     {
-        pBrick->LoadPrimitives(m_ldrLoader.get());
+        pBrick->LoadPrimitives(m_ldrLoaderLR.get());
     }
     void BrickManager::LoadColors(const std::string& ldrpath)
     {
@@ -620,12 +657,12 @@ namespace sam
                 std::filesystem::path filepath = m_cachePath / filename;
                 std::filesystem::path connectorPath = m_connectorPath / filename;
                 connectorPath.replace_extension("json");
-                filepath.replace_extension("mesh");
+                filepath.replace_extension("lr_mesh");
                 char* p_end;
                 int val = std::strtol(filename.data(), &p_end, 10);
                 if (std::filesystem::exists(filepath) &&
                     std::filesystem::exists(connectorPath))
-                {                                        
+                {
                     PartDesc pd;
                     pd.index = val;
                     pd.type = ptype;
@@ -644,7 +681,7 @@ namespace sam
         else
         {
             m_threadPool = std::make_unique<BrickThreadPool>(
-                ldrpath, m_ldrLoader.get());
+                ldrpath, m_ldrLoaderLR.get());
 
             std::string tmpfile = Application::Inst().Documents() + "/pn.tmp";
             std::ofstream of(tmpfile);
@@ -726,10 +763,10 @@ namespace sam
 
                             Brick b;
                             std::filesystem::path meshfilepath = m_cachePath / name;
-                            meshfilepath.replace_extension("mesh");
+                            meshfilepath.replace_extension("lr_mesh");
                             if (!std::filesystem::exists(meshfilepath))
                             {
-                                b.GenerateCacheItem(m_ldrLoader.get(), m_threadPool.get(),
+                                b.GenerateCacheItem(m_ldrLoaderLR.get(), m_threadPool.get(),
                                     name, meshfilepath, codeIdx);
                             }
 
@@ -802,7 +839,7 @@ namespace sam
         std::swap(brickRenderQueue, m_brickRenderQueue);
         for (auto& brick : brickRenderQueue)
         {
-            if (!brick->m_vbh.isValid())
+            if (!brick->m_vbhLR.isValid())
                 continue;
             brick->m_icon =
                 bgfx::createTexture2D(
@@ -857,8 +894,8 @@ namespace sam
 
             bgfx::setTexture(0, m_paletteHandle, m_colorPalette);
             bgfx::setState(state);
-            bgfx::setVertexBuffer(0, brick->m_vbh);
-            bgfx::setIndexBuffer(brick->m_ibh);
+            bgfx::setVertexBuffer(0, brick->m_vbhLR);
+            bgfx::setIndexBuffer(brick->m_ibhLR);
             bgfx::submit(viewId, sShader);
         }
     }
@@ -872,13 +909,28 @@ namespace sam
     }
 
     BrickManager& BrickManager::Inst() { return *spMgr; }
-    Brick* BrickManager::GetBrick(const PartId& name)
+    Brick* BrickManager::GetBrick(const PartId& name, bool hires)
     {
+        static std::mutex cachemtx;
         Brick& b = m_bricks[name];
-        if (!b.m_vbh.isValid())
+        if (!b.m_vbhLR.isValid())
         {
-            b.Load(m_ldrLoader.get(), name.GetFilename(), m_cachePath);
+            b.LoadLores(m_ldrLoaderLR.get(), name.GetFilename(), m_cachePath);
             m_brickRenderQueue.push_back(&b);
+        }
+        if (hires && (!b.m_vbhHR.isValid()))
+        {
+            std::filesystem::path meshfilepath = m_cachePath / name.GetFilename();
+            meshfilepath.replace_extension("hr_mesh");
+            if (!std::filesystem::exists(meshfilepath) || 
+                name == "3003")
+            {
+                cachemtx.lock();
+                b.GenerateCacheItem(m_ldrLoaderHR.get(), nullptr, name.GetFilename(),
+                    meshfilepath, std::vector<int>());
+                cachemtx.unlock();
+            }
+            b.LoadHires(name.GetFilename(), m_cachePath);
         }
         MruUpdate(&b);
         CleanCache();

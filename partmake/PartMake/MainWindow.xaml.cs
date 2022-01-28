@@ -30,6 +30,9 @@ namespace partmake
 
         public event PropertyChangedEventHandler PropertyChanged;
 
+        LDrawDatNode selectedNode = null;
+        public LDrawDatNode SelectedNode => selectedNode;
+
         public string SelectedType { get => LDrawFolders.SelectedType; 
             set { LDrawFolders.SelectedType = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("LDrawParts"));
@@ -90,6 +93,8 @@ namespace partmake
                 (e.NewValue as LDrawDatNode).IsSelected = true;
             if (e.OldValue != null)
                 (e.OldValue as LDrawDatNode).IsSelected = false;
+            selectedNode = (e.NewValue as LDrawDatNode);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedNode"));
             //threeD.Refresh();
         }
 

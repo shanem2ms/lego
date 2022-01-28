@@ -45,7 +45,7 @@ namespace sam
             sShader3 = Engine::Inst().LoadShader("vs_connector.bin", "fs_pickbrick.bin");
             sPaletteHandle = bgfx::createUniform("s_brickPalette", bgfx::UniformType::Sampler);
         }
-        m_pBrick = BrickManager::Inst().GetBrick(m_partid);
+        m_pBrick = BrickManager::Inst().GetBrick(m_partid, true);
         if (!sUparams.isValid())
             sUparams = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 1);
 
@@ -63,7 +63,7 @@ namespace sam
             }
         }
 
-        if (m_physicsType != Physics::None)
+        if (false && m_physicsType != Physics::None)
         {
             m_pBrick->LoadCollisionMesh();
             Matrix44f m = dc.m_mat *
@@ -116,7 +116,7 @@ namespace sam
     void LegoBrick::Draw(DrawContext& ctx)
     {
         SceneGroup::Draw(ctx);
-        if (!bgfx::isValid(m_pBrick->m_vbh))
+        if (!bgfx::isValid(m_pBrick->m_vbhHR))
             return;
         if (m_pBrick != nullptr)
             BrickManager::Inst().MruUpdate(m_pBrick);
@@ -143,8 +143,8 @@ namespace sam
             bgfx::setUniform(sUparams, &color, 1);
 
             bgfx::setState(state);
-            bgfx::setVertexBuffer(0, m_pBrick->m_vbh);
-            bgfx::setIndexBuffer(m_pBrick->m_ibh);
+            bgfx::setVertexBuffer(0, m_pBrick->m_vbhHR);
+            bgfx::setIndexBuffer(m_pBrick->m_ibhHR);
             bgfx::submit(DrawViewId::DeferredObjects, sShader);
         }
         else
@@ -202,8 +202,8 @@ namespace sam
             bgfx::setUniform(sUparams, &p, 1);
 
             bgfx::setState(state);
-            bgfx::setVertexBuffer(0, m_pBrick->m_vbh);
-            bgfx::setIndexBuffer(m_pBrick->m_ibh);
+            bgfx::setVertexBuffer(0, m_pBrick->m_vbhHR);
+            bgfx::setIndexBuffer(m_pBrick->m_ibhHR);
             bgfx::submit(DrawViewId::PickObjects, sShader3);
         }
     }

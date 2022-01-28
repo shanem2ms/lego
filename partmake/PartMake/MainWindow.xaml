@@ -26,6 +26,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="30" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <TextBlock Height="30" Text="{Binding Path=SelectedItemDesc}" />
             <TreeView Grid.Row="1" Background="AliceBlue" ItemsSource="{Binding Path=CurrentPart}" 
@@ -44,6 +45,13 @@
                     </HierarchicalDataTemplate>
                 </TreeView.Resources>
             </TreeView>
+            <ListView Grid.Row="2" ItemsSource="{Binding Path=SelectedNode.Faces}">
+                <ListView.ItemTemplate>
+                    <DataTemplate DataType="{x:Type local:Face}">
+                        <CheckBox Grid.Column="0" IsChecked="{Binding Path=IsEnabled}" Checked="CheckBox_Checked" Unchecked="CheckBox_Checked"/>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
         </Grid>
         <Grid Grid.Column="2">
             <Grid.RowDefinitions>

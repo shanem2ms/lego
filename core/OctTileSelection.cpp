@@ -8,6 +8,7 @@
 #include "gmtl/Containment.h"
 #include <sstream>
 #include "gmtl/Ray.h"
+#include "gmtl/Sphere.h"
 #define NOMINMAX
 #ifdef _WIN32
 #include <Windows.h>
@@ -480,6 +481,22 @@ namespace sam
             }
         }
         return canAdd;
+    }
+    
+    void OctTileSelection::GetInterectingParts(const Spheref& sphere, std::vector<PartInst>& piList)
+    {
+        for (auto& pair : m_tiles)
+        {
+            if (pair.second->IsEmpty())
+                continue;
+            AABoxf bbox = pair.first.GetBBox();
+            if (intersect(sphere, bbox))
+            {
+                Point3f cpos = (bbox.mMin + bbox.mMax) * 0.5f;
+                Spheref cs(sphere.getCenter() - cpos, sphere.getRadius());
+                pair.second->GetInterectingParts(cs, piList);
+            }
+        }
     }
 
     void OctTileSelection::AddPartInst(const PartInst& pi)

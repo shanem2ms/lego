@@ -19,6 +19,23 @@ namespace partmake
                 new List<Edge>();
         }
 
+        public static class Eps
+        {
+            public static bool Eq(float a, float b)
+            {
+                const float epsilon = 0.001f;
+                float e = a - b;
+                return (e > -epsilon && e < epsilon);
+            }
+
+            public static bool Eq(Vector3 a, Vector3 v)
+            {
+                return Eq(a.X, v.X) &&
+                        Eq(a.Y, v.Y) &&
+                        Eq(a.Z, v.Z);
+            }
+        }
+
         public class Loop
         {
             public List<Edge> edges;
@@ -58,7 +75,28 @@ namespace partmake
                 new List<EdgePtr>();
             public AABB aabb;
 
-
+            public bool IsConnected(Edge other)
+            {
+                if (other.v0.idx == v0.idx || other.v0.idx == v1.idx ||
+                    other.v1.idx == v0.idx || other.v1.idx == v1.idx)
+                    return true;
+                return false;
+            }
+            public float DistanceFromPt(Vector3 p)
+            {
+                Vector3 v = v0.pt;
+                Vector3 w = v1.pt;
+                // Return minimum distance between line segment vw and point p
+                float l2 = Vector3.DistanceSquared(v, w);  // i.e. |w-v|^2 -  avoid a sqrt
+                if (l2 == 0.0) return Vector3.Distance(p, v);   // v == w case
+                                                        // Consider the line extending the segment, parameterized as v + t (w - v).
+                                                        // We find projection of point p onto the line. 
+                                                        // It falls where t = [(p-v) . (w-v)] / |w-v|^2
+                                                        // We clamp t from [0,1] to handle points outside the segment vw.
+                float t = Math.Max(0, Math.Min(1, Vector3.Dot(p - v, w - v) / l2));
+                Vector3 projection = v + t * (w - v);  // Projection falls on the segment
+                return Vector3.DistanceSquared(p, projection);
+            }
             public ulong ComputeHash()
             {
                 UInt64 hashedValue = 3074457345618258791ul;
@@ -86,7 +124,23 @@ namespace partmake
             public List<Vertex> vtx;
             public bool visited;
             public bool isinvalid = false;
+            public AABB aabb;
 
+            public List<Edge> nonmfEdges;
+
+            public Face(List<EdgePtr> _edges,
+                List<Vertex> _vtx)
+            {
+                edges = _edges;
+                vtx = _vtx;
+                aabb = AABB.CreateFromPoints(vtx.Select(v => v.pt));
+            }
+
+            public bool IsPointOnFace(Vector3 pt)
+            {
+                Vector3 nrm = Normal;
+                return Eps.Eq(Vector3.Dot(pt - vtx[0].pt, nrm), 0);
+            }
             public void GetVertices(List<Vertex> v)
             {
                 //v.AddRange(vtx);
@@ -181,7 +235,7 @@ namespace partmake
                     elist.Add(eptr);
                 }
 
-                Face f = new Face() { edges = elist, vtx = verlist };
+                Face f = new Face(elist, verlist);
                 foreach (EdgePtr eptr in f.edges)
                 {
                     eptr.parentFace = f;
@@ -225,17 +279,8 @@ namespace partmake
             {
                 //SplitEdges();
                 RemoveDuplicateFaces();
+                FixNonManifold();
                 FixWindings();
-                List<Face> removeFaces = new List<Face>();
-                GetNonManifoldFaces(removeFaces);
-                foreach (Face f in removeFaces)
-                {
-                    foreach (var eptr in f.edges)
-                    {
-                        eptr.e.edgePtrs.Remove(eptr);                        
-                    }
-                    faces.Remove(f);
-                }
             }
 
             void SplitEdges()
@@ -266,6 +311,13 @@ namespace partmake
                 }
             }
 
+            public void GetEdges(List<Edge> edges)
+            {
+                foreach (Edge e in edgeDict.Values)
+                {
+                        edges.Add(e);
+                }
+            }
             public void GetNonManifold(List<Edge> edges)
             {
                 foreach (Edge e in edgeDict.Values)
@@ -275,19 +327,27 @@ namespace partmake
                 }
             }
 
-            public void GetNonManifoldFaces(List<Face> faces)
+            void FixNonManifold()
             {
-                foreach (Face f in faces)
+                List<Edge> badEdges = new List<Edge>();
+                GetNonManifold(badEdges);
+                List<Face> faceSplits = new List<Face>();
+                foreach (Edge e in badEdges)
                 {
-                    int nonManifoldEdges = 0;
-                    foreach (var eptr in f.edges)
+                    List<Edge> edgesToTest = new List<Edge>();
+                    foreach (Face testFace in this.faces)
                     {
-                        if (eptr.e.edgePtrs.Count != 2)
-                            nonManifoldEdges++;
+                        if (testFace.aabb.Contains(ref e.aabb) != AABB.ContainmentType.Disjoint)
+                        {
+                            if (e.edgePtrs.Where(ep => ep.parentFace == testFace).Any())
+                                continue;
+                            if (testFace.IsPointOnFace(e.v0.pt) && testFace.IsPointOnFace(e.v1.pt))
+                            {
+                                if (testFace.nonmfEdges == null) testFace.nonmfEdges = new List<Edge>();
+                                testFace.nonmfEdges.Add(e);
+                            }
+                        }
                     }
-                    if (nonManifoldEdges > 1)
-                        faces.Add(f);
-
                 }
             }
 
@@ -312,25 +372,12 @@ namespace partmake
                 }
             }
 
-            bool epsEq(float a, float b)
-            {
-                const float epsilon = 0.001f;
-                float e = a - b;
-                return (e > -epsilon && e < epsilon);
-            }
-            bool epsEq(Vector3 a, Vector3 v)
-            {
-                return epsEq(a.X, v.X) &&
-                        epsEq(a.Y, v.Y) &&
-                        epsEq(a.Z, v.Z);
-            }
-
 
             bool IsUnique(KdTree<float, Vector3> kd, Vector3 pt)
             {
                 var result = kd.GetNearestNeighbours(new float[] { pt.X, pt.Y, pt.Z }, 1);
                 if (result.Count() > 0 &&
-                    epsEq(result[0].Value, pt))
+                    Eps.Eq(result[0].Value, pt))
                 {
                     return false;
                 }
@@ -421,7 +468,7 @@ namespace partmake
                                 candidatePts.Add(testPt);
                         }
 
-                        if (epsEq(edge.len, 12))
+                        if (Eps.Eq(edge.len, 12))
                         {
                             Vector3 edgeNrm = Vector3.Cross(planeNormal, edge.dir);
                             Vector3 pt1 = (edge.v0.pt + edge.v1.pt) * 0.5f +
@@ -526,14 +573,14 @@ namespace partmake
 
                 foreach (var e in this.edgeDict.Values)
                 {
-                    if (epsEq(e.len, 12))
+                    if (Eps.Eq(e.len, 12))
                     {
 
                     }
                 }
                 foreach (var e in this.edgeDict.Values)
                 {
-                    if (epsEq(e.v0.pt.Y, maxy) && epsEq(e.v1.pt.Y, maxy))
+                    if (Eps.Eq(e.v0.pt.Y, maxy) && Eps.Eq(e.v1.pt.Y, maxy))
                         edges.Add(e);
                 }
             }

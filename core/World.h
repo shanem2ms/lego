@@ -5,6 +5,7 @@
 #include "OctTileSelection.h"
 #include "Level.h"
 #include "PartDefs.h"
+#include "ConnectionLogic.h"
 
 class SimplexNoise;
 
@@ -23,6 +24,7 @@ namespace sam
     private:
 
         OctTileSelection m_octTileSelection;
+        ConnectionLogic m_connectionLogic;
 
         int m_width;
         int m_height;
