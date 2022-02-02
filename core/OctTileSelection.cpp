@@ -494,7 +494,13 @@ namespace sam
             {
                 Point3f cpos = (bbox.mMin + bbox.mMax) * 0.5f;
                 Spheref cs(sphere.getCenter() - cpos, sphere.getRadius());
-                pair.second->GetInterectingParts(cs, piList);
+                std::vector<PartInst> piTileList;
+                pair.second->GetInterectingParts(cs, piTileList);
+                for (PartInst& piTile : piTileList)
+                {
+                    piTile.pos += cpos;
+                    piList.push_back(piTile);
+                }
             }
         }
     }

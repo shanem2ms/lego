@@ -27,6 +27,19 @@ namespace partmake
         public IEnumerable<Face> Faces => File.Faces;
     }
 
+
+    public enum PrimitiveType
+    {
+        Cylinder,
+        Cube,
+        Sphere
+    }
+    public struct Primitive
+    {
+        public PrimitiveType type;
+        public Matrix4x4 transform;
+    }
+
     public class Plane
     {
         public Vector3 nrm;

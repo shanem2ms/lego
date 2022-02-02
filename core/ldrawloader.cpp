@@ -3877,9 +3877,6 @@ namespace ldr {
 
     LdrBbox Loader::getBboxWithExlcusions(const char* filename, const std::set<std::string>& excludePrimitives)
     {
-        std::string dbg = std::string("getBboxWithExlcusions: ") + filename;
-        DbgPrint(dbg.c_str());
-        //#endif
         LdrBbox bbox;
         std::vector<LdrPrimitive> primitives;
         LdrResult result = loadPrimitive(filename, 0, mat_identity(), false, true, excludePrimitives,

@@ -177,8 +177,8 @@ namespace sam
         auto pf = std::make_shared<PickFrame>();
         pf->pickData.resize(PickBufSize * PickBufSize * 2);
         pf->frameIdx = bgfx::readTexture(m_pickColorRB, pf->pickData.data());
-        pf->items = dc.m_pickedCandidates;
         m_pickFrames.push_back(pf);
+        pf->items = dc.m_pickedCandidates;
         if (dc.m_frameIdx == -1)
         {
             bgfx::FrameBufferHandle fbh = BGFX_INVALID_HANDLE;

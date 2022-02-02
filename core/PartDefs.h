@@ -49,4 +49,9 @@ namespace sam
         return strncmp(lhs._id, rhs._id, sizeof(lhs._id)) == 0;
     }
 
+    struct SlotPart
+    {
+        PartId id;
+        int paletteIdx;
+    };
 }

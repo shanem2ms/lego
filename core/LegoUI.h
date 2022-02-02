@@ -13,6 +13,7 @@ namespace sam
         std::shared_ptr<UITable> m_partsTable;
         std::function<void(const PartId&)> m_partSelectedFn;
         std::function<void(int)> m_colortSelectedFn;
+        std::shared_ptr<UIWindow> m_hotbar;
     public:
         LegoUI() :
             m_isActive(false) {}

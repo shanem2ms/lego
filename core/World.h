@@ -45,6 +45,7 @@ namespace sam
         std::shared_ptr<LegoBrick> m_pPickedBrick;
         std::shared_ptr<Physics> m_physics;
         std::shared_ptr<Player> m_player;
+        SlotPart m_slots[16];
     public:
 
         const std::shared_ptr<Player> &GetPlayer()
@@ -63,6 +64,8 @@ namespace sam
         void KeyUp(int k);
         void WheelScroll(float delta);
         void Open(const std::string &path);
+        const SlotPart *GetSlots() const
+        { return m_slots; }
     };
 
 }

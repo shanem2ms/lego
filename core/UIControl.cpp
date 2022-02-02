@@ -104,6 +104,8 @@ namespace sam
         const int btnSize = 150;
         const int btnSpace = 10;
         UIContext uictx;
+        uictx.width = w;
+        uictx.height = h;
         m_topctrl->DrawUI(uictx);
 
         imguiEndFrame();
@@ -206,9 +208,11 @@ namespace sam
     {
         if (!m_isopen)
             return;
-
+        
+        int x = m_x < 0 ? ctx.width + m_x : m_x;
+        int y = m_y < 0 ? ctx.height + m_y : m_y;
         ImGui::SetNextWindowPos(
-            ImVec2(m_x, m_y), m_isinvisible ? ImGuiCond_Always : ImGuiCond_Appearing);
+            ImVec2(x, y), m_isinvisible ? ImGuiCond_Always : ImGuiCond_Appearing);
 
         if (m_width > 0)
         {
@@ -222,7 +226,8 @@ namespace sam
             ImGuiWindowFlags_NoBackground |
             ImGuiWindowFlags_NoTitleBar |
             ImGuiWindowFlags_NoResize |
-            ImGuiWindowFlags_NoMove) : 0);
+            ImGuiWindowFlags_NoMove) : ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoResize);
         if (isopen != m_isopen && m_onOpenChangedFn != nullptr)
         {
             m_onOpenChangedFn(isopen);

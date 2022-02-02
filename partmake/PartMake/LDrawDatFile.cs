@@ -263,6 +263,30 @@ namespace partmake
             return new Connector() { mat = cm, type = type };
         }
 
+        public void GetPrimitives(List<Primitive> primitives)
+        {
+            GetPrimitivesRecursive(primitives, false, Matrix4x4.Identity);
+        }
+        
+        static Dictionary<string, PrimitiveType> sPrimTypeMap = new Dictionary<string, PrimitiveType>()
+        { { "4-4cyli", PrimitiveType.Cylinder } };
+
+        void GetPrimitivesRecursive(List<Primitive> primitives, bool inverted, Matrix4x4 transform)
+        {
+            PrimitiveType ptype;
+            if (sPrimTypeMap.TryGetValue(this.Name, out ptype))
+            {
+                primitives.Add(new Primitive() { type = ptype, transform = transform });
+            }
+            foreach (var child in this.children)
+            {
+                if (!child.IsEnabled)
+                    continue;
+
+                child.File.GetPrimitivesRecursive(primitives, inverted ^ child.invert, child.transform * transform);
+            }
+        }
+
         void GetConnectorsRecursive(List<Connector> connectors, List<Connector> rStudCandidates, bool inverted, Matrix4x4 transform)
         {
             if (studs.Contains(this.name))

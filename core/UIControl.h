@@ -16,6 +16,8 @@ namespace sam
     struct UIContext
     {
         UILayout layout;
+        int width;
+        int height;
     };
 
     class UIControl

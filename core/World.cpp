@@ -267,11 +267,16 @@ namespace sam
                 dfly.pos = playerdata.inspectpos;
                 dfly.dir = playerdata.inspectdir;
                 righthandpart = playerdata.rightHandPart;
+                memcpy(m_slots, playerdata.slots, sizeof(m_slots));
             }
             else
             {
                 fly.pos = Point3f(0.0f, 0.0f, -0.5f);
                 fly.dir = Vec2f(1.24564195f, -0.455399066f);
+            }            
+            for (int i = 0; i < 16; ++i)
+            {
+                m_slots[i].id = PartId("3001");
             }
             e.DrawCam().SetFly(dfly);
             e.ViewCam().SetFly(fly);
@@ -279,6 +284,7 @@ namespace sam
             m_player->SetRightHandPart(righthandpart);
             m_octTiles->BeforeDraw([this](DrawContext& ctx) { ctx.m_pgm = BGFX_INVALID_HANDLE; return true; });
             m_physics = std::make_shared<Physics>();
+            Engine::Inst().AddExternalDraw(&m_connectionLogic);
         }
     
         ctx.m_physics = m_physics;

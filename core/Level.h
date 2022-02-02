@@ -18,7 +18,7 @@ namespace sam
 
     class Level {
         leveldb::DB* m_db;
-    public:
+    public: 
 
         struct PlayerData
         {
@@ -29,6 +29,7 @@ namespace sam
             Vec3f inspectpos;
             Vec2f inspectdir;
             PartInst rightHandPart;
+            SlotPart slots[16];
         };
 
         Level();

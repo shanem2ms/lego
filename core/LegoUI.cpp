@@ -117,6 +117,23 @@ namespace sam
         top->AddControl(menu);
         m_mainMenu = menu;
 
+        m_hotbar = std::make_shared<UIWindow>(650, -200, 1280, 155, "hotbar", false);
+        m_hotbar->SetLayout(UILayout::Horizontal);
+        auto hotbarTable = std::make_shared<UITable>(8);
+        const SlotPart *pSlots = pWorld->GetSlots();
+        hotbarTable->SetItems(8, [pSlots](int start, int count, UITable::TableItem items[])
+            {
+                for (int r = 0; r < count; r++)
+                {
+                    Brick* pBrick = BrickManager::Inst().GetBrick(pSlots[r].id);
+                    items[r].image = pBrick->m_icon;
+                    items[r].colorRect = 0xFF000000 | r;
+                }
+            });
+        m_hotbar->AddControl(hotbarTable);
+        m_hotbar->Show();
+        top->AddControl(m_hotbar);
+        
         return top;
     }
 

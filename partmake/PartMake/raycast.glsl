@@ -8,7 +8,12 @@ layout(set = 0, binding = 0) uniform RaycastInfo
 {
     vec4 res;
     mat4x4 viewmat;
+    uint numPrimitives;
 };
+
+layout(set = 0, binding = 1) uniform texture2D PrimitiveTexture;
+layout(set = 0, binding = 2) uniform sampler PrimitiveSampler;
+
 
 #define AA 2   // make this 2 or 3 for antialiasing
 
@@ -314,7 +319,18 @@ vec2 map( in vec3 pos )
     {
       res = opU( res, vec2( sdBox(pos-vec3(0,0, 0.0), vec3(1,1,1)), 3.0));
     }
-
+    
+    const float div = 1.0 / 1024.0;
+    for (int i = 0; i < numPrimitives; ++i)
+    {   
+        mat4 m;
+        m[0] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i * div), 0), 0);
+        m[1] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i + 1) * div, 0), 0);
+        m[2] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i + 2) * div, 0), 0);
+        m[3] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i + 3) * div, 0), 0);
+        vec4 p = m * vec4(pos,1);
+    	res = opU( res, vec2( sdCylinder(p.xyz, vec2(1,1) ), 8.0 ) );
+    }
     /*
     // bounding box
     if( sdBox( pos-vec3(0.0,0.3,-1.0),vec3(0.35,0.3,2.5) )<res.x )

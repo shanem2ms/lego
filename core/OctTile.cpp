@@ -151,6 +151,8 @@ namespace sam
     {
         return m_parts.size() == 0;
     }
+
+
     void OctTile::Draw(DrawContext& ctx)
     {
         SceneGroup::Draw(ctx);

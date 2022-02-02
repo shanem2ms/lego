@@ -8,6 +8,7 @@ using Veldrid.SPIRV;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Reflection;
 
 namespace partmake
@@ -33,6 +34,9 @@ namespace partmake
         private ResourceSet _projViewSet;
         private ResourceSet _worldTextureSet;
         private ResourceSet _raycastSet;
+        private Texture _primStgTexture;
+        private Texture _primTexture;
+        private TextureView _primTextureView;
         private int _indexCount;
         Vector2 lookDir;
         int mouseDown = 0;
@@ -43,12 +47,13 @@ namespace partmake
         Vector3 cameraPos = new Vector3(0, 0, -8.5f);
         Vector3 mouseDownCameraPos;
         float partScale;
-        float zoom = 0;
+        float zoom = 2.3f;
         float mouseDownZoom = 0;
         public bool DoRaycast { get; set; } = false;
 
         public bool ShowBisector { get; set; }
         Vector4[] edgePalette;
+        uint numPrimitives;
 
         class ConnectorVis
         {
@@ -59,6 +64,7 @@ namespace partmake
         List<Topology.Edge> edges = new List<Topology.Edge>();
         List<Vector3> candidateRStuds = new List<Vector3>();
         List<Tuple<Vector3, Vector3>> bisectors = new List<Tuple<Vector3, Vector3>>();
+        List<Primitive> primitives = new List<Primitive>();
 
         LDrawFolders.Entry _part;
         ResourceFactory _factory;
@@ -104,7 +110,16 @@ namespace partmake
                 }
             }
         }
+        struct Rgba128
+        {
+            public float r;
+            public float g;
+            public float b;
+            public float a;
+        }
 
+        [DllImport("kernel32.dll", EntryPoint = "RtlCopyMemory", SetLastError = false)]
+        public static extern void CopyMemory(IntPtr dest, IntPtr src, uint count);
         void OnPartUpdated()
         {
             if (_factory == null)
@@ -150,6 +165,25 @@ namespace partmake
             part.GetTopoMesh().GetNonManifold(this.edges);
             //List<Topology.Loop> loops = part.GetTopoMesh().FindLoops();
             this.edges.Sort((a, b) => b.len.CompareTo(a.len));
+
+            this.primitives.Clear();
+            part.GetPrimitives(primitives);
+
+            MappedResourceView<Rgba128> rView = GraphicsDevice.Map<Rgba128>(_primStgTexture, MapMode.Write);
+            int matsize = Marshal.SizeOf<Matrix4x4>();
+            IntPtr ptr = Marshal.AllocHGlobal(matsize * primitives.Count);
+            IntPtr curptr = ptr;
+            for (int p = 0; p < primitives.Count; ++p)
+            {
+                Matrix4x4 t;
+                Matrix4x4.Invert(primitives[p].transform, out t);
+                Marshal.StructureToPtr<Matrix4x4>(t, curptr, false);
+                curptr = IntPtr.Add(curptr, matsize);
+            }
+            CopyMemory(rView.MappedResource.Data, ptr, (uint)(matsize * primitives.Count));
+            Marshal.FreeHGlobal(ptr);
+            GraphicsDevice.Unmap(_primStgTexture);
+            this.numPrimitives = (uint)primitives.Count;
         }
         protected unsafe override void CreateResources(ResourceFactory factory)
         {
@@ -158,7 +192,12 @@ namespace partmake
             _viewBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _worldBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _materialBuffer = factory.CreateBuffer(new BufferDescription(16, BufferUsage.UniformBuffer));
-            _raycastBuffer = factory.CreateBuffer(new BufferDescription(80, BufferUsage.UniformBuffer));
+            _raycastBuffer = factory.CreateBuffer(new BufferDescription(96, BufferUsage.UniformBuffer));
+            _primTexture = factory.CreateTexture(
+                new TextureDescription(1024, 1024, 1, 1, 1, PixelFormat.R32_G32_B32_A32_Float, TextureUsage.Sampled, TextureType.Texture2D, TextureSampleCount.Count1));
+            _primTextureView = factory.CreateTextureView(_primTexture);
+            _primStgTexture = factory.CreateTexture(
+                new TextureDescription(1024, 1024, 1, 1, 1, PixelFormat.R32_G32_B32_A32_Float, TextureUsage.Staging, TextureType.Texture2D, TextureSampleCount.Count1));
 
             {
                 var cubeVertices = GetCubeVertices();
@@ -196,7 +235,8 @@ namespace partmake
 
             ResourceLayout raycastLayout = factory.CreateResourceLayout(
                 new ResourceLayoutDescription(
-                    new ResourceLayoutElementDescription("RaycastInfo", ResourceKind.UniformBuffer, ShaderStages.Fragment)));
+                    new ResourceLayoutElementDescription("RaycastInfo", ResourceKind.UniformBuffer, ShaderStages.Fragment),
+                    new ResourceLayoutElementDescription("PrimitiveTexture", ResourceKind.TextureReadOnly, ShaderStages.Fragment)));
 
             _projViewSet = factory.CreateResourceSet(new ResourceSetDescription(
                 projViewLayout,
@@ -210,7 +250,8 @@ namespace partmake
 
             _raycastSet = factory.CreateResourceSet(new ResourceSetDescription(
                 raycastLayout,
-                _raycastBuffer));
+                _raycastBuffer,
+                _primTextureView));
 
             {
                 var vsfile = "partmake.vs.glsl";
@@ -254,10 +295,12 @@ namespace partmake
 
             }
 
-
             {
                 var vsfile = "partmake.vsfullscreen.glsl";
                 var fsfile = "partmake.raycast.glsl";
+
+
+
 
                 string VertexCode;
                 string FragmentCode;
@@ -272,6 +315,11 @@ namespace partmake
                     FragmentCode = reader.ReadToEnd();
                 }
 
+                var vertex = new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(VertexCode), "main");
+                var fragment = new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(FragmentCode), "main");
+                var shader = factory.CreateFromSpirv(
+                        vertex,
+                        fragment);
                 ShaderSetDescription shaderSet = new ShaderSetDescription(
                     new[]
                     {
@@ -279,10 +327,7 @@ namespace partmake
                         new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
                         new VertexElementDescription("Normal", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
                         new VertexElementDescription("TexCoords", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2))
-                    },
-                    factory.CreateFromSpirv(
-                        new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(VertexCode), "main"),
-                        new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(FragmentCode), "main")));
+                    }, shader);
 
 
                 _pipelineRaycast = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
@@ -436,6 +481,7 @@ namespace partmake
                 Vector4 v4 = new Vector4(Window.Width, Window.Height, 0, 0);
                 _cl.UpdateBuffer(_raycastBuffer, 0, ref v4);
                 _cl.UpdateBuffer(_raycastBuffer, 16, ref viewmat);
+                _cl.UpdateBuffer(_raycastBuffer, 80, ref this.numPrimitives);
                 _cl.SetPipeline(_pipelineRaycast);
                 _cl.SetGraphicsResourceSet(0, _raycastSet);
                 _cl.SetVertexBuffer(0, _planeVertexBuffer);

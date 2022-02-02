@@ -1,6 +1,8 @@
 #pragma once
 #include <memory>
+#include "Engine.h"
 
+class CubeList;
 namespace sam
 {
     class LegoBrick;
@@ -8,12 +10,14 @@ namespace sam
     class OctTileSelection;
     class PartInst;
 
-    class ConnectionLogic
+    class ConnectionLogic : public IEngineDraw
     {
+        std::shared_ptr<CubeList> m_connnectorsCL;
     public:
         void PlaceBrick(std::shared_ptr<Player> player, std::shared_ptr<LegoBrick> pickedBrick,
             OctTileSelection &octTileSelection, bool doCollisionCheck);
 
         void GetAlignmentDomain(const PartInst& pi, float sweepDist);
+        void Draw(DrawContext& dc) override;
     };
 }
