@@ -9,6 +9,8 @@ layout(set = 0, binding = 0) uniform RaycastInfo
     vec4 res;
     mat4x4 viewmat;
     uint numPrimitives;
+    vec4 bboxmin;
+    vec4 booxsize;
 };
 
 layout(set = 0, binding = 1) uniform texture2D PrimitiveTexture;
@@ -317,19 +319,20 @@ vec2 map( in vec3 pos )
     vec2 res = vec2( 1e10, 0.0 );
 
     {
-      res = opU( res, vec2( sdBox(pos-vec3(0,0, 0.0), vec3(1,1,1)), 3.0));
+      res = opU( res, vec2( sdBox(pos-vec3(0,0, 0.0), vec3(.1,.1,.1)), 3.0));
     }
     
     const float div = 1.0 / 1024.0;
+    const float off = 0.5 / 1024.0;
     for (int i = 0; i < numPrimitives; ++i)
     {   
         mat4 m;
-        m[0] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i * div), 0), 0);
-        m[1] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i + 1) * div, 0), 0);
-        m[2] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i + 2) * div, 0), 0);
-        m[3] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i + 3) * div, 0), 0);
+        m[0] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i * 0) * div + off, off), 0);
+        m[1] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i + 1) * div + off, off), 0);
+        m[2] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i + 2) * div + off, off), 0);
+        m[3] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i + 3) * div + off, off), 0);
         vec4 p = m * vec4(pos,1);
-    	res = opU( res, vec2( sdCylinder(p.xyz, vec2(1,1) ), 8.0 ) );
+    	res = opU( res, vec2( 0.1 * sdCylinder(p.xyz, vec2(1,1) ), 8.0 ) );
     }
     /*
     // bounding box
@@ -408,7 +411,7 @@ vec2 raycast( in vec3 ro, in vec3 rd )
     //else return res;
     
     // raymarch primitives   
-    vec2 tb = iBox( ro-vec3(0.0,0,0), rd, vec3(2.5,2.5,2.5) );
+    vec2 tb = iBox( ro-vec3(bboxmin.xyz), rd, vec3(booxsize.xyz) );
     if( tb.x<tb.y && tb.y>0.0 && tb.x<tmax)
     {
         //return vec2(tb.x,2.0);

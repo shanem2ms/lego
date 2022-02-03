@@ -35,8 +35,10 @@ namespace partmake
         private ResourceSet _worldTextureSet;
         private ResourceSet _raycastSet;
         private Texture _primStgTexture;
+        bool _primTexUpdate = false;
         private Texture _primTexture;
         private TextureView _primTextureView;
+        private Sampler _primSampler;
         private int _indexCount;
         Vector2 lookDir;
         int mouseDown = 0;
@@ -49,6 +51,7 @@ namespace partmake
         float partScale;
         float zoom = 2.3f;
         float mouseDownZoom = 0;
+        AABB primBbox;
         public bool DoRaycast { get; set; } = false;
 
         public bool ShowBisector { get; set; }
@@ -133,12 +136,17 @@ namespace partmake
                 return;
             }
 
+
             Vtx[] vertices = vlist.ToArray();
             AABB aabb = AABB.CreateFromPoints(vertices.Select(v => v.pos));
 
             partOffset = (aabb.Min + aabb.Max) * 0.5f;
             Vector3 vecScale = (aabb.Max - aabb.Min);
             partScale = 0.025f;// 1 / MathF.Max(MathF.Max(vecScale.X, vecScale.Y), vecScale.Z);
+
+            Matrix4x4 wm = Matrix4x4.CreateTranslation(-partOffset) *
+                Matrix4x4.CreateScale(partScale);
+            this.primBbox = AABB.CreateFromPoints(vertices.Select(v => Vector3.Transform(v.pos, wm)));
             uint[] indices = new uint[vlist.Count];
             for (uint i = 0; i < indices.Length; ++i)
             {
@@ -176,7 +184,9 @@ namespace partmake
             for (int p = 0; p < primitives.Count; ++p)
             {
                 Matrix4x4 t;
-                Matrix4x4.Invert(primitives[p].transform, out t);
+                Matrix4x4 wwt = primitives[p].transform * wm;
+                float scale = new Vector3(wwt.M11, wwt.M22, wwt.M33).Length();
+                Matrix4x4.Invert(wwt, out t);
                 Marshal.StructureToPtr<Matrix4x4>(t, curptr, false);
                 curptr = IntPtr.Add(curptr, matsize);
             }
@@ -184,6 +194,7 @@ namespace partmake
             Marshal.FreeHGlobal(ptr);
             GraphicsDevice.Unmap(_primStgTexture);
             this.numPrimitives = (uint)primitives.Count;
+            this._primTexUpdate = true;
         }
         protected unsafe override void CreateResources(ResourceFactory factory)
         {
@@ -192,10 +203,12 @@ namespace partmake
             _viewBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _worldBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _materialBuffer = factory.CreateBuffer(new BufferDescription(16, BufferUsage.UniformBuffer));
-            _raycastBuffer = factory.CreateBuffer(new BufferDescription(96, BufferUsage.UniformBuffer));
+            _raycastBuffer = factory.CreateBuffer(new BufferDescription(128, BufferUsage.UniformBuffer));
             _primTexture = factory.CreateTexture(
                 new TextureDescription(1024, 1024, 1, 1, 1, PixelFormat.R32_G32_B32_A32_Float, TextureUsage.Sampled, TextureType.Texture2D, TextureSampleCount.Count1));
             _primTextureView = factory.CreateTextureView(_primTexture);
+            _primSampler = factory.CreateSampler(new SamplerDescription(SamplerAddressMode.Clamp, SamplerAddressMode.Clamp, SamplerAddressMode.Clamp, SamplerFilter.MinPoint_MagPoint_MipPoint,
+                ComparisonKind.Always, 0, 0, 0, 0, SamplerBorderColor.OpaqueBlack));
             _primStgTexture = factory.CreateTexture(
                 new TextureDescription(1024, 1024, 1, 1, 1, PixelFormat.R32_G32_B32_A32_Float, TextureUsage.Staging, TextureType.Texture2D, TextureSampleCount.Count1));
 
@@ -236,7 +249,8 @@ namespace partmake
             ResourceLayout raycastLayout = factory.CreateResourceLayout(
                 new ResourceLayoutDescription(
                     new ResourceLayoutElementDescription("RaycastInfo", ResourceKind.UniformBuffer, ShaderStages.Fragment),
-                    new ResourceLayoutElementDescription("PrimitiveTexture", ResourceKind.TextureReadOnly, ShaderStages.Fragment)));
+                    new ResourceLayoutElementDescription("PrimitiveTexture", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
+                    new ResourceLayoutElementDescription("PrimitiveSampler", ResourceKind.Sampler, ShaderStages.Fragment)));
 
             _projViewSet = factory.CreateResourceSet(new ResourceSetDescription(
                 projViewLayout,
@@ -251,7 +265,8 @@ namespace partmake
             _raycastSet = factory.CreateResourceSet(new ResourceSetDescription(
                 raycastLayout,
                 _raycastBuffer,
-                _primTextureView));
+                _primTextureView,
+                _primSampler));
 
             {
                 var vsfile = "partmake.vs.glsl";
@@ -298,9 +313,6 @@ namespace partmake
             {
                 var vsfile = "partmake.vsfullscreen.glsl";
                 var fsfile = "partmake.raycast.glsl";
-
-
-
 
                 string VertexCode;
                 string FragmentCode;
@@ -367,7 +379,7 @@ namespace partmake
                 Matrix4x4.CreateTranslation(cameraPos / System.MathF.Pow(2.0f, zoom));
             _cl.UpdateBuffer(_viewBuffer, 0, viewmat);
 
-            Matrix4x4 mat =
+            Matrix4x4 mat = 
                 Matrix4x4.CreateTranslation(-partOffset) *
                 Matrix4x4.CreateScale(partScale);
             _cl.SetFramebuffer(MainSwapchain.Framebuffer);
@@ -477,11 +489,20 @@ namespace partmake
             }
             else
             {
+                if (this._primTexUpdate)
+                {
+                    _cl.CopyTexture(this._primStgTexture, this._primTexture);
+                    this._primTexUpdate = false;
+                }    
                 Matrix4x4.Invert(viewmat, out viewmat);
                 Vector4 v4 = new Vector4(Window.Width, Window.Height, 0, 0);
                 _cl.UpdateBuffer(_raycastBuffer, 0, ref v4);
                 _cl.UpdateBuffer(_raycastBuffer, 16, ref viewmat);
                 _cl.UpdateBuffer(_raycastBuffer, 80, ref this.numPrimitives);
+                Vector4 bboxmin = new Vector4(this.primBbox.Min, 0);
+                Vector4 bboxsize = new Vector4(this.primBbox.Max - this.primBbox.Min, 0);
+                _cl.UpdateBuffer(_raycastBuffer, 96, ref bboxmin);
+                _cl.UpdateBuffer(_raycastBuffer, 112, ref bboxsize);
                 _cl.SetPipeline(_pipelineRaycast);
                 _cl.SetGraphicsResourceSet(0, _raycastSet);
                 _cl.SetVertexBuffer(0, _planeVertexBuffer);
