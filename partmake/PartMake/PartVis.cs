@@ -22,6 +22,8 @@ namespace partmake
         private DeviceBuffer _materialBuffer;
         private DeviceBuffer _vertexBuffer;
         private DeviceBuffer _indexBuffer;
+        private DeviceBuffer _selectedVertexBuffer;
+        private DeviceBuffer _selectedIndexBuffer;
         private DeviceBuffer _cubeVertexBuffer;
         private DeviceBuffer _cubeIndexBuffer;
         private DeviceBuffer _planeVertexBuffer;
@@ -40,6 +42,7 @@ namespace partmake
         private TextureView _primTextureView;
         private Sampler _primSampler;
         private int _indexCount;
+        private int _selectedIndexCount;
         Vector2 lookDir;
         int mouseDown = 0;
         Vector2 lMouseDownPt;
@@ -53,8 +56,11 @@ namespace partmake
         float mouseDownZoom = 0;
         AABB primBbox;
         public bool DoRaycast { get; set; } = false;
-
+        public bool ShowEdges { get; set; } = false;
+        
         public bool ShowBisector { get; set; }
+        public bool NonManifold { get; set; }
+        public bool ShowConnectors { get; set; }
         Vector4[] edgePalette;
         uint numPrimitives;
 
@@ -65,13 +71,19 @@ namespace partmake
         }
         List<ConnectorVis> connectorVizs = new List<ConnectorVis>();
         List<Topology.Edge> edges = new List<Topology.Edge>();
+        List<Topology.Edge> nonMFedges = new List<Topology.Edge>();
         List<Vector3> candidateRStuds = new List<Vector3>();
         List<Tuple<Vector3, Vector3>> bisectors = new List<Tuple<Vector3, Vector3>>();
         List<Primitive> primitives = new List<Primitive>();
+        LDrawDatNode selectedNode;
+        public LDrawDatNode SelectedNode { get => selectedNode; set { selectedNode = value; OnPartUpdated(); } }
 
-        LDrawFolders.Entry _part;
+        LDrawDatFile _part;
         ResourceFactory _factory;
-        public LDrawFolders.Entry Part { get => _part; set { _part = value; OnPartUpdated(); } }
+        Vector3 _testPrimPos = Vector3.Zero;
+        Quaternion _testPrimRot = Quaternion.Identity;
+        Vector3 _testPrimScl = new Vector3(0.1f, 0.1f, 0.1f);
+        public LDrawDatFile Part { get => _part; set { _part = value; OnPartUpdated(); } }
 
         public PartVis(ApplicationWindow window) : base(window)
         {
@@ -84,6 +96,103 @@ namespace partmake
             }
         }
 
+        int mode = 0;
+        public void OnKeyDown(System.Windows.Input.KeyEventArgs e)
+        {
+            float move = 0.05f;
+            float scl = 1.1f;
+            float rot = 0.1f;
+            switch (e.Key)
+            {
+                case System.Windows.Input.Key.D1:
+                    mode = 0;
+                    break;
+                case System.Windows.Input.Key.D2:
+                    mode = 1;
+                    break;
+                case System.Windows.Input.Key.D3:
+                    mode = 2;
+                    break;
+            }
+            if (mode == 0)
+            {
+                switch (e.Key)
+                {
+                    case System.Windows.Input.Key.D:
+                        _testPrimPos.X += move;
+                        break;
+                    case System.Windows.Input.Key.A:
+                        _testPrimPos.X -= move;
+                        break;
+                    case System.Windows.Input.Key.Q:
+                        _testPrimPos.Y += move;
+                        break;
+                    case System.Windows.Input.Key.Z:
+                        _testPrimPos.Y -= move;
+                        break;
+                    case System.Windows.Input.Key.W:
+                        _testPrimPos.Z += move;
+                        break;
+                    case System.Windows.Input.Key.S:
+                        _testPrimPos.Z -= move;
+                        break;
+                }
+            }
+            else if (mode == 1)
+            {
+                switch (e.Key)
+                {
+                    case System.Windows.Input.Key.D:
+                        _testPrimScl.X *= scl;
+                        break;
+                    case System.Windows.Input.Key.A:
+                        _testPrimScl.X /= scl;
+                        break;
+                    case System.Windows.Input.Key.Q:
+                        _testPrimScl.Y *= scl;
+                        break;
+                    case System.Windows.Input.Key.Z:
+                        _testPrimScl.Y /= scl;
+                        break;
+                    case System.Windows.Input.Key.W:
+                        _testPrimScl.Z *= scl;
+                        break;
+                    case System.Windows.Input.Key.S:
+                        _testPrimScl.Z /= scl;
+                        break;
+                }
+            }
+            else if (mode == 2)
+            {
+                switch (e.Key)
+                {
+                    case System.Windows.Input.Key.D:
+                        _testPrimRot *= Quaternion.CreateFromYawPitchRoll(rot, 0, 0);
+                        break;
+                    case System.Windows.Input.Key.A:
+                        _testPrimRot *= Quaternion.CreateFromYawPitchRoll(-rot, 0, 0);
+                        break;
+                    case System.Windows.Input.Key.Q:
+                        _testPrimRot *= Quaternion.CreateFromYawPitchRoll(0, rot, 0);
+                        break;
+                    case System.Windows.Input.Key.Z:
+                        _testPrimRot *= Quaternion.CreateFromYawPitchRoll(0, -rot, 0);
+                        break;
+                    case System.Windows.Input.Key.W:
+                        _testPrimRot *= Quaternion.CreateFromYawPitchRoll(0, 0, rot);
+                        break;
+                    case System.Windows.Input.Key.S:
+                        _testPrimRot *= Quaternion.CreateFromYawPitchRoll(0, 0, -rot);
+                        break;
+                }
+            }
+            UpdatePrimForTest();
+        }
+
+        public void OnKeyUp(System.Windows.Input.KeyEventArgs e)
+        {
+
+        }
         public void MouseDown(int btn, int X, int Y, System.Windows.Forms.Keys keys)
         {
             mouseDown |= 1 << btn;
@@ -121,15 +230,27 @@ namespace partmake
             public float a;
         }
 
+        void AddBboxTransformed(List<Vector3> vec, Matrix4x4 m)
+        {
+            vec.Add(Vector3.Transform(new Vector3(-1, -1, -1), m));
+            vec.Add(Vector3.Transform(new Vector3(-1, -1, 1), m));
+            vec.Add(Vector3.Transform(new Vector3(-1, 1, -1), m));
+            vec.Add(Vector3.Transform(new Vector3(-1, 1, 1), m));
+            vec.Add(Vector3.Transform(new Vector3(1, -1, -1), m));
+            vec.Add(Vector3.Transform(new Vector3(1, -1, 1), m));
+            vec.Add(Vector3.Transform(new Vector3(1, 1, -1), m));
+            vec.Add(Vector3.Transform(new Vector3(1, 1, 1), m));
+        }
+
         [DllImport("kernel32.dll", EntryPoint = "RtlCopyMemory", SetLastError = false)]
         public static extern void CopyMemory(IntPtr dest, IntPtr src, uint count);
         void OnPartUpdated()
         {
             if (_factory == null)
                 return;
-            LDrawDatFile part = LDrawFolders.GetPart(_part);
             List<Vtx> vlist = new List<Vtx>();
-            part.GetVertices(vlist, false);
+            _part.GetTopoMesh().GetVertices(vlist);
+            //_part.GetVertices(vlist, false);
 
             if (vlist.Count == 0)
             {
@@ -144,9 +265,6 @@ namespace partmake
             Vector3 vecScale = (aabb.Max - aabb.Min);
             partScale = 0.025f;// 1 / MathF.Max(MathF.Max(vecScale.X, vecScale.Y), vecScale.Z);
 
-            Matrix4x4 wm = Matrix4x4.CreateTranslation(-partOffset) *
-                Matrix4x4.CreateScale(partScale);
-            this.primBbox = AABB.CreateFromPoints(vertices.Select(v => Vector3.Transform(v.pos, wm)));
             uint[] indices = new uint[vlist.Count];
             for (uint i = 0; i < indices.Length; ++i)
             {
@@ -160,40 +278,107 @@ namespace partmake
             GraphicsDevice.UpdateBuffer(_indexBuffer, 0, indices);
             _indexCount = indices.Length;
 
-            List<LDrawDatFile.Connector> connectors = part.GetConnectors();
+
+            List<Vtx> vlistSel = new List<Vtx>();
+
+            _part.GetVertices(vlistSel, true);
+            if (vlistSel.Count > 0)
+            {
+                Vtx[] verticesSel = vlistSel.ToArray();
+                uint[] indicesSel = new uint[vlistSel.Count];
+                for (uint i = 0; i < indicesSel.Length; ++i)
+                {
+                    indicesSel[i] = i;
+                }
+
+                _selectedVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * verticesSel.Length), BufferUsage.VertexBuffer));
+                GraphicsDevice.UpdateBuffer(_selectedVertexBuffer, 0, verticesSel);
+
+                _selectedIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)indicesSel.Length, BufferUsage.IndexBuffer));
+                GraphicsDevice.UpdateBuffer(_selectedIndexBuffer, 0, indicesSel);
+                _selectedIndexCount = indicesSel.Length;
+            }
+
+            List<LDrawDatFile.Connector> connectors = _part.GetConnectors();
             connectorVizs.Clear();
             foreach (var conn in connectors)
             {
                 LDrawDatFile.ConnectorType mask = (LDrawDatFile.ConnectorType.Stud | LDrawDatFile.ConnectorType.RStud);
                 if ((conn.type & mask) != 0)
-                    connectorVizs.Add(new ConnectorVis() { type = conn.type & mask, mat = conn.mat });                                                                           
+                    connectorVizs.Add(new ConnectorVis() { type = conn.type & mask, mat = conn.mat });
             }
 
             this.edges.Clear();
-            part.GetTopoMesh().GetNonManifold(this.edges);
-            //List<Topology.Loop> loops = part.GetTopoMesh().FindLoops();
+            _part.GetTopoMesh().GetEdges(this.edges);
+            this.nonMFedges.Clear();
+            _part.GetTopoMesh().GetNonManifold(this.nonMFedges);
             this.edges.Sort((a, b) => b.len.CompareTo(a.len));
+            this.nonMFedges.Sort((a, b) => b.len.CompareTo(a.len));
 
             this.primitives.Clear();
-            part.GetPrimitives(primitives);
+            List<Primitive> outPrims = new List<Primitive>(); ;
+            _part.GetPrimitives(outPrims);
+            this.primitives = outPrims;// outPrims.Where(p => !p.inverted).ToList();
+            Matrix4x4 wm =
+                Matrix4x4.CreateScale(partScale);
 
             MappedResourceView<Rgba128> rView = GraphicsDevice.Map<Rgba128>(_primStgTexture, MapMode.Write);
             int matsize = Marshal.SizeOf<Matrix4x4>();
             IntPtr ptr = Marshal.AllocHGlobal(matsize * primitives.Count);
             IntPtr curptr = ptr;
+            List<Vector3> primpts = new List<Vector3>();
+
             for (int p = 0; p < primitives.Count; ++p)
             {
                 Matrix4x4 t;
                 Matrix4x4 wwt = primitives[p].transform * wm;
+
+                Vector3 opt0 = new Vector3(0, 0, 0), opt1 = new Vector3(1, 1, 1);
+                Vector3 pt0 = Vector3.Transform(opt0, wwt);
+                Vector3 pt1 = Vector3.Transform(opt1, wwt);
+                float scale0 = (pt1 - pt0).Length() / (opt1 - opt0).Length();
+                AddBboxTransformed(primpts, wwt);
+                Matrix4x4.Invert(wwt, out t);
+                t.M34 = primitives[p].inverted ? -1 : 1;
+                t.M44 = scale0;
+                Marshal.StructureToPtr<Matrix4x4>(t, curptr, false);
+                curptr = IntPtr.Add(curptr, matsize);
+            }
+
+            this.primBbox = AABB.CreateFromPoints(primpts);
+            this.primBbox.Grow(0.05f);
+            CopyMemory(rView.MappedResource.Data, ptr, (uint)(matsize * primitives.Count));
+            Marshal.FreeHGlobal(ptr);
+            GraphicsDevice.Unmap(_primStgTexture);
+            this.numPrimitives = (uint)primitives.Count;
+            this._primTexUpdate = true;
+        }
+
+
+        void UpdatePrimForTest()
+        {
+            int pcount = 1;
+            Matrix4x4 wm = Matrix4x4.CreateScale(_testPrimScl) *
+                Matrix4x4.CreateFromQuaternion(_testPrimRot) *
+                Matrix4x4.CreateTranslation(_testPrimPos);
+
+            MappedResourceView<Rgba128> rView = GraphicsDevice.Map<Rgba128>(_primStgTexture, MapMode.Write);
+            int matsize = Marshal.SizeOf<Matrix4x4>();
+            IntPtr ptr = Marshal.AllocHGlobal(matsize * pcount);
+            IntPtr curptr = ptr;
+            for (int p = 0; p < pcount; ++p)
+            {
+                Matrix4x4 t;
+                Matrix4x4 wwt = wm;
                 float scale = new Vector3(wwt.M11, wwt.M22, wwt.M33).Length();
                 Matrix4x4.Invert(wwt, out t);
                 Marshal.StructureToPtr<Matrix4x4>(t, curptr, false);
                 curptr = IntPtr.Add(curptr, matsize);
             }
-            CopyMemory(rView.MappedResource.Data, ptr, (uint)(matsize * primitives.Count));
+            CopyMemory(rView.MappedResource.Data, ptr, (uint)(matsize * pcount));
             Marshal.FreeHGlobal(ptr);
             GraphicsDevice.Unmap(_primStgTexture);
-            this.numPrimitives = (uint)primitives.Count;
+            this.numPrimitives = (uint)pcount;
             this._primTexUpdate = true;
         }
         protected unsafe override void CreateResources(ResourceFactory factory)
@@ -379,7 +564,7 @@ namespace partmake
                 Matrix4x4.CreateTranslation(cameraPos / System.MathF.Pow(2.0f, zoom));
             _cl.UpdateBuffer(_viewBuffer, 0, viewmat);
 
-            Matrix4x4 mat = 
+            Matrix4x4 mat =
                 Matrix4x4.CreateTranslation(-partOffset) *
                 Matrix4x4.CreateScale(partScale);
             _cl.SetFramebuffer(MainSwapchain.Framebuffer);
@@ -398,59 +583,104 @@ namespace partmake
                 _cl.SetGraphicsResourceSet(1, _worldTextureSet);
                 _cl.DrawIndexed((uint)_indexCount);
 
+                if (_selectedVertexBuffer != null)
+                {
+                    _cl.ClearDepthStencil(1f);
+                    Vector4 co2l = new Vector4(1, 0, 0, 1) * 0.5f;
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref co2l);
+                    _cl.SetVertexBuffer(0, _selectedVertexBuffer);
+                    _cl.SetIndexBuffer(_selectedIndexBuffer, IndexFormat.UInt32);
+                    _cl.DrawIndexed((uint)_selectedIndexCount);
+                }
                 _cl.ClearDepthStencil(1f);
                 Dictionary<LDrawDatFile.ConnectorType, Vector4> colors = new Dictionary<LDrawDatFile.ConnectorType, Vector4>()
                 { { LDrawDatFile.ConnectorType.Stud, new Vector4(0.8f, 0.1f, 0, 1) }, { LDrawDatFile.ConnectorType.RStud, new Vector4(0.1f, 0.1f, 0.8f, 1) }};
                 _cl.SetVertexBuffer(0, _cubeVertexBuffer);
                 _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
-                foreach (var c in connectorVizs)
+                if (ShowConnectors)
                 {
-                    Vector4 ccol = colors[c.type];
-                    const float lsize = 0.05f;
-                    _cl.UpdateBuffer(_materialBuffer, 0, ref ccol);
+                    foreach (var c in connectorVizs)
                     {
-                        Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(0, 0, -0.5f)) *
-                            Matrix4x4.CreateScale(new Vector3(lsize, lsize, 0.5f)) * c.mat * mat;
-                        _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
-                        _cl.DrawIndexed((uint)_cubeIndexCount);
+                        Vector4 ccol = colors[c.type];
+                        const float lsize = 0.05f;
+                        _cl.UpdateBuffer(_materialBuffer, 0, ref ccol);
+                        {
+                            Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(0, 0, -0.5f)) *
+                                Matrix4x4.CreateScale(new Vector3(lsize, lsize, 0.5f)) * c.mat * mat;
+                            _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                            _cl.DrawIndexed((uint)_cubeIndexCount);
+                        }
+                        {
+                            Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(-0.5f, 0, 0)) *
+                                Matrix4x4.CreateScale(new Vector3(0.5f, lsize, lsize)) * c.mat * mat;
+                            _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                            _cl.DrawIndexed((uint)_cubeIndexCount);
+                        }
+                        {
+                            Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(0, -0.5f, 0)) *
+                                Matrix4x4.CreateScale(new Vector3(lsize, 1.0f, lsize)) * c.mat * mat;
+                            _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                            _cl.DrawIndexed((uint)_cubeIndexCount);
+                        }
                     }
+                }
+
+
+                if (this.ShowEdges)
+                {
+                    Vector4 edgeColor = new Vector4(1, 1, 1, 1);
+                    Vector4 edgeFlag1 = new Vector4(1, 0, 0, 1);
+                    foreach (var edge in this.edges)
                     {
-                        Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(-0.5f, 0, 0)) *
-                            Matrix4x4.CreateScale(new Vector3(0.5f, lsize, lsize)) * c.mat * mat;
-                        _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
-                        _cl.DrawIndexed((uint)_cubeIndexCount);
-                    }
-                    {
-                        Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(0, -0.5f, 0)) *
-                            Matrix4x4.CreateScale(new Vector3(lsize, 1.0f, lsize)) * c.mat * mat;
+                        if ((edge.v0.errorFlags & 1) != 0 ||
+                            (edge.v1.errorFlags & 1) != 0)
+                            _cl.UpdateBuffer(_materialBuffer, 0, ref edgeFlag1);
+                        else
+                            _cl.UpdateBuffer(_materialBuffer, 0, ref edgeColor);
+                        Vector3 pt0 = edge.v0.pt;
+                        Vector3 pt1 = edge.v1.pt;
+                        float len = (pt1 - pt0).Length();
+                        Vector3 dir = Vector3.Normalize(pt1 - pt0);
+                        Vector3 a = Vector3.Cross(Vector3.UnitZ, dir);
+                        float w = 1 + Vector3.Dot(Vector3.UnitZ, dir);
+                        Quaternion q = a.LengthSquared() != 0 ? new Quaternion(a, w) : Quaternion.Identity;
+                        q = Quaternion.Normalize(q);
+                        Vector3 offset = (pt0 + pt1) * 0.5f;
+                        Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(0.1f, 0.1f, len)) *
+                            Matrix4x4.CreateFromQuaternion(q) *
+                            Matrix4x4.CreateTranslation(offset);
+
+                        Matrix4x4 cm = m * mat;
                         _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
                         _cl.DrawIndexed((uint)_cubeIndexCount);
                     }
                 }
 
-                int palidx = 0;
-                foreach (var edge in edges)
+                if (NonManifold)
                 {
-                    _cl.UpdateBuffer(_materialBuffer, 0, ref edgePalette[palidx++]);
-                    palidx = palidx % 100;
-                    Vector3 pt0 = edge.v0.pt;
-                    Vector3 pt1 = edge.v1.pt;
-                    float len = (pt1 - pt0).Length();
-                    Vector3 dir = Vector3.Normalize(pt1 - pt0);
-                    Vector3 a = Vector3.Cross(Vector3.UnitZ, dir);
-                    float w = 1 + Vector3.Dot(Vector3.UnitZ, dir);
-                    Quaternion q = a.LengthSquared() != 0 ? new Quaternion(a, w) : Quaternion.Identity;
-                    q = Quaternion.Normalize(q);
-                    Vector3 offset = (pt0 + pt1) * 0.5f;
-                    Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(0.2f, 0.2f, len)) *
-                        Matrix4x4.CreateFromQuaternion(q) *
-                        Matrix4x4.CreateTranslation(offset);
+                    int palidx = 0;
+                    foreach (var edge in this.nonMFedges)
+                    {
+                        _cl.UpdateBuffer(_materialBuffer, 0, ref edgePalette[palidx++]);
+                        palidx = palidx % 100;
+                        Vector3 pt0 = edge.v0.pt;
+                        Vector3 pt1 = edge.v1.pt;
+                        float len = (pt1 - pt0).Length();
+                        Vector3 dir = Vector3.Normalize(pt1 - pt0);
+                        Vector3 a = Vector3.Cross(Vector3.UnitZ, dir);
+                        float w = 1 + Vector3.Dot(Vector3.UnitZ, dir);
+                        Quaternion q = a.LengthSquared() != 0 ? new Quaternion(a, w) : Quaternion.Identity;
+                        q = Quaternion.Normalize(q);
+                        Vector3 offset = (pt0 + pt1) * 0.5f;
+                        Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(0.2f, 0.2f, len)) *
+                            Matrix4x4.CreateFromQuaternion(q) *
+                            Matrix4x4.CreateTranslation(offset);
 
-                    Matrix4x4 cm = m * mat;
-                    _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
-                    _cl.DrawIndexed((uint)_cubeIndexCount);
+                        Matrix4x4 cm = m * mat;
+                        _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                        _cl.DrawIndexed((uint)_cubeIndexCount);
+                    }
                 }
-
                 if (ShowBisector)
                 {
                     Vector4 bisectorColor = new Vector4(1.0f, 0f, 0f, 1.0f);
@@ -493,7 +723,7 @@ namespace partmake
                 {
                     _cl.CopyTexture(this._primStgTexture, this._primTexture);
                     this._primTexUpdate = false;
-                }    
+                }
                 Matrix4x4.Invert(viewmat, out viewmat);
                 Vector4 v4 = new Vector4(Window.Width, Window.Height, 0, 0);
                 _cl.UpdateBuffer(_raycastBuffer, 0, ref v4);

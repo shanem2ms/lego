@@ -13,7 +13,7 @@ set(PROJECT_NAME lego)
 
 set(BGFX_BUILD_EXAMPLES off)
 set(BGFX_CUSTOM_TARGETS off)
-
+ 
 if (APPLE)
     set(BGFX_BUILD_TOOLS off)
 endif()

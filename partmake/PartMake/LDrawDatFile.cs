@@ -18,7 +18,6 @@ namespace partmake
         List<LDrawDatNode> children = new List<LDrawDatNode>();
         bool hasGeometry = false;
         bool multiColor = false;
-        Topology.Mesh topoMesh;
 
         public List<LDrawDatNode> Children { get => children; }
 
@@ -27,12 +26,35 @@ namespace partmake
         string name;
         AABB? aabb;
 
+        Topology.Mesh topoMesh;
+        string topoId;
+        public List<Topology.Face> TopoFaces => topoMesh?.FacesFromId(topoId);
+
         public string Name { get => name; }
         public bool IsMultiColor { get => multiColor; }
         public LDrawDatFile(string path)
         {
             name = Path.GetFileNameWithoutExtension(path);
             Read(path);
+        }
+
+        LDrawDatFile()
+        { }
+        public LDrawDatFile Clone()
+        {
+            LDrawDatFile c = new LDrawDatFile();
+            c.name = name;
+            
+            foreach (LDrawDatNode node in children)
+            {
+                c.children.Add(node.Clone());
+            }
+
+            c.faces = faces;
+            c.aabb = aabb;
+            c.hasGeometry = hasGeometry;
+            c.multiColor = multiColor;
+            return c;
         }
 
         public AABB GetBBox()
@@ -155,28 +177,35 @@ namespace partmake
             if (topoMesh == null)
             {
                 topoMesh = new Topology.Mesh();
-                GetTopoRecursive(false, Matrix4x4.Identity, topoMesh);
+                GetTopoRecursive(false, Matrix4x4.Identity, topoMesh, "0");
                 topoMesh.Fix();
             }
 
             return topoMesh;
         }
-        void GetTopoRecursive(bool inverted, Matrix4x4 transform, Topology.Mesh mesh)
+        void GetTopoRecursive(bool inverted, Matrix4x4 transform, Topology.Mesh mesh, string id)
         {
+            int childIdx = 0;
             foreach (var child in this.children)
             {
-                if (!child.IsEnabled)
-                    continue;
-
-                child.File.GetTopoRecursive(inverted ^ child.invert, child.transform * transform,
-                    mesh);
+                if (child.IsEnabled)
+                {
+                    child.File.GetTopoRecursive(inverted ^ child.invert, child.transform * transform,
+                        mesh, id + "." + childIdx.ToString());
+                }
+                childIdx++;
             }
 
-            foreach (var f in this.faces)
+            if (this.faces.Count() > 0)
             {
-                List<Vector3> vlist = new List<Vector3>();
-                f.GetVertices(vlist, transform, inverted);
-                mesh.AddFace(vlist);
+                this.topoMesh = mesh;
+                this.topoId = id;
+                foreach (var f in this.faces)
+                {
+                    List<Vector3> vlist = new List<Vector3>();
+                    f.GetVertices(vlist, transform, inverted);
+                    mesh.AddFace(id, vlist);
+                }
             }
         }
         public void GetVertices(List<Vtx> vertices, bool onlySelected)
@@ -276,7 +305,7 @@ namespace partmake
             PrimitiveType ptype;
             if (sPrimTypeMap.TryGetValue(this.Name, out ptype))
             {
-                primitives.Add(new Primitive() { type = ptype, transform = transform });
+                primitives.Add(new Primitive() { type = ptype, transform = transform, inverted = inverted });
             }
             foreach (var child in this.children)
             {

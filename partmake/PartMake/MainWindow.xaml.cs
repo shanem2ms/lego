@@ -45,8 +45,6 @@ namespace partmake
             {
                 selectedItem = value; 
                 OnSelectedItem(selectedItem);
-                if (selectedItem != null && vis != null)
-                    vis.Part = selectedItem;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItem"));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItemDesc"));                
             }
@@ -54,7 +52,7 @@ namespace partmake
 
         public MainWindow()
         {
-            LDrawFolders.SetRoot(@"c:\ldraw");
+            LDrawFolders.SetRoot(@"C:\homep4\lego\ldraw");
             this.DataContext = this;
             InitializeComponent();
             string part = "4733.dat";
@@ -66,8 +64,8 @@ namespace partmake
             }
             SelectedItem = LDrawFolders.GetEntry(part);
             vis = _RenderControl.Vis;
-            if (selectedItem != null)
-                vis.Part = selectedItem;
+            vis.Part = selectedPart;
+            Eps.Text = Topology.Mesh.Epsilon.ToString();
         }
 
 
@@ -75,7 +73,9 @@ namespace partmake
         {
             if (item == null)
                 return;
-            selectedPart = LDrawFolders.GetPart(item);
+            selectedPart = LDrawFolders.GetPart(item);            
+            if (vis != null)
+                vis.Part = selectedPart;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentPart"));
             File.WriteAllLines("PartMake.ini", new string[] { item.name });
         }
@@ -94,18 +94,44 @@ namespace partmake
             if (e.OldValue != null)
                 (e.OldValue as LDrawDatNode).IsSelected = false;
             selectedNode = (e.NewValue as LDrawDatNode);
+            vis.SelectedNode = selectedNode;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedNode"));
             //threeD.Refresh();
         }
 
         private void CheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            vis.Part = selectedItem;
+            vis.Part = selectedPart;
         }
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             LDrawFolders.WriteAll();
+        }
+
+        private void _RenderControl_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            vis.OnKeyDown(e);
+        }
+
+        private void _RenderControl_KeyUp(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            vis.OnKeyUp(e);
+        }
+
+        private void TreeView_SelectedINodeChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+            if (e.OldValue != null)
+                (e.OldValue as Topology.INode).IsSelected = false;
+            if (e.NewValue != null)
+                (e.NewValue as Topology.INode).IsSelected = true;
+            vis.Part = selectedPart;
+        }
+
+        private void Eps_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            Topology.Mesh.Epsilon = float.Parse((sender as TextBox).Text);
+            OnSelectedItem(this.selectedItem);
         }
     }
 }

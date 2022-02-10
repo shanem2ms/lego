@@ -10,7 +10,6 @@ set(BX_INC_DIR_COMPAT ${BGFX_INCLUDE_ROOT}/compat/osx)
 endif()
 
 add_subdirectory(shaders)
-add_subdirectory(fmt)
 
 ################################################################################
 # Source groups
@@ -103,7 +102,6 @@ target_include_directories(core PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/."
     "${CMAKE_CURRENT_SOURCE_DIR}/imgui/."
     "${CMAKE_CURRENT_SOURCE_DIR}/../leveldb/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/fmt/include"
     "${VCPKG_INSTALL_PATH}/include"
     ${BGFX_INCLUDE_ROOT}
     ${BX_INC_DIR_COMPAT}

@@ -308,6 +308,17 @@ vec2 opU( vec2 d1, vec2 d2 )
 	return (d1.x<d2.x) ? d1 : d2;
 }
 
+vec2 opI( vec2 d1, vec2 d2 )
+{
+    return (d1.x>d2.x) ? d1 : d2;
+}
+
+vec2 opS ( vec2 d1, vec2 d2 )
+{
+    vec2 d2s = vec2(-d2.x, d2.y);
+    return opI (d1, d2s);
+}
+
 //------------------------------------------------------------------
 
 #define ZERO 0
@@ -319,7 +330,7 @@ vec2 map( in vec3 pos )
     vec2 res = vec2( 1e10, 0.0 );
 
     {
-      res = opU( res, vec2( sdBox(pos-vec3(0,0, 0.0), vec3(.1,.1,.1)), 3.0));
+      //res = opU( res, vec2( sdBox(pos-vec3(0,0, 0.0), vec3(.1,.1,.1)), 3.0));
     }
     
     const float div = 1.0 / 1024.0;
@@ -327,12 +338,18 @@ vec2 map( in vec3 pos )
     for (int i = 0; i < numPrimitives; ++i)
     {   
         mat4 m;
-        m[0] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i * 0) * div + off, off), 0);
+        m[0] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i + 0) * div + off, off), 0);
         m[1] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i + 1) * div + off, off), 0);
         m[2] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i + 2) * div + off, off), 0);
         m[3] = textureLod(sampler2D(PrimitiveTexture, PrimitiveSampler), vec2((4 * i + 3) * div + off, off), 0);
+        bool sub = m[2].w < 0;
+        m[2].w = 0;
+        float distScale = m[3].w;
+        m[3].w = 1;
         vec4 p = m * vec4(pos,1);
-    	res = opU( res, vec2( 0.1 * sdCylinder(p.xyz, vec2(1,1) ), 8.0 ) );
+
+        vec2 dist = vec2( distScale * sdCylinder(p.xyz, vec2(1,1) ), 8.0 );
+    	res = opU( res,  dist);
     }
     /*
     // bounding box

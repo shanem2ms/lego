@@ -259,7 +259,7 @@ namespace partmake
         {
             if (e.file == null)
                 e.file = new LDrawDatFile(e.path);
-            return e.file;
+            return e.file.Clone();
         }
 
         public static string GetDesc(string name)

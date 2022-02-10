@@ -40,11 +40,11 @@ target_link_libraries(${PROJECT_NAME} LINK_PUBLIC
     ${BGFX_LIB}/astc-codec.lib 
     ${BGFX_LIB}/bimg.lib 
     ${BGFX_LIB}/bx.lib
-    ${VCPKG_INSTALL_PATH}${LIBDBG}/lib/Bullet3Common${CMAKE_DEBUG_POSTFIX}.lib
-    ${VCPKG_INSTALL_PATH}${LIBDBG}/lib/BulletCollision${CMAKE_DEBUG_POSTFIX}.lib
-    ${VCPKG_INSTALL_PATH}${LIBDBG}/lib/BulletDynamics${CMAKE_DEBUG_POSTFIX}.lib
-    ${VCPKG_INSTALL_PATH}${LIBDBG}/lib/BulletInverseDynamics${CMAKE_DEBUG_POSTFIX}.lib
-    ${VCPKG_INSTALL_PATH}${LIBDBG}/lib/LinearMath${CMAKE_DEBUG_POSTFIX}.lib
+    ${VCPKG_INSTALL_PATH}/lib/Bullet3Common${CMAKE_DEBUG_POSTFIX}.lib
+    ${VCPKG_INSTALL_PATH}/lib/BulletCollision${CMAKE_DEBUG_POSTFIX}.lib
+    ${VCPKG_INSTALL_PATH}/lib/BulletDynamics${CMAKE_DEBUG_POSTFIX}.lib
+    ${VCPKG_INSTALL_PATH}/lib/BulletInverseDynamics${CMAKE_DEBUG_POSTFIX}.lib
+    ${VCPKG_INSTALL_PATH}/lib/LinearMath${CMAKE_DEBUG_POSTFIX}.lib
     vhacd::vhacd
     fmt
     core 

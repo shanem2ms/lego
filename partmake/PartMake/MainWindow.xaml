@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:partmake"
+        xmlns:topo="clr-namespace:partmake.Topology"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
@@ -37,32 +38,52 @@
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="40" />
+                                <ColumnDefinition Width="5" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <CheckBox Grid.Column="0" IsChecked="{Binding Path=IsEnabled}" Checked="CheckBox_Checked" Unchecked="CheckBox_Checked"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Path=File.Name}" />
+                            <TextBlock Grid.Column="1" Text="{Binding Path=Invert}" />
+                            <TextBlock Grid.Column="2" Text="{Binding Path=File.Name}" />
                         </Grid>
                     </HierarchicalDataTemplate>
                 </TreeView.Resources>
             </TreeView>
-            <ListView Grid.Row="2" ItemsSource="{Binding Path=SelectedNode.Faces}">
-                <ListView.ItemTemplate>
-                    <DataTemplate DataType="{x:Type local:Face}">
-                        <CheckBox Grid.Column="0" IsChecked="{Binding Path=IsEnabled}" Checked="CheckBox_Checked" Unchecked="CheckBox_Checked"/>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
+            <TreeView Grid.Row="2" ItemsSource="{Binding Path=SelectedNode.TopoFaces}" SelectedItemChanged="TreeView_SelectedINodeChanged">
+                <TreeView.Resources>
+                    <HierarchicalDataTemplate DataType="{x:Type topo:Face}"
+                                   ItemsSource="{Binding Path=Children}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="9" Text="{Binding}" />
+                        </Grid>
+                    </HierarchicalDataTemplate>
+                    <HierarchicalDataTemplate DataType="{x:Type topo:Edge}"
+                                   ItemsSource="{Binding Path=Children}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="9" Text="{Binding}" />
+                        </Grid>
+                    </HierarchicalDataTemplate>
+                </TreeView.Resources>
+            </TreeView>
         </Grid>
         <Grid Grid.Column="2">
             <Grid.RowDefinitions>
                 <RowDefinition Height="30" />
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <StackPanel Orientation="Horizontal">
-                <CheckBox Content="Show Bisector" IsChecked="{Binding Path=ShowBisector, ElementName=_RenderControl}"/>
+            <ComboBox>
+                <CheckBox Content="NonManifold" IsChecked="{Binding Path=NonManifold, ElementName=_RenderControl}"/>
+                <CheckBox Content="Edges" IsChecked="{Binding ShowEdges, ElementName=_RenderControl}"/>
                 <CheckBox Content="Raycast" IsChecked="{Binding Path=DoRaycast, ElementName=_RenderControl}"/>
-            </StackPanel>
-            <local:RenderControl x:Name="_RenderControl" Grid.Row="1"/>
+                <CheckBox Content="Show Connectors" IsChecked="{Binding ShowConnectors, ElementName=_RenderControl}"/>
+                <TextBox x:Name="Eps" Width="100" TextChanged="Eps_TextChanged" />
+            </ComboBox>
+            <local:RenderControl x:Name="_RenderControl" Grid.Row="1"  KeyDown="_RenderControl_KeyDown" KeyUp="_RenderControl_KeyUp" />
         </Grid>
     </Grid>
 </Window>

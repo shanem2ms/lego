@@ -24,7 +24,23 @@ namespace partmake
         public bool IsEnabled { get; 
             set; } = true;
 
+        public bool Invert => invert;
+        public bool IsInverted { get; set; }
+
         public IEnumerable<Face> Faces => File.Faces;
+        public IEnumerable<Topology.Face> TopoFaces => File.TopoFaces;
+
+        public LDrawDatNode Clone()
+        {
+            LDrawDatNode c = new LDrawDatNode();
+            c.transform = transform;
+            c.invert = invert;
+            c.File = File.Clone();
+            c.IsEnabled = IsEnabled;
+            c.IsSelected = false;
+            c.IsInverted = IsInverted;
+            return c;
+        }
     }
 
 
@@ -38,6 +54,7 @@ namespace partmake
     {
         public PrimitiveType type;
         public Matrix4x4 transform;
+        public bool inverted;
     }
 
     public class Plane
@@ -210,6 +227,12 @@ namespace partmake
         {
             this.Min = min;
             this.Max = max;
+        }
+
+        public void Grow(float size)
+        {
+            this.Min -= new Vector3(size, size, size);
+            this.Max += new Vector3(size, size, size);
         }
 
         /// <summary>
