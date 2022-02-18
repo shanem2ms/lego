@@ -253,7 +253,7 @@ namespace sam
         void LoadPrimitives(ldr::Loader* pLoader);
         void GenerateCacheItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
             const std::string& name, std::filesystem::path& cachePath, 
-            const std::vector<int> atlasMaterialMapping);
+            const std::vector<int> atlasMaterialMapping, bool hires);
         friend class BrickManager;
     };
 

@@ -10,6 +10,7 @@ using System.Linq;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Reflection;
+using VHacdSharp;
 
 namespace partmake
 {
@@ -33,15 +34,21 @@ namespace partmake
         private CommandList _cl;
         private Pipeline _pipeline;
         private Pipeline _pipelineRaycast;
+        private Pipeline _pipelinePick;
         private ResourceSet _projViewSet;
         private ResourceSet _worldTextureSet;
         private ResourceSet _raycastSet;
         private Texture _primStgTexture;
+        private Texture _pickStgTexture;
         bool _primTexUpdate = false;
         private Texture _primTexture;
         private TextureView _primTextureView;
+        private Texture _pickTexture;
+        private TextureView _pickTextureView;
+        private Framebuffer _pickFB;
         private Sampler _primSampler;
         private int _indexCount;
+        private int _triangleCount;
         private int _selectedIndexCount;
         Vector2 lookDir;
         int mouseDown = 0;
@@ -55,11 +62,13 @@ namespace partmake
         float zoom = 2.3f;
         float mouseDownZoom = 0;
         AABB primBbox;
+        public event EventHandler<Topology.INode> OnINodeSelected;
+
         public bool DoRaycast { get; set; } = false;
-        public bool ShowEdges { get; set; } = false;
+        public bool ShowEdges { get; set; } = true;
         
         public bool ShowBisector { get; set; }
-        public bool NonManifold { get; set; }
+        public bool NonManifold { get; set; } = true;
         public bool ShowConnectors { get; set; }
         Vector4[] edgePalette;
         uint numPrimitives;
@@ -83,6 +92,10 @@ namespace partmake
         Vector3 _testPrimPos = Vector3.Zero;
         Quaternion _testPrimRot = Quaternion.Identity;
         Vector3 _testPrimScl = new Vector3(0.1f, 0.1f, 0.1f);
+
+        int pickX, pickY;
+        int pickReady = -1;
+        int meshSelectedOffset = -1;
         public LDrawDatFile Part { get => _part; set { _part = value; OnPartUpdated(); } }
 
         public PartVis(ApplicationWindow window) : base(window)
@@ -193,6 +206,8 @@ namespace partmake
         {
 
         }
+
+        bool mouseMoved = false;
         public void MouseDown(int btn, int X, int Y, System.Windows.Forms.Keys keys)
         {
             mouseDown |= 1 << btn;
@@ -200,13 +215,21 @@ namespace partmake
             mouseDownZoom = zoom;
             rMouseDownPt = lMouseDownPt = new Vector2(X, Y);
             mouseDownCameraPos = cameraPos;
+            mouseMoved = false;
         }
         public void MouseUp(int btn, int X, int Y)
         {
+            if (!mouseMoved)
+            {
+                pickX = (int)((float)X / (float)Window.Width * 1024.0f);
+                pickY = (int)((float)Y / (float)Window.Height * 1024.0f);
+                pickReady = 0;
+            }
             mouseDown &= ~(1 << btn);
         }
         public void MouseMove(int X, int Y, System.Windows.Forms.Keys keys)
         {
+            mouseMoved = true;
             if ((mouseDown & 1) != 0)
                 lookDir = mouseDownLookDir + (new Vector2(X, Y) - lMouseDownPt) * 0.01f;
             if ((mouseDown & 2) != 0)
@@ -230,6 +253,14 @@ namespace partmake
             public float a;
         }
 
+        struct Rgba
+        {
+            public byte r;
+            public byte g;
+            public byte b;
+            public byte a;
+        }
+
         void AddBboxTransformed(List<Vector3> vec, Matrix4x4 m)
         {
             vec.Add(Vector3.Transform(new Vector3(-1, -1, -1), m));
@@ -242,27 +273,45 @@ namespace partmake
             vec.Add(Vector3.Transform(new Vector3(1, 1, 1), m));
         }
 
+        System.DoubleNumerics.Vector3 FTD(Vector3 d)
+        {
+            return new System.DoubleNumerics.Vector3((double)d.X, (double)d.Y, (double)d.Z);
+        }
+
+        Vector3 DTF(System.DoubleNumerics.Vector3 d)
+        {
+            return new Vector3((float)d.X, (float)d.Y, (float)d.Z);
+        }
+
+        Matrix4x4 DTF(System.DoubleNumerics.Matrix4x4 m)
+        {
+            return new Matrix4x4((float)m.M11, (float)m.M12, (float)m.M13, (float)m.M14,
+                (float)m.M21, (float)m.M22, (float)m.M23, (float)m.M24,
+                (float)m.M31, (float)m.M32, (float)m.M33, (float)m.M34,
+                (float)m.M41, (float)m.M42, (float)m.M43, (float)m.M44);
+        }
+
         [DllImport("kernel32.dll", EntryPoint = "RtlCopyMemory", SetLastError = false)]
         public static extern void CopyMemory(IntPtr dest, IntPtr src, uint count);
         void OnPartUpdated()
         {
             if (_factory == null)
                 return;
+            meshSelectedOffset = -1;
             List<Vtx> vlist = new List<Vtx>();
-            _part.GetTopoMesh().GetVertices(vlist);
-            //_part.GetVertices(vlist, false);
+            _part.GetTopoMesh().GetVertices(vlist, false);
 
             if (vlist.Count == 0)
             {
                 return;
             }
 
-
             Vtx[] vertices = vlist.ToArray();
-            AABB aabb = AABB.CreateFromPoints(vertices.Select(v => v.pos));
+            AABB aabb = AABB.CreateFromPoints(vertices.Select(v => 
+                new System.DoubleNumerics.Vector3(v.pos.X, v.pos.Y, v.pos.Z)));
 
-            partOffset = (aabb.Min + aabb.Max) * 0.5f;
-            Vector3 vecScale = (aabb.Max - aabb.Min);
+            partOffset = DTF((aabb.Min + aabb.Max) * 0.5);
+            Vector3 vecScale = DTF(aabb.Max - aabb.Min);
             partScale = 0.025f;// 1 / MathF.Max(MathF.Max(vecScale.X, vecScale.Y), vecScale.Z);
 
             uint[] indices = new uint[vlist.Count];
@@ -277,6 +326,7 @@ namespace partmake
             _indexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)indices.Length, BufferUsage.IndexBuffer));
             GraphicsDevice.UpdateBuffer(_indexBuffer, 0, indices);
             _indexCount = indices.Length;
+            _triangleCount = _indexCount / 3;
 
 
             List<Vtx> vlistSel = new List<Vtx>();
@@ -305,7 +355,7 @@ namespace partmake
             {
                 LDrawDatFile.ConnectorType mask = (LDrawDatFile.ConnectorType.Stud | LDrawDatFile.ConnectorType.RStud);
                 if ((conn.type & mask) != 0)
-                    connectorVizs.Add(new ConnectorVis() { type = conn.type & mask, mat = conn.mat });
+                    connectorVizs.Add(new ConnectorVis() { type = conn.type & mask, mat = DTF(conn.mat) });
             }
 
             this.edges.Clear();
@@ -331,7 +381,7 @@ namespace partmake
             for (int p = 0; p < primitives.Count; ++p)
             {
                 Matrix4x4 t;
-                Matrix4x4 wwt = primitives[p].transform * wm;
+                Matrix4x4 wwt = DTF(primitives[p].transform) * wm;
 
                 Vector3 opt0 = new Vector3(0, 0, 0), opt1 = new Vector3(1, 1, 1);
                 Vector3 pt0 = Vector3.Transform(opt0, wwt);
@@ -345,7 +395,7 @@ namespace partmake
                 curptr = IntPtr.Add(curptr, matsize);
             }
 
-            this.primBbox = AABB.CreateFromPoints(primpts);
+            this.primBbox = AABB.CreateFromPoints(primpts.Select(v => FTD(v)));
             this.primBbox.Grow(0.05f);
             CopyMemory(rView.MappedResource.Data, ptr, (uint)(matsize * primitives.Count));
             Marshal.FreeHGlobal(ptr);
@@ -391,6 +441,7 @@ namespace partmake
             _raycastBuffer = factory.CreateBuffer(new BufferDescription(128, BufferUsage.UniformBuffer));
             _primTexture = factory.CreateTexture(
                 new TextureDescription(1024, 1024, 1, 1, 1, PixelFormat.R32_G32_B32_A32_Float, TextureUsage.Sampled, TextureType.Texture2D, TextureSampleCount.Count1));
+
             _primTextureView = factory.CreateTextureView(_primTexture);
             _primSampler = factory.CreateSampler(new SamplerDescription(SamplerAddressMode.Clamp, SamplerAddressMode.Clamp, SamplerAddressMode.Clamp, SamplerFilter.MinPoint_MagPoint_MipPoint,
                 ComparisonKind.Always, 0, 0, 0, 0, SamplerBorderColor.OpaqueBlack));
@@ -422,9 +473,9 @@ namespace partmake
 
 
             ResourceLayout projViewLayout = factory.CreateResourceLayout(
-          new ResourceLayoutDescription(
-              new ResourceLayoutElementDescription("ProjectionBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex),
-              new ResourceLayoutElementDescription("ViewBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex)));
+                new ResourceLayoutDescription(
+                    new ResourceLayoutElementDescription("ProjectionBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex),
+                    new ResourceLayoutElementDescription("ViewBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex)));
 
             ResourceLayout worldTextureLayout = factory.CreateResourceLayout(
                 new ResourceLayoutDescription(
@@ -537,6 +588,63 @@ namespace partmake
                     MainSwapchain.Framebuffer.OutputDescription));
 
             }
+
+            {
+                var vsfile = "partmake.vs.glsl";
+                var fsfile = "partmake.pick.glsl";
+
+                string VertexCode;
+                string FragmentCode;
+                using (Stream stream = assembly.GetManifestResourceStream(vsfile))
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    VertexCode = reader.ReadToEnd();
+                }
+                using (Stream stream = assembly.GetManifestResourceStream(fsfile))
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    FragmentCode = reader.ReadToEnd();
+                }
+
+                ShaderSetDescription shaderSet = new ShaderSetDescription(
+                    new[]
+                    {
+                    new VertexLayoutDescription(
+                        new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
+                        new VertexElementDescription("Normal", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
+                        new VertexElementDescription("TexCoords", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2))
+                    },
+                    factory.CreateFromSpirv(
+                        new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(VertexCode), "main"),
+                        new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(FragmentCode), "main")));
+
+                _pickTexture = factory.CreateTexture(TextureDescription.Texture2D(
+                              1024, 1024, 1, 1,
+                               PixelFormat.R8_G8_B8_A8_UNorm, TextureUsage.RenderTarget | TextureUsage.Sampled));
+                _pickStgTexture = factory.CreateTexture(TextureDescription.Texture2D(
+                    1024,
+                    1024,
+                    1,
+                    1,
+                    PixelFormat.R8_G8_B8_A8_UNorm,
+                    TextureUsage.Staging));
+
+                _pickTextureView = factory.CreateTextureView(_pickTexture);
+                Texture offscreenDepth = factory.CreateTexture(TextureDescription.Texture2D(
+                    1024, 1024, 1, 1, PixelFormat.R16_UNorm, TextureUsage.DepthStencil));
+                _pickFB = factory.CreateFramebuffer(new FramebufferDescription(offscreenDepth, _pickTexture));
+
+
+                _pipelinePick = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
+                    BlendStateDescription.SingleOverrideBlend,
+                    DepthStencilStateDescription.DepthOnlyLessEqual,
+                    new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
+                    PrimitiveTopology.TriangleList,
+                    shaderSet,
+                    new[] { projViewLayout, worldTextureLayout },
+                    _pickFB.OutputDescription));
+
+            }
             _cl = factory.CreateCommandList();
             if (this._part != null)
                 OnPartUpdated();
@@ -553,11 +661,12 @@ namespace partmake
                 return;
             _cl.Begin();
 
-            _cl.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreatePerspectiveFieldOfView(
+            Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(
                 1.0f,
                 (float)Window.Width / Window.Height,
                 0.5f,
-                100f));
+                100f);
+            _cl.UpdateBuffer(_projectionBuffer, 0, ref projMat);
 
             Matrix4x4 viewmat = Matrix4x4.CreateRotationY(lookDir.X) *
                 Matrix4x4.CreateRotationX(lookDir.Y) *
@@ -570,142 +679,17 @@ namespace partmake
             _cl.SetFramebuffer(MainSwapchain.Framebuffer);
             _cl.ClearColorTarget(0, RgbaFloat.Black);
             _cl.ClearDepthStencil(1f);
-            if (!DoRaycast)
+            if (DoRaycast)
+                DrawRaycast(ref viewmat);
+            else
             {
-                _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
-                Vector4 col = new Vector4(1, 1, 0, 1) * 0.5f;
-                _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+                DrawMesh(ref mat);
 
-                _cl.SetPipeline(_pipeline);
-                _cl.SetVertexBuffer(0, _vertexBuffer);
-                _cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt32);
-                _cl.SetGraphicsResourceSet(0, _projViewSet);
-                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
-                _cl.DrawIndexed((uint)_indexCount);
+                DrawEdges(ref mat, ref viewmat, ref projMat);
 
-                if (_selectedVertexBuffer != null)
-                {
-                    _cl.ClearDepthStencil(1f);
-                    Vector4 co2l = new Vector4(1, 0, 0, 1) * 0.5f;
-                    _cl.UpdateBuffer(_materialBuffer, 0, ref co2l);
-                    _cl.SetVertexBuffer(0, _selectedVertexBuffer);
-                    _cl.SetIndexBuffer(_selectedIndexBuffer, IndexFormat.UInt32);
-                    _cl.DrawIndexed((uint)_selectedIndexCount);
-                }
-                _cl.ClearDepthStencil(1f);
-                Dictionary<LDrawDatFile.ConnectorType, Vector4> colors = new Dictionary<LDrawDatFile.ConnectorType, Vector4>()
-                { { LDrawDatFile.ConnectorType.Stud, new Vector4(0.8f, 0.1f, 0, 1) }, { LDrawDatFile.ConnectorType.RStud, new Vector4(0.1f, 0.1f, 0.8f, 1) }};
-                _cl.SetVertexBuffer(0, _cubeVertexBuffer);
-                _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
-                if (ShowConnectors)
-                {
-                    foreach (var c in connectorVizs)
-                    {
-                        Vector4 ccol = colors[c.type];
-                        const float lsize = 0.05f;
-                        _cl.UpdateBuffer(_materialBuffer, 0, ref ccol);
-                        {
-                            Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(0, 0, -0.5f)) *
-                                Matrix4x4.CreateScale(new Vector3(lsize, lsize, 0.5f)) * c.mat * mat;
-                            _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
-                            _cl.DrawIndexed((uint)_cubeIndexCount);
-                        }
-                        {
-                            Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(-0.5f, 0, 0)) *
-                                Matrix4x4.CreateScale(new Vector3(0.5f, lsize, lsize)) * c.mat * mat;
-                            _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
-                            _cl.DrawIndexed((uint)_cubeIndexCount);
-                        }
-                        {
-                            Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(0, -0.5f, 0)) *
-                                Matrix4x4.CreateScale(new Vector3(lsize, 1.0f, lsize)) * c.mat * mat;
-                            _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
-                            _cl.DrawIndexed((uint)_cubeIndexCount);
-                        }
-                    }
-                }
+                DrawNonManifold(ref mat, ref viewmat, ref projMat);
 
-
-                if (this.ShowEdges)
-                {
-                    Vector4 edgeColor = new Vector4(1, 1, 1, 1);
-                    Vector4 edgeFlag1 = new Vector4(1, 0, 0, 1);
-                    foreach (var edge in this.edges)
-                    {
-                        if ((edge.v0.errorFlags & 1) != 0 ||
-                            (edge.v1.errorFlags & 1) != 0)
-                            _cl.UpdateBuffer(_materialBuffer, 0, ref edgeFlag1);
-                        else
-                            _cl.UpdateBuffer(_materialBuffer, 0, ref edgeColor);
-                        Vector3 pt0 = edge.v0.pt;
-                        Vector3 pt1 = edge.v1.pt;
-                        float len = (pt1 - pt0).Length();
-                        Vector3 dir = Vector3.Normalize(pt1 - pt0);
-                        Vector3 a = Vector3.Cross(Vector3.UnitZ, dir);
-                        float w = 1 + Vector3.Dot(Vector3.UnitZ, dir);
-                        Quaternion q = a.LengthSquared() != 0 ? new Quaternion(a, w) : Quaternion.Identity;
-                        q = Quaternion.Normalize(q);
-                        Vector3 offset = (pt0 + pt1) * 0.5f;
-                        Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(0.1f, 0.1f, len)) *
-                            Matrix4x4.CreateFromQuaternion(q) *
-                            Matrix4x4.CreateTranslation(offset);
-
-                        Matrix4x4 cm = m * mat;
-                        _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
-                        _cl.DrawIndexed((uint)_cubeIndexCount);
-                    }
-                }
-
-                if (NonManifold)
-                {
-                    int palidx = 0;
-                    foreach (var edge in this.nonMFedges)
-                    {
-                        _cl.UpdateBuffer(_materialBuffer, 0, ref edgePalette[palidx++]);
-                        palidx = palidx % 100;
-                        Vector3 pt0 = edge.v0.pt;
-                        Vector3 pt1 = edge.v1.pt;
-                        float len = (pt1 - pt0).Length();
-                        Vector3 dir = Vector3.Normalize(pt1 - pt0);
-                        Vector3 a = Vector3.Cross(Vector3.UnitZ, dir);
-                        float w = 1 + Vector3.Dot(Vector3.UnitZ, dir);
-                        Quaternion q = a.LengthSquared() != 0 ? new Quaternion(a, w) : Quaternion.Identity;
-                        q = Quaternion.Normalize(q);
-                        Vector3 offset = (pt0 + pt1) * 0.5f;
-                        Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(0.2f, 0.2f, len)) *
-                            Matrix4x4.CreateFromQuaternion(q) *
-                            Matrix4x4.CreateTranslation(offset);
-
-                        Matrix4x4 cm = m * mat;
-                        _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
-                        _cl.DrawIndexed((uint)_cubeIndexCount);
-                    }
-                }
-                if (ShowBisector)
-                {
-                    Vector4 bisectorColor = new Vector4(1.0f, 0f, 0f, 1.0f);
-                    _cl.UpdateBuffer(_materialBuffer, 0, ref bisectorColor);
-                    foreach (var edge in bisectors)
-                    {
-                        Vector3 pt0 = edge.Item1;
-                        Vector3 pt1 = edge.Item2;
-                        float len = (pt1 - pt0).Length();
-                        Vector3 dir = Vector3.Normalize(pt1 - pt0);
-                        Vector3 a = Vector3.Cross(Vector3.UnitZ, dir);
-                        float w = 1 + Vector3.Dot(Vector3.UnitZ, dir);
-                        Quaternion q = a.LengthSquared() != 0 ? new Quaternion(a, w) : Quaternion.Identity;
-                        q = Quaternion.Normalize(q);
-                        Vector3 offset = (pt0 + pt1) * 0.5f;
-                        Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(0.2f, 0.2f, len)) *
-                            Matrix4x4.CreateFromQuaternion(q) *
-                            Matrix4x4.CreateTranslation(offset);
-
-                        Matrix4x4 cm = m * mat;
-                        _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
-                        _cl.DrawIndexed((uint)_cubeIndexCount);
-                    }
-
-                }
+                DrawBisectors(ref mat);
                 Vector4 candidateColor = new Vector4(0f, 0.5f, 1.0f, 1.0f);
                 _cl.UpdateBuffer(_materialBuffer, 0, ref candidateColor);
                 foreach (var cnd in candidateRStuds)
@@ -717,32 +701,332 @@ namespace partmake
                     _cl.DrawIndexed((uint)_cubeIndexCount);
                 }
             }
-            else
-            {
-                if (this._primTexUpdate)
-                {
-                    _cl.CopyTexture(this._primStgTexture, this._primTexture);
-                    this._primTexUpdate = false;
-                }
-                Matrix4x4.Invert(viewmat, out viewmat);
-                Vector4 v4 = new Vector4(Window.Width, Window.Height, 0, 0);
-                _cl.UpdateBuffer(_raycastBuffer, 0, ref v4);
-                _cl.UpdateBuffer(_raycastBuffer, 16, ref viewmat);
-                _cl.UpdateBuffer(_raycastBuffer, 80, ref this.numPrimitives);
-                Vector4 bboxmin = new Vector4(this.primBbox.Min, 0);
-                Vector4 bboxsize = new Vector4(this.primBbox.Max - this.primBbox.Min, 0);
-                _cl.UpdateBuffer(_raycastBuffer, 96, ref bboxmin);
-                _cl.UpdateBuffer(_raycastBuffer, 112, ref bboxsize);
-                _cl.SetPipeline(_pipelineRaycast);
-                _cl.SetGraphicsResourceSet(0, _raycastSet);
-                _cl.SetVertexBuffer(0, _planeVertexBuffer);
-                _cl.SetIndexBuffer(_planeIndexBuffer, IndexFormat.UInt16);
-                _cl.DrawIndexed((uint)_planeIndexCount);
-            }
+            DrawPicking(ref mat, ref viewmat, ref projMat);
             _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
             GraphicsDevice.SwapBuffers(MainSwapchain);
             GraphicsDevice.WaitForIdle();
+
+            HandlePick();
+        }
+
+        void DrawPicking(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
+        {
+            if (pickReady == 0)
+            {
+                Matrix4x4 viewPrj = viewmat * projMat;
+
+                _cl.SetPipeline(_pipelinePick);
+                _cl.SetFramebuffer(_pickFB);
+                _cl.ClearColorTarget(0, RgbaFloat.Black);
+                _cl.ClearDepthStencil(1f);
+                _cl.SetGraphicsResourceSet(0, _projViewSet);
+                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+                Matrix4x4 wmat =
+                    Matrix4x4.CreateTranslation(-partOffset) *
+                    Matrix4x4.CreateScale(partScale);
+                _cl.UpdateBuffer(_worldBuffer, 0, ref wmat);
+                _cl.SetVertexBuffer(0, _vertexBuffer);
+                _cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt32);
+
+                for (int i = 0; i < _triangleCount; i++)
+                {
+                    int pidx = i + 1;
+                    int r = pidx & 0xFF;
+                    int g = (pidx >> 8) & 0xFF;
+                    int b = (pidx >> 16) & 0xFF;
+                    Vector4 meshColor = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref meshColor);
+                    _cl.DrawIndexed(3, 1, (uint)(i * 3), 0, 0);
+                }
+                int pickIdx = _triangleCount + 1;
+                _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+                _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+                foreach (var edge in this.edges)
+                {
+                    int r = pickIdx & 0xFF;
+                    int g = (pickIdx >> 8) & 0xFF;
+                    int b = (pickIdx >> 16) & 0xFF;
+                    Vector4 edgeColor = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref edgeColor);
+                    Vector3 pt0 = DTF(edge.v0.pt);
+                    Vector3 pt1 = DTF(edge.v1.pt);
+                    float len = (pt1 - pt0).Length();
+                    Vector3 dir = Vector3.Normalize(pt1 - pt0);
+                    Vector3 a = Vector3.Cross(Vector3.UnitZ, dir);
+                    float w = 1 + Vector3.Dot(Vector3.UnitZ, dir);
+                    Quaternion q = a.LengthSquared() != 0 ? new Quaternion(a, w) : Quaternion.Identity;
+                    q = Quaternion.Normalize(q);
+                    Vector3 offset = (pt0 + pt1) * 0.5f;
+                    Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(1, 1, len)) *
+                        Matrix4x4.CreateFromQuaternion(q) *
+                        Matrix4x4.CreateTranslation(offset);
+                    Matrix4x4 cm = m * mat;
+                    Matrix4x4 matViewProj = cm * viewPrj;
+                    Vector4 tp1 = Vector4.Transform(new Vector4(-0.5f, -0.5f, 0, 1), matViewProj);
+                    Vector4 tp2 = Vector4.Transform(new Vector4(0.5f, 0.5f, 0, 1), matViewProj);
+                    tp1 /= tp1.W;
+                    tp2 /= tp2.W;
+                    float lineLen = (tp1 - tp2).Length();
+
+                    float s = 0.005f;
+                    m = Matrix4x4.CreateScale(new Vector3(s / lineLen, s / lineLen, len)) *
+                        Matrix4x4.CreateFromQuaternion(q) *
+                        Matrix4x4.CreateTranslation(offset);
+                    cm = m * mat;
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                    _cl.DrawIndexed((uint)_cubeIndexCount);
+                    pickIdx++;
+                }
+                _cl.CopyTexture(this._pickTexture, this._pickStgTexture);
+                pickReady = 1;
+            }
+
+        }
+        void HandlePick()
+        {
+            if (pickReady == 1)
+            {
+                meshSelectedOffset = -1;
+                MappedResourceView<Rgba> rView = GraphicsDevice.Map<Rgba>(_pickStgTexture, MapMode.Read);
+                Rgba r = rView[pickX, pickY];
+                int pickIdx = r.r + (r.g << 8) + (r.b << 16);
+                if (pickIdx > _triangleCount)
+                {
+                    Topology.Edge e = this.edges[pickIdx - (_triangleCount + 1)];
+                    OnINodeSelected?.Invoke(this, e);
+                }
+                else if (pickIdx > 0)
+                {
+                    var face = _part.GetTopoMesh().faces[pickIdx - 1];
+                    OnINodeSelected?.Invoke(this, face);
+                    meshSelectedOffset = pickIdx - 1;
+                }
+                GraphicsDevice.Unmap(_pickStgTexture);
+                pickReady = -1;
+            }
+        }
+        void DrawNonManifold(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
+        {
+            if (NonManifold)
+            {
+                Matrix4x4 viewPrj = viewmat * projMat;
+                _cl.ClearDepthStencil(1f);
+
+                int palidx = 0;
+                foreach (var edge in this.nonMFedges)
+                {
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref edgePalette[palidx++]);
+                    palidx = palidx % 100;
+                    Vector3 pt0 = DTF(edge.v0.pt);
+                    Vector3 pt1 = DTF(edge.v1.pt);
+                    float len = (pt1 - pt0).Length();
+                    Vector3 dir = Vector3.Normalize(pt1 - pt0);
+                    Vector3 a = Vector3.Cross(Vector3.UnitZ, dir);
+                    float w = 1 + Vector3.Dot(Vector3.UnitZ, dir);
+                    Quaternion q = a.LengthSquared() != 0 ? new Quaternion(a, w) : Quaternion.Identity;
+                    q = Quaternion.Normalize(q);
+                    Vector3 offset = (pt0 + pt1) * 0.5f;
+                    Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(1, 1, len)) *
+                        Matrix4x4.CreateFromQuaternion(q) *
+                        Matrix4x4.CreateTranslation(offset);
+
+                    Matrix4x4 cm = m * mat;
+                    Matrix4x4 matViewProj = cm * viewPrj;
+                    Vector4 tp1 = Vector4.Transform(new Vector4(-0.5f, -0.5f, 0, 1), matViewProj);
+                    Vector4 tp2 = Vector4.Transform(new Vector4(0.5f, 0.5f, 0, 1), matViewProj);
+                    tp1 /= tp1.W;
+                    tp2 /= tp2.W;
+                    float lineLen = (tp1 - tp2).Length();
+
+                    float s = 0.002f;
+                    m = Matrix4x4.CreateScale(new Vector3(s / lineLen, s / lineLen, len)) *
+                        Matrix4x4.CreateFromQuaternion(q) *
+                        Matrix4x4.CreateTranslation(offset);
+                    cm = m * mat;
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                    _cl.DrawIndexed((uint)_cubeIndexCount);
+                }
+            }
+
+        }
+        void DrawEdges(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
+        {
+            if (this.ShowEdges)
+            {
+                Matrix4x4 viewPrj = viewmat * projMat;
+
+                Vector4 edgeColor = new Vector4(1, 1, 1, 1);
+                Vector4 edgeFlag1 = new Vector4(1, 0, 1, 1);
+                Vector4 edgeFlag2 = new Vector4(0, 1, 1, 1);
+                Vector4 edgeSelected = new Vector4(1, 0, 0, 1);
+                bool showErrors = true;
+                foreach (var edge in this.edges)
+                {
+                    if (edge.IsSelected)
+                        _cl.UpdateBuffer(_materialBuffer, 0, ref edgeSelected);
+                    else if (showErrors && (edge.errorFlags & 2) != 0)
+                        _cl.UpdateBuffer(_materialBuffer, 0, ref edgeFlag2);
+                    else if (showErrors && ((edge.v0.errorFlags & 1) != 0 ||
+                        (edge.v1.errorFlags & 1) != 0))
+                        _cl.UpdateBuffer(_materialBuffer, 0, ref edgeFlag1);
+                    else
+                        _cl.UpdateBuffer(_materialBuffer, 0, ref edgeColor);
+                    Vector3 pt0 = DTF(edge.v0.pt);
+                    Vector3 pt1 = DTF(edge.v1.pt);
+
+                    float len = (pt1 - pt0).Length();
+                    Vector3 dir = Vector3.Normalize(pt1 - pt0);
+                    Vector3 a = Vector3.Cross(Vector3.UnitZ, dir);
+                    float w = 1 + Vector3.Dot(Vector3.UnitZ, dir);
+                    Quaternion q = a.LengthSquared() != 0 ? new Quaternion(a, w) : Quaternion.Identity;
+                    q = Quaternion.Normalize(q);
+                    Vector3 offset = (pt0 + pt1) * 0.5f;
+                    Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(1, 1, len)) *
+                        Matrix4x4.CreateFromQuaternion(q) *
+                        Matrix4x4.CreateTranslation(offset);
+                    Matrix4x4 cm = m * mat;
+                    Matrix4x4 matViewProj = cm * viewPrj;
+                    Vector4 tp1 = Vector4.Transform(new Vector4(-0.5f, -0.5f, 0, 1), matViewProj);
+                    Vector4 tp2 = Vector4.Transform(new Vector4(0.5f, 0.5f, 0, 1), matViewProj);
+                    tp1 /= tp1.W;
+                    tp2 /= tp2.W;
+                    float lineLen = (tp1 - tp2).Length();
+
+                    float s = 0.002f;
+                    m = Matrix4x4.CreateScale(new Vector3(s / lineLen, s / lineLen, len)) *
+                        Matrix4x4.CreateFromQuaternion(q) *
+                        Matrix4x4.CreateTranslation(offset);
+                    cm = m * mat;
+
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                    _cl.DrawIndexed((uint)_cubeIndexCount);
+                }
+            }
+        }
+
+        void DrawMesh(ref Matrix4x4 mat)
+        {
+            _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
+            Vector4 col = new Vector4(1, 1, 0, 1) * 0.5f;
+            _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+
+            _cl.SetPipeline(_pipeline);
+            _cl.SetVertexBuffer(0, _vertexBuffer);
+            _cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt32);
+            _cl.SetGraphicsResourceSet(0, _projViewSet);
+            _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+            if (meshSelectedOffset < 0)
+            {
+                _cl.DrawIndexed((uint)_indexCount);
+            }
+            else
+            {
+                _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+                _cl.DrawIndexed((uint)meshSelectedOffset * 3, 1, (uint)(0), 0, 0);
+
+                Vector4 selectedCol = new Vector4(1, 0, 0, 1);
+                _cl.UpdateBuffer(_materialBuffer, 0, ref selectedCol);
+                _cl.DrawIndexed(3, 1, (uint)(meshSelectedOffset) * 3, 0, 0);
+
+                _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+                uint remainingCount = (uint)_indexCount - (uint)(meshSelectedOffset - 1) * 3;
+                _cl.DrawIndexed(remainingCount, 1, (uint)(meshSelectedOffset+1)*3, 0, 0);
+            }
+
+            if (_selectedVertexBuffer != null)
+            {
+                _cl.ClearDepthStencil(1f);
+                Vector4 co2l = new Vector4(1, 0, 0, 1) * 0.5f;
+                _cl.UpdateBuffer(_materialBuffer, 0, ref co2l);
+                _cl.SetVertexBuffer(0, _selectedVertexBuffer);
+                _cl.SetIndexBuffer(_selectedIndexBuffer, IndexFormat.UInt32);
+                _cl.DrawIndexed((uint)_selectedIndexCount);
+            }
+            //_cl.ClearDepthStencil(1f);
+            _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+            _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+        }
+        void DrawRaycast(ref Matrix4x4 viewmat)
+        {
+            if (this._primTexUpdate)
+            {
+                _cl.CopyTexture(this._primStgTexture, this._primTexture);
+                this._primTexUpdate = false;
+            }
+            Matrix4x4.Invert(viewmat, out viewmat);
+            Vector4 v4 = new Vector4(Window.Width, Window.Height, 0, 0);
+            _cl.UpdateBuffer(_raycastBuffer, 0, ref v4);
+            _cl.UpdateBuffer(_raycastBuffer, 16, ref viewmat);
+            _cl.UpdateBuffer(_raycastBuffer, 80, ref this.numPrimitives);
+            Vector4 bboxmin = new Vector4(DTF(this.primBbox.Min), 0);
+            Vector4 bboxsize = new Vector4(DTF(this.primBbox.Max - this.primBbox.Min), 0);
+            _cl.UpdateBuffer(_raycastBuffer, 96, ref bboxmin);
+            _cl.UpdateBuffer(_raycastBuffer, 112, ref bboxsize);
+            _cl.SetPipeline(_pipelineRaycast);
+            _cl.SetGraphicsResourceSet(0, _raycastSet);
+            _cl.SetVertexBuffer(0, _planeVertexBuffer);
+            _cl.SetIndexBuffer(_planeIndexBuffer, IndexFormat.UInt16);
+            _cl.DrawIndexed((uint)_planeIndexCount);
+        }
+        void DrawBisectors(ref Matrix4x4 mat)
+        {
+            Dictionary<LDrawDatFile.ConnectorType, Vector4> colors = new Dictionary<LDrawDatFile.ConnectorType, Vector4>()
+                { { LDrawDatFile.ConnectorType.Stud, new Vector4(0.8f, 0.1f, 0, 1) }, { LDrawDatFile.ConnectorType.RStud, new Vector4(0.1f, 0.1f, 0.8f, 1) }};
+
+            if (ShowConnectors)
+            {
+                foreach (var c in connectorVizs)
+                {
+                    Vector4 ccol = colors[c.type];
+                    const float lsize = 0.05f;
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref ccol);
+                    {
+                        Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(0, 0, -0.5f)) *
+                            Matrix4x4.CreateScale(new Vector3(lsize, lsize, 0.5f)) * c.mat * mat;
+                        _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                        _cl.DrawIndexed((uint)_cubeIndexCount);
+                    }
+                    {
+                        Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(-0.5f, 0, 0)) *
+                            Matrix4x4.CreateScale(new Vector3(0.5f, lsize, lsize)) * c.mat * mat;
+                        _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                        _cl.DrawIndexed((uint)_cubeIndexCount);
+                    }
+                    {
+                        Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(0, -0.5f, 0)) *
+                            Matrix4x4.CreateScale(new Vector3(lsize, 1.0f, lsize)) * c.mat * mat;
+                        _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                        _cl.DrawIndexed((uint)_cubeIndexCount);
+                    }
+                }
+            }
+            if (ShowBisector)
+            {
+                Vector4 bisectorColor = new Vector4(1.0f, 0f, 0f, 1.0f);
+                _cl.UpdateBuffer(_materialBuffer, 0, ref bisectorColor);
+                foreach (var edge in bisectors)
+                {
+                    Vector3 pt0 = edge.Item1;
+                    Vector3 pt1 = edge.Item2;
+                    float len = (pt1 - pt0).Length();
+                    Vector3 dir = Vector3.Normalize(pt1 - pt0);
+                    Vector3 a = Vector3.Cross(Vector3.UnitZ, dir);
+                    float w = 1 + Vector3.Dot(Vector3.UnitZ, dir);
+                    Quaternion q = a.LengthSquared() != 0 ? new Quaternion(a, w) : Quaternion.Identity;
+                    q = Quaternion.Normalize(q);
+                    Vector3 offset = (pt0 + pt1) * 0.5f;
+                    Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(0.2f, 0.2f, len)) *
+                        Matrix4x4.CreateFromQuaternion(q) *
+                        Matrix4x4.CreateTranslation(offset);
+
+                    Matrix4x4 cm = m * mat;
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                    _cl.DrawIndexed((uint)_cubeIndexCount);
+                }
+
+            }
+
         }
 
         private Vtx[] GetCubeVertices()

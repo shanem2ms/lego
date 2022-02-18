@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
-using System.Numerics;
+using System.DoubleNumerics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -65,7 +65,7 @@ namespace partmake
             {
                 List<Vtx> vertices = new List<Vtx>();
                 GetVertices(vertices, false);
-                aabb = AABB.CreateFromPoints(vertices.Select(v => v.pos));
+                aabb = AABB.CreateFromPoints(vertices.Select(v => new Vector3(v.pos.X, v.pos.Y, v.pos.Z)));
                 return aabb.Value;
             }
         }

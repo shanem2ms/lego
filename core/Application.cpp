@@ -39,10 +39,11 @@ namespace sam
     using namespace std::chrono_literals;
 #endif
 
-    Application::Application() :
+    Application::Application(const std::string& startupPath) :
         m_height(0),
         m_width(0),
         m_frameIdx(0),
+        m_startupPath(startupPath),
         m_rawMouseMode(false)
     {
         s_pInst = this;

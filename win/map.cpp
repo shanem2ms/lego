@@ -135,7 +135,7 @@ LARGE_INTEGER startTime;
 RECT curWindowRect;
 HWND hWnd;
 bool bgfxInit = false;
-sam::Application app;
+std::shared_ptr<sam::Application> app;
 std::shared_ptr<bgfx::CallbackI> bgfxCallback;
 bool OnHideOrShowMouse(bool);
 void WriteDbgMessage(const char* str)
@@ -147,6 +147,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
     hInst = hInstance; // Store instance handle in our global variable
 
+    char curdir[2048];
+    GetCurrentDirectoryA(2048, curdir);
+    app = std::make_shared<sam::Application>(curdir);
     int pro12maxW = 1284;
     int pro12maxH = 2778;
     SetProcessDpiAwareness(PROCESS_SYSTEM_DPI_AWARE);
@@ -193,11 +196,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     CHAR my_documents[MAX_PATH];
     HRESULT result = SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, SHGFP_TYPE_CURRENT, my_documents);
 
-    app.SetDebugMsgFunc(WriteDbgMessage);
+    app->SetDebugMsgFunc(WriteDbgMessage);
     GetCurrentDirectory(MAX_PATH, my_documents);
-    app.Initialize("C:\\homep4\\lego");
-    app.Resize(rect.right, rect.bottom);
-    app.SetHideMouseCursorFn(OnHideOrShowMouse);
+    app->Initialize("C:\\homep4\\lego");
+    app->Resize(rect.right, rect.bottom);
+    app->SetHideMouseCursorFn(OnHideOrShowMouse);
     return TRUE;
 }
 
@@ -269,7 +272,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (ri.header.dwType == RIM_TYPEMOUSE &&
             ri.data.mouse.lLastX != 0 || ri.data.mouse.lLastY != 0)
         {
-            app.RawMouseMoved(ri.data.mouse.lLastX, ri.data.mouse.lLastY);
+            app->RawMouseMoved(ri.data.mouse.lLastX, ri.data.mouse.lLastY);
         }
 
         break;
@@ -284,37 +287,37 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         RECT rect;
         GetClientRect(hWnd, &rect);
-        app.Resize(rect.right, rect.bottom);
+        app->Resize(rect.right, rect.bottom);
     }
     break;
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
     case WM_LBUTTONDOWN:
-        app.MouseDown((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 0);
+        app->MouseDown((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 0);
         break;
     case WM_LBUTTONUP:
-        app.MouseUp(0);
+        app->MouseUp(0);
         break;
     case WM_RBUTTONDOWN:
-        app.MouseDown((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 1);
+        app->MouseDown((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 1);
         break;
     case WM_RBUTTONUP:
-        app.MouseUp(1);
+        app->MouseUp(1);
         break;
     case WM_MBUTTONDOWN:
-        app.MouseDown((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 3);
+        app->MouseDown((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 3);
         break;
     case WM_MBUTTONUP:
-        app.MouseUp(3);
+        app->MouseUp(3);
         break;
     case WM_MOUSEMOVE:
-        app.MouseMove((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 0);
+        app->MouseMove((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 0);
         break;
     case WM_MOUSEWHEEL:
     {
         short zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
-        app.WheelScroll((float)zDelta / (float)WHEEL_DELTA);
+        app->WheelScroll((float)zDelta / (float)WHEEL_DELTA);
         break;
     }
     case WM_KEYDOWN:
@@ -322,7 +325,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         if (keystate[wParam] == 0)
         {
-            app.KeyDown(wParam);
+            app->KeyDown(wParam);
             keystate[wParam] = 1;
         }
         break;
@@ -331,7 +334,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_SYSKEYUP:
         if (keystate[wParam] != 0)
         {
-            app.KeyUp(wParam);
+            app->KeyUp(wParam);
             keystate[wParam] = 0;
         }
         break;
@@ -351,7 +354,7 @@ void Tick()
     QueryPerformanceCounter(&cur);
 
     float elapsedTime = (float)(cur.QuadPart - startTime.QuadPart) * timePeriod;
-    app.Tick(elapsedTime);
+    app->Tick(elapsedTime);
 
     RECT r;
     GetClientRect(hWnd, &r);
@@ -369,7 +372,7 @@ void Tick()
     bgfx::touch(0);
     bgfx::touch(1);
     bgfx::touch(2);
-    app.Draw();
+    app->Draw();
 }
 
 
@@ -394,7 +397,7 @@ LRESULT KeyboardHookproc(
     {
         if (keystate[pKbb->vkCode] == 0)
         {
-            app.KeyDown(pKbb->vkCode);
+            app->KeyDown(pKbb->vkCode);
             keystate[pKbb->vkCode] = 1;
         }
         break;
@@ -403,7 +406,7 @@ LRESULT KeyboardHookproc(
     case WM_SYSKEYUP:
         if (keystate[pKbb->vkCode] != 0)
         {
-            app.KeyUp(pKbb->vkCode);
+            app->KeyUp(pKbb->vkCode);
             keystate[pKbb->vkCode] = 0;
         }
         break;

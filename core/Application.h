@@ -26,13 +26,14 @@ class Application
     int m_height;
     int m_frameIdx;
     std::string m_documentsPath;
+    std::string m_startupPath;
     std::function<bool(bool)> m_hideMouseCursorFn;
     bool m_rawMouseMode;
     static void (*m_dbgFunc)(const char*);
 
 public:    
     UIManager& UIMgr();
-    Application();
+    Application(const std::string &startupPath);
     ~Application();
     static Application& Inst();
     int FrameIdx() const { return m_frameIdx; }
@@ -51,6 +52,8 @@ public:
     void Initialize(const char *folder);
     const std::string &Documents() const
     { return m_documentsPath; }    
+    const std::string &StartupPath() const
+    { return m_startupPath; }
     void SetHideMouseCursorFn(const std::function<bool(bool)>& fn);
     static void SetDebugMsgFunc(void (*dbgfunc)(const char*));
     static void DebugMsg(const std::string& str);

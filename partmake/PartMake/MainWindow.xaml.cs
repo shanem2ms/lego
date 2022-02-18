@@ -32,6 +32,8 @@ namespace partmake
 
         LDrawDatNode selectedNode = null;
         public LDrawDatNode SelectedNode => selectedNode;
+        public Topology.INode SelectedINode { get; set; }
+        public string Log => selectedPart?.GetTopoMesh().LogString;
 
         public string SelectedType { get => LDrawFolders.SelectedType; 
             set { LDrawFolders.SelectedType = value;
@@ -66,8 +68,18 @@ namespace partmake
             vis = _RenderControl.Vis;
             vis.Part = selectedPart;
             Eps.Text = Topology.Mesh.Epsilon.ToString();
+            vis.OnINodeSelected += Vis_OnINodeSelected;
         }
 
+        private void Vis_OnINodeSelected(object sender, Topology.INode e)
+        {
+            if (SelectedINode != null)
+                SelectedINode.IsSelected = false;
+            SelectedINode = e;
+            if (SelectedINode != null)
+                SelectedINode.IsSelected = true;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedINode"));
+        }
 
         void OnSelectedItem(LDrawFolders.Entry item)
         {
@@ -77,6 +89,7 @@ namespace partmake
             if (vis != null)
                 vis.Part = selectedPart;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentPart"));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Log"));
             File.WriteAllLines("PartMake.ini", new string[] { item.name });
         }
 
@@ -130,8 +143,38 @@ namespace partmake
 
         private void Eps_TextChanged(object sender, TextChangedEventArgs e)
         {
+        }
+
+        private void Eps_LostFocus(object sender, RoutedEventArgs e)
+        {
             Topology.Mesh.Epsilon = float.Parse((sender as TextBox).Text);
             OnSelectedItem(this.selectedItem);
+        }
+
+        private void Button_NodeNavClick(object sender, RoutedEventArgs e)
+        {
+            Button btn = (sender as Button);
+            object dc = btn.DataContext;
+            if (dc is Topology.EdgePtr)
+                dc = (dc as Topology.EdgePtr).e;
+            Vis_OnINodeSelected(sender, (dc as Topology.INode));
+        }
+    }
+
+    public class TopoTemplateSelector : DataTemplateSelector
+    {
+        public DataTemplate EdgeTemplate { get; set; }
+        public DataTemplate FaceTemplate { get; set; }
+
+        public override DataTemplate SelectTemplate(object item, DependencyObject container)
+        {
+            if (item is Topology.Edge)
+                return EdgeTemplate;
+
+            if (item is Topology.Face)
+                return FaceTemplate;
+
+            return null;
         }
     }
 }

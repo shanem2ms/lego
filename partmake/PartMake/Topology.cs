@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
-using System.Numerics;
+using System.DoubleNumerics;
 using KdTree;
 
 namespace partmake
@@ -39,12 +39,13 @@ namespace partmake
             public List<Edge> edges =
                 new List<Edge>();
             public int errorFlags = 0;
+            public double mindist = -1;
 
             public override IEnumerable<INode> Children => null;
 
             public override string ToString()
             {
-                return String.Format("{0} [{1}, {2}, {3}]", idx, pt.X, pt.Y, pt.Z);
+                return String.Format("{0} [{1}, {2}, {3}] {4}", idx, pt.X, pt.Y, pt.Z, mindist);
             }
 
             public IEnumerable<Face> GetFaces()
@@ -68,18 +69,15 @@ namespace partmake
 
         public static class Eps
         {
-            public static bool Eq(float a, float b)
+            public static bool Eq(double a, double b)
             {
-                const float epsilon = 0.001f;
-                float e = a - b;
-                return (e > -epsilon && e < epsilon);
+                double e = a - b;
+                return (e > -Mesh.Epsilon && e < Mesh.Epsilon);
             }
 
             public static bool Eq(Vector3 a, Vector3 v)
             {
-                return Eq(a.X, v.X) &&
-                        Eq(a.Y, v.Y) &&
-                        Eq(a.Z, v.Z);
+                return (a - v).LengthSquared() < (Mesh.Epsilon * 4);
             }
         }
 
@@ -100,7 +98,7 @@ namespace partmake
             }
         }
 
-        public class Edge
+        public class Edge : INode
         {
             public Edge(Vertex _v0, Vertex _v1)
             {
@@ -115,17 +113,22 @@ namespace partmake
                 aabb = AABB.CreateFromPoints(new Vector3[] { v0.pt, v1.pt });
             }
 
-            public Vertex v0;
-            public Vertex v1;
-            public Vector3 dir;
-            public float len;
+            public Vertex v0 { get; set; }
+            public Vertex v1 { get; set; }
+            public Vector3 dir { get; set; }
+
+            public IEnumerable<Face> Faces => edgePtrs.Select(eptr => eptr.parentFace);
+            public double len { get; set; }
             public int flag; // for processing
             public bool instack = false;
             public List<EdgePtr> edgePtrs =
                 new List<EdgePtr>();
             public AABB aabb;
-            public int errorFlags = 0;
+            public Edge[] splitEdges = null;
+            public int errorFlags { get; set; } = 0;
+            public bool split => splitEdges != null;
 
+            public int FaceCount => edgePtrs.Count();
             public bool IsConnected(Edge other)
             {
                 if (other.v0.idx == v0.idx || other.v0.idx == v1.idx ||
@@ -133,18 +136,18 @@ namespace partmake
                     return true;
                 return false;
             }
-            public float DistanceFromPt(Vector3 p)
+            public double DistanceFromPt(Vector3 p)
             {
                 Vector3 v = v0.pt;
                 Vector3 w = v1.pt;
                 // Return minimum distance between line segment vw and point p
-                float l2 = Vector3.DistanceSquared(v, w);  // i.e. |w-v|^2 -  avoid a sqrt
+                double l2 = Vector3.DistanceSquared(v, w);  // i.e. |w-v|^2 -  avoid a sqrt
                 if (l2 == 0.0) return Vector3.Distance(p, v);   // v == w case
                                                                 // Consider the line extending the segment, parameterized as v + t (w - v).
                                                                 // We find projection of point p onto the line. 
                                                                 // It falls where t = [(p-v) . (w-v)] / |w-v|^2
                                                                 // We clamp t from [0,1] to handle points outside the segment vw.
-                float t = Math.Max(0, Math.Min(1, Vector3.Dot(p - v, w - v) / l2));
+                double t = Math.Max(0, Math.Min(1, Vector3.Dot(p - v, w - v) / l2));
                 Vector3 projection = v + t * (w - v);  // Projection falls on the segment
                 return Vector3.DistanceSquared(p, projection);
             }
@@ -167,6 +170,107 @@ namespace partmake
             {
                 return v0.idx == idx || v1.idx == idx;
             }
+
+            public static bool Intersect2D(Vector2 A, Vector2 B, Vector2 C, Vector2 D, out Vector2 O)
+            {
+                // Line AB represented as a1x + b1y = c1 
+                double a1 = B.Y - A.Y;
+                double b1 = A.X - B.X;
+                double c1 = a1 * (A.X) + b1 * (A.Y);
+
+                // Line CD represented as a2x + b2y = c2 
+                double a2 = D.Y - C.Y;
+                double b2 = C.X - D.X;
+                double c2 = a2 * (C.X) + b2 * (C.Y);
+
+                double determinant = a1 * b2 - a2 * b1;
+
+                if (Eps.Eq(determinant, 0))
+                {
+                    O = new Vector2(0, 0);
+                    return false;
+                }
+                else
+                {
+                    double x = (b2 * c1 - b1 * c2) / determinant;
+                    double y = (a1 * c2 - a2 * c1) / determinant;
+                    O = new Vector2(x, y);
+                    return true;
+                }
+            }
+
+            static bool IntersectV(Vector3 A, Vector3 B, Vector3 C, Vector3 D, out double ot0,
+                out double ot1)
+            {
+                Vector2 i;
+                if (Intersect2D(new Vector2(A.X, A.Y), new Vector2(B.X, B.Y),
+                        new Vector2(C.X, C.Y), new Vector2(D.X, D.Y), out i))
+                {
+                    double t0 = (i.X - A.X) / (B.X - A.X);
+                    double t1 = (i.X - C.X) / (D.X - C.X);
+                    if (t0 > Mesh.Epsilon && t0 < (1 - Mesh.Epsilon) &&
+                        t1 > Mesh.Epsilon && t1 < (1 - Mesh.Epsilon))
+                    {
+                        double Z0 = A.Z + t0 * (B.Z - A.Z);
+                        double Z1 = C.Z + t1 * (D.Z - C.Z);
+                        ot0 = t0;
+                        ot1 = t1;
+                        if (Eps.Eq(Z0, Z1))
+                            return true;
+                    }
+                }
+                ot0 = ot1 = -1;
+                return false;
+            }
+
+            public bool Intersect(Edge b, out Vector3 ipt)
+            {
+                Vector3 A, B, C, D;
+                int xyzshuffle = 0;
+                if (Eps.Eq(dir.X, 0) && Eps.Eq(b.dir.X, 0))
+                {
+                    xyzshuffle = 1;
+                    A = new Vector3(v0.pt.Y, v0.pt.Z, v0.pt.X);
+                    B = new Vector3(v1.pt.Y, v1.pt.Z, v1.pt.X);
+                    C = new Vector3(b.v0.pt.Y, b.v0.pt.Z, b.v0.pt.X);
+                    D = new Vector3(b.v1.pt.Y, b.v1.pt.Z, b.v1.pt.X);
+                }
+                else if (Eps.Eq(dir.Y, 0) && Eps.Eq(b.dir.Y, 0))
+                {
+                    xyzshuffle = 2;
+                    A = new Vector3(v0.pt.X, v0.pt.Z, v0.pt.Y);
+                    B = new Vector3(v1.pt.X, v1.pt.Z, v1.pt.Y);
+                    C = new Vector3(b.v0.pt.X, b.v0.pt.Z, b.v0.pt.Y);
+                    D = new Vector3(b.v1.pt.X, b.v1.pt.Z, b.v1.pt.Y);
+                }
+                else
+                {
+                    A = v0.pt;
+                    B = v1.pt;
+                    C = b.v0.pt;
+                    D = b.v1.pt;
+                }
+
+                double t0, t1;
+                bool intersect = IntersectV(A, B, C, D, out t0, out t1);
+                if (intersect)
+                {
+                    ipt = A + t0 * (B - A);
+                    if (xyzshuffle == 1)
+                        ipt = new Vector3(ipt.Z, ipt.X, ipt.Y);
+                    else if (xyzshuffle == 2)
+                        ipt = new Vector3(ipt.X, ipt.Z, ipt.Y);
+                }
+                else
+                    ipt = Vector3.Zero;
+                return intersect;
+            }
+
+            public override string ToString()
+            {
+                return String.Format("Edge [{0} {1}]", v0.idx, v1.idx);
+            }
+
         }
 
         public class EdgePtr : INode
@@ -187,7 +291,7 @@ namespace partmake
                 e.edgePtrs.Add(this);
             }
             public EdgePtr(Vertex _v0, Vertex _v1, Dictionary<ulong, Edge> edgeDict,
-                Face _parentFace)
+                Face _parentFace, Mesh.LogDel logdel)
             {
                 this.parentFace = _parentFace;
                 ulong hash;
@@ -204,9 +308,13 @@ namespace partmake
                 if (!edgeDict.TryGetValue(hash, out e))
                 {
                     e = new Edge(_v0, _v1);
-                    if (e.v0.idx == 166 && e.v1.idx == 169)
-                        Debug.Write("A");
                     edgeDict.Add(hash, e);
+                    if (e.len < 0.01f)
+                        logdel(String.Format("Small edge {0}, {1}", e, e.len));
+                }
+                if (e.split)
+                {                    
+                    throw new Exception("Reintroducing split edge");
                 }
                 e.edgePtrs.Add(this);
             }
@@ -219,22 +327,36 @@ namespace partmake
 
         public class Face : INode
         {
-            public List<EdgePtr> edges;
+            public List<EdgePtr> edges { get; set; }
             public bool visited;
+            public bool isexterior;
             public bool isinvalid = false;
             public AABB aabb;
             public string id;
+            public int idx { get; set; }
             public IEnumerable<Vertex> Vtx => edges.Select(e => e.V0);
 
             public List<Edge> nonmfEdges;
 
-            float Area(Vector2 d0, Vector2 d1, Vector2 d2)
+            public bool IsValid()
             {
-                float dArea = ((d1.X - d0.X) * (d2.Y - d0.Y) - (d2.X - d0.X) * (d1.Y - d0.Y)) / 2.0f;
+                double d1 = Vector3.Dot(edges[0].Dir, edges[1].Dir);
+                double d2 = Vector3.Dot(edges[1].Dir, edges[2].Dir);
+                double d3 = Vector3.Dot(edges[2].Dir, edges[0].Dir);
+                if (Eps.Eq(d1, 1) || Eps.Eq(d1, -1) ||
+                    Eps.Eq(d2, 1) || Eps.Eq(d2, -1) ||
+                    Eps.Eq(d3, 1) || Eps.Eq(d3, -1))
+                    return false;
+                return true;
+            }
+
+            static double Area(Vector2 d0, Vector2 d1, Vector2 d2)
+            {
+                double dArea = ((d1.X - d0.X) * (d2.Y - d0.Y) - (d2.X - d0.X) * (d1.Y - d0.Y)) / 2.0f;
                 return (dArea > 0.0) ? dArea : -dArea;
             }
 
-            public float Area()
+            public double Area()
             {
                 Vector3 nrm = Normal;
                 Vector3 xdir = edges[0].Dir;
@@ -280,6 +402,15 @@ namespace partmake
                 FixEdgeOrder();
             }
 
+            public void ReverseWinding()
+            {
+                this.edges.Reverse();
+                foreach (var eptr in this.edges)
+                {
+                    eptr.reverse = !eptr.reverse;
+                }
+                calcNormal = false;
+            }
             public bool HasVertex(Vertex _vtx)
             {
                 var vtx = Vtx;
@@ -298,8 +429,12 @@ namespace partmake
 
             public bool IsPointInsideTriangle(Vertex vtx)
             {
-                if (ContainsVertex(vtx.idx))
-                    return false;
+                return !ContainsVertex(vtx.idx) && IsPointOnTriangle(vtx);
+            }
+
+
+            public bool IsPointOnTriangle(Vertex vtx)
+            {
                 Vector3 pt = vtx.pt;
                 Vector3 nrm = Normal;
                 if (!Eps.Eq(Vector3.Dot(pt - edges[0].V0.pt, nrm), 0))
@@ -314,11 +449,11 @@ namespace partmake
                 Vector2 p3 = new Vector2(Vector3.Dot(edges[2].V0.pt, xdir),
                     Vector3.Dot(edges[2].V0.pt, ydir));
                 Vector2 p = new Vector2(Vector3.Dot(pt, xdir), Vector3.Dot(pt, ydir));
-                float alpha = ((p2.Y - p3.Y) * (p.X - p3.X) + (p3.X - p2.X) * (p.Y - p3.Y)) /
+                double alpha = ((p2.Y - p3.Y) * (p.X - p3.X) + (p3.X - p2.X) * (p.Y - p3.Y)) /
                         ((p2.Y - p3.Y) * (p1.X - p3.X) + (p3.X - p2.X) * (p1.Y - p3.Y));
-                float beta = ((p3.Y - p1.Y) * (p.X - p3.X) + (p1.X - p3.X) * (p.Y - p3.Y)) /
+                double beta = ((p3.Y - p1.Y) * (p.X - p3.X) + (p1.X - p3.X) * (p.Y - p3.Y)) /
                        ((p2.Y - p3.Y) * (p1.X - p3.X) + (p3.X - p2.X) * (p1.Y - p3.Y));
-                float gamma = 1.0f - alpha - beta;
+                double gamma = 1.0f - alpha - beta;
 
                 return alpha > 0 && beta > 0 && gamma > 0;
             }
@@ -351,6 +486,7 @@ namespace partmake
                 edges.RemoveAt(0);
                 while (edges.Count() > 0)
                 {
+                    bool removed = false;
                     foreach (EdgePtr e in edges)
                     {
                         if (e.V0.idx == curVtx.idx)
@@ -358,6 +494,7 @@ namespace partmake
                             curVtx = e.V1;
                             newEdges.Add(e);
                             edges.Remove(e);
+                            removed = true;
                             break;
                         }
                         else if (e.V1.idx == curVtx.idx)
@@ -366,8 +503,14 @@ namespace partmake
                             e.reverse = !e.reverse;
                             newEdges.Add(e);
                             edges.Remove(e);
+                            removed = true;
                             break;
                         }
+                    }
+                    if (!removed)
+                    {
+                        newEdges.Add(edges[0]);
+                        edges.Remove(edges[0]);
                     }
                 }
 
@@ -379,7 +522,8 @@ namespace partmake
 
             public override string ToString()
             {
-                return edges.Count() == 4 ? "Quad" : "Tri";
+                return 
+                    string.Join(' ', edges.Select(e => e.V0.idx.ToString()).ToArray());
             }
             public ulong ComputeHash()
             {
@@ -397,6 +541,7 @@ namespace partmake
 
             bool calcNormal = false;
             Vector3 nrm;
+
             public Vector3 Normal
             {
                 get
@@ -423,18 +568,40 @@ namespace partmake
         }
         public class Mesh
         {
-            public static float Epsilon = 0.001f;
-            public KdTree<float, Vertex> kdTree = new KdTree<float, Vertex>(3, new KdTree.Math.FloatMath());
+            public static double Epsilon = 0.00001f;
+            public KdTree<double, Vertex> kdTree = new KdTree<double, Vertex>(3, new KdTree.Math.DoubleMath());
             List<Vertex> vertices = new List<Vertex>();
             public List<Face> faces = new List<Face>();
             int nextVtxIdx = 0;
             public Dictionary<ulong, Edge> edgeDict = new Dictionary<ulong, Edge>();
+            double vertexMinDist = 0.0005;
+            EdgeIntersect edgeIntersect = new EdgeIntersect();
+            public List<string> logLines = new List<string>();
 
-            public static bool IsEqual(float[] vals, Vector3 v2)
+            string log = null;
+            public string LogString { get
+                {
+                    if (log == null)
+                        log = string.Join("\r\n", logLines);
+                    return log;
+                } }
+
+            int logIndent = 0;
+            void Log(string line)
+            {
+                logLines.Add(new string(' ', logIndent * 2) + line);
+            }
+            public static double DSq(double[] vals, Vector3 v2)
             {
                 Vector3 v1 = new Vector3(vals[0], vals[1], vals[2]);
-                return Vector3.DistanceSquared(v1, v2) < Epsilon;
+                return Vector3.DistanceSquared(v1, v2);
             }
+            public bool IsEqual(double[] vals, Vector3 v2)
+            {
+                Vector3 v1 = new Vector3(vals[0], vals[1], vals[2]);
+                return Vector3.DistanceSquared(v1, v2) < vertexMinDist;
+            }
+            public delegate void LogDel(string line);
 
             public List<Face> FacesFromId(string id)
             {
@@ -443,16 +610,38 @@ namespace partmake
 
             public Vertex AddVertex(Vector3 v)
             {
-                var nodes = kdTree.GetNearestNeighbours(new float[] { v.X, v.Y, v.Z }, 1);
+                Vertex ov;
+                AddVertex(v, out ov);
+                return ov;
+            }
+
+            public bool AddVertex(Vector3 v, out Vertex ov)
+            {
+                var nodes = kdTree.GetNearestNeighbours(new double[] { v.X, v.Y, v.Z }, 1);
                 if (nodes.Length > 0 && IsEqual(nodes[0].Point, v))
                 {
-                    return nodes[0].Value;
+                    ov = nodes[0].Value;
+                    return false;
                 }
                 else
                 {
-                    Vertex nv = new Vertex() { pt = v, idx = nextVtxIdx++ };
-                    kdTree.Add(new float[] { v.X, v.Y, v.Z }, nv);
-                    return nv;
+                    Log(string.Format("Add Vertex {0}", nextVtxIdx));
+                    Vertex nv = new Vertex() { pt = v, idx = nextVtxIdx++, mindist = nodes.Length > 0 ? DSq(nodes[0].Point, v) : -1 };
+                    kdTree.Add(new double[] { v.X, v.Y, v.Z }, nv);
+                    ov = nv;
+                    return true;
+                }
+            }
+            EdgePtr MakeEdge(Vertex v0, Vertex v1, Face f)
+            {
+                try
+                {
+                    return new EdgePtr(v0, v1, edgeDict, f, Log);
+                }
+                catch (Exception e)
+                {
+                    Log(String.Format("Exception for Edge [{0} {1}]: {2}", v0.idx, v1.idx, e.Message));
+                    throw e;
                 }
             }
             public Face AddFace(string id, List<Vector3> vertices)
@@ -468,7 +657,7 @@ namespace partmake
                     Vertex v0 = verlist[idx];
                     Vertex v1 = verlist[(idx + 1) % verlist.Count];
 
-                    EdgePtr eptr = new EdgePtr(v0, v1, edgeDict, null);
+                    EdgePtr eptr = MakeEdge(v0, v1, null);
                     elist.Add(eptr);
                 }
 
@@ -516,12 +705,53 @@ namespace partmake
 
             public void Fix()
             {
-                Triangulate();
-                SplitXJunctions();
-                //SplitTJunctions();
-                SplitInteriorEdges();
-                RemoveDuplicateFaces();
-                FixWindings();
+                Log("Fix");
+                try
+                {
+                    RemoveDuplicateFaces();
+                    Triangulate();
+                    vertexMinDist *= 0.01;
+
+                    //Log("SplitXJunctions");
+                    //SplitXJunctions();                    
+                    Log("SplitTJunctions");
+                    logIndent++;
+                    SplitTJunctions();
+                    logIndent--;
+                    Log("SplitInteriorEdges");
+                    logIndent++;
+                    SplitInteriorEdges();
+                    logIndent--;
+                    Log("SplitIntersectingEdges");
+                    logIndent++;
+                    SplitIntersectingEdges();
+                    logIndent--;
+                    Log("RemoveSplitEdgesFromFaces");
+                    logIndent++;
+                    RemoveSplitEdgesFromFaces();
+                    logIndent--;
+                    Log("SplitTJunctions");
+                    logIndent++;
+                    SplitTJunctions();
+                    FixWindings();
+                    logIndent--;
+                    List<Edge> nme = new List<Edge>();
+                    GetNonManifold(nme);
+                }
+                catch (Exception ex)
+                {
+
+                }
+                Dictionary<ulong, Edge> newDict =
+                    new Dictionary<ulong, Edge>(
+                        edgeDict.Where(kv => !kv.Value.split));
+                edgeDict = newDict;
+                int idx = 0;
+                foreach (Face f in faces)
+                {
+                    f.idx = idx++;
+                }
+                //faces = faces.Where(f => f.visited).ToList();
             }
 
             void SplitInteriorEdges()
@@ -542,7 +772,6 @@ namespace partmake
                                 {
                                     SplitFaceOnInteriorPoint(f, e.v1);
                                     didSplit = true;
-                                    Debug.Write("Pt inside");
                                 }
                             }
                         }
@@ -554,15 +783,193 @@ namespace partmake
                                 {
                                     SplitFaceOnInteriorPoint(f, e.v0);
                                     didSplit = true;
-                                    Debug.Write("Pt inside");
+                                }
+                            }
+                        }
+                        foreach (Face f in faces)
+                        {
+                            if (f.aabb.Contains(e.v0.pt) != AABB.ContainmentType.Disjoint &&
+                                f.IsPointInsideTriangle(e.v0) &&
+                                !f.ContainsVertex(e.v1.idx))
+                            {
+                                if (!f.IsPointOnTriangle(e.v1))
+                                {
+                                    if (SplitFaceOnEdge(f, e))
+                                    {
+                                        didSplit = true;
+                                        break;
+                                    }
+                                }
+                                else
+                                {
+                                    AddFaceInteriorPoint(f, e.v0);
+                                    didSplit = true;
+                                    break;
+                                }
+                            }
+                            if (f.aabb.Contains(e.v1.pt) != AABB.ContainmentType.Disjoint &&
+                                f.IsPointInsideTriangle(e.v1) &&
+                                !f.ContainsVertex(e.v0.idx))
+                            {
+                                if (!f.IsPointOnTriangle(e.v0))
+                                {
+                                    if (SplitFaceOnEdge(f, e))
+                                    {
+                                        didSplit = true;
+                                        break;
+                                    }
+                                }
+                                else
+                                {
+                                    AddFaceInteriorPoint(f, e.v1);
+                                    didSplit = true;
+                                    break;
                                 }
                             }
                         }
 
+                        bool cont = true;
+                        foreach (Edge adjE in e.v0.edges)
+                        {
+                            if (adjE == e)
+                                continue;
+                            if (e.v0.idx == adjE.v0.idx && Eps.Eq(Vector3.Dot(adjE.dir, e.dir), 1))
+                            {
+                                if (e.len > adjE.len)
+                                {
+                                    SplitEdge(e, adjE.v1);
+                                }
+                                else
+                                {
+                                    SplitEdge(adjE, e.v1);
+                                }
+                                cont = false;
+                            }
+                            else if (e.v0.idx == adjE.v1.idx && Eps.Eq(Vector3.Dot(adjE.dir, e.dir), -1))
+                            {
+                                if (e.len > adjE.len)
+                                {
+                                    Debugger.Break();
+                                }
+                                else
+                                {
+                                    double dist = adjE.DistanceFromPt(e.v1.pt);
+                                    SplitEdge(adjE, e.v1);
+                                }
+                                cont = false;
+                            }
+                            if (!cont)
+                                break;
+                        }
+                        if (!cont)
+                            break;
+                        foreach (Edge adjE in e.v1.edges)
+                        {
+                            if (adjE == e)
+                                continue;
+                            if (e.v1.idx == adjE.v1.idx && Eps.Eq(Vector3.Dot(adjE.dir, e.dir), 1))
+                            {
+                                if (e.len > adjE.len)
+                                    Debugger.Break();
+                                else
+                                {
+                                    SplitEdge(adjE, e.v0);
+                                }
+                                // double dist = e.DistanceFromPt(adjE.v0.pt);
+                                cont = false;
+                            }
+                            else if (e.v1.idx == adjE.v0.idx && Eps.Eq(Vector3.Dot(adjE.dir, e.dir), -1))
+                            {
+                                //double dist = e.DistanceFromPt(adjE.v1.pt);
+                                if (e.len > adjE.len)
+                                    SplitEdge(e, adjE.v1);
+                                else
+                                {
+                                    SplitEdge(adjE, e.v0);
+                                }
+                                cont = false;
+                            }
+                            if (!cont)
+                                break;
+                        }
+                        if (!cont)
+                            break;
                     }
                 } while (didSplit);
             }
 
+            void SplitIntersectingEdges()
+            {
+                bool foundintersections = false;
+                do
+                {
+                    foundintersections = false;
+                    List<Intersection> intersections =
+                        edgeIntersect.FindAllIntersections(
+                        edgeDict.Values.Where(v => !v.split).ToList());
+                    foreach (Intersection i in intersections)
+                    {
+                        Vertex ivtx;
+                        bool isnew = AddVertex(i.pt, out ivtx);
+                        if (!isnew)
+                            continue;
+
+                        foundintersections = true;
+                        Edge e1 = i.e1;
+                        while (e1.split)
+                        {
+                            Edge es1 = e1.splitEdges[0];
+                            double dp1a = Vector3.Dot(es1.dir, ivtx.pt - es1.v0.pt);
+                            double dp1b = Vector3.Dot(es1.dir, es1.v1.pt - es1.v0.pt);
+                            Edge es2 = e1.splitEdges[1];
+                            double dp2a = Vector3.Dot(es2.dir, ivtx.pt - es2.v0.pt);
+                            double dp2b = Vector3.Dot(es2.dir, es2.v1.pt - es2.v0.pt);
+                            if (dp1a > 0 && dp1a < dp1b)
+                                e1 = es1;
+                            else if (dp2a > 0 && dp2a < dp2b)
+                                e1 = es2;
+                            else
+                                Debugger.Break();
+                        }
+                        SplitEdge(e1, ivtx);
+
+                        Edge e2 = i.e2;
+                        while (e2.split)
+                        {
+                            Edge es1 = e2.splitEdges[0];
+                            double dp1a = Vector3.Dot(es1.dir, ivtx.pt - es1.v0.pt);
+                            double dp1b = Vector3.Dot(es1.dir, es1.v1.pt - es1.v0.pt);
+                            Edge es2 = e2.splitEdges[1];
+                            double dp2a = Vector3.Dot(es2.dir, ivtx.pt - es2.v0.pt);
+                            double dp2b = Vector3.Dot(es2.dir, es2.v1.pt - es2.v0.pt);
+                            if (dp1a > 0 && dp1a < dp1b)
+                                e2 = es1;
+                            else if (dp2a > 0 && dp2a < dp2b)
+                                e2 = es2;
+                            else
+                                Debugger.Break();
+                        }
+
+                        SplitEdge(e2, ivtx);
+                    }
+                } while (foundintersections);
+            }
+            void AddFaceInteriorPoint(Face f, Vertex v)
+            {
+                Face t1 = new Face(f.id, new List<EdgePtr> { f.edges[0],
+                    MakeEdge(f.edges[1].V0, v, null),
+                    MakeEdge(v, f.edges[0].V0, null) });
+                this.faces.Add(t1);
+                Face t2 = new Face(f.id, new List<EdgePtr> { f.edges[1],
+                    MakeEdge(f.edges[2].V0, v, null),
+                    MakeEdge(v, f.edges[1].V0, null) });
+                this.faces.Add(t2);
+                Face t3 = new Face(f.id, new List<EdgePtr> { f.edges[2],
+                    MakeEdge(f.edges[0].V0, v, null),
+                    MakeEdge(v, f.edges[2].V0, null) });
+                this.faces.Add(t3);
+                this.faces.Remove(f);
+            }
             void Triangulate()
             {
                 List<Face> newFaces = new List<Face>();
@@ -585,11 +992,15 @@ namespace partmake
             {
                 EdgePtr e0a = f.edges[0];
                 EdgePtr e1a = f.edges[1];
-                EdgePtr e2a = new EdgePtr(e1a.V1, e0a.V0, edgeDict, null);
+                if (Eps.Eq(Vector3.Dot(e0a.Dir, e1a.Dir), 1) ||
+                    Eps.Eq(Vector3.Dot(e0a.Dir, e1a.Dir), -1))
+                    Log(String.Format("Parallel edges in tri {0} {1}", e0a, e1a));
+
+                EdgePtr e2a = MakeEdge(e1a.V1, e0a.V0, null);
                 fa = new Face(f.id, new List<EdgePtr> { e0a, e1a, e2a });
                 EdgePtr e0b = f.edges[2];
                 EdgePtr e1b = f.edges[3];
-                EdgePtr e2b = new EdgePtr(e1b.V1, e0b.V0, edgeDict, null);
+                EdgePtr e2b = MakeEdge(e1b.V1, e0b.V0, null);
                 fb = new Face(f.id, new List<EdgePtr> { e0b, e1b, e2b });
             }
 
@@ -601,6 +1012,7 @@ namespace partmake
                     didSplit = false;
                     List<Edge> nonMFEdges = new List<Edge>();
                     GetNonManifold(nonMFEdges);
+                    nonMFEdges.Sort((a, b) => b.len.CompareTo(a.len));
                     foreach (Edge e in nonMFEdges)
                     {
                         Vector3 dir = e.dir;
@@ -627,13 +1039,13 @@ namespace partmake
             // Returns 1 if the lines intersect, otherwise 0. In addition, if the lines 
             // intersect the intersection point may be stored in the floats i.X and i_y.
             static bool GetLineIntersection(Vector2 p0, Vector2 p1,
-                Vector2 p2, Vector2 p3, out float ot)
+                Vector2 p2, Vector2 p3, out double ot)
             {
                 Vector2 s1, s2;
                 s1.X = p1.X - p0.X; s1.Y = p1.Y - p0.Y;
                 s2.X = p3.X - p2.X; s2.Y = p3.Y - p2.Y;
 
-                float s, t;
+                double s, t;
                 s = (-s1.Y * (p0.X - p2.X) + s1.X * (p0.Y - p2.Y)) / (-s2.X * s1.Y + s1.X * s2.Y);
                 t = (s2.X * (p0.Y - p2.Y) - s2.Y * (p0.X - p2.X)) / (-s2.X * s1.Y + s1.X * s2.Y);
 
@@ -657,13 +1069,13 @@ namespace partmake
 
                 for (int i = 0; i < 3; ++i)
                 {
-                    Face f1 = new Face(f.id, new List<EdgePtr> { new EdgePtr(v, vtx[i], this.edgeDict, null),
-                        new EdgePtr(vtx[i], vtx[(i + 1) % 3], this.edgeDict, null),
-                        new EdgePtr(vtx[(i + 1) % 3], v, this.edgeDict, null) });
+                    Face f1 = new Face(f.id, new List<EdgePtr> { MakeEdge(v, vtx[i], null),
+                        MakeEdge(vtx[i], vtx[(i + 1) % 3], null),
+                        MakeEdge(vtx[(i + 1) % 3], v, null) });
                     this.faces.Add(f1);
                 }
             }
-            
+
             bool SplitFaceOnEdge(Face f, Edge e)
             {
                 Vector3 xdir = f.edges[0].Dir;
@@ -678,39 +1090,35 @@ namespace partmake
                 Vector2 ep0 = new Vector2(Vector3.Dot(e.v0.pt, xdir), Vector3.Dot(e.v0.pt, ydir));
                 Vector2 ep1 = new Vector2(Vector3.Dot(e.v1.pt, xdir), Vector3.Dot(e.v1.pt, ydir));
 
-                Debug.Write("split ");
-                float t;
+                double t;
                 if (GetLineIntersection(p1, p2, ep0, ep1, out t) && t > 0.01 && t < 0.99)
                 {
                     Vector3 newpt = f.edges[0].V0.pt + (f.edges[0].V1.pt - f.edges[0].V0.pt) * t;
                     Vertex nv = AddVertex(newpt);
-                    float dist = e.DistanceFromPt(newpt);
+                    double dist = e.DistanceFromPt(newpt);
                     SplitEdge(f.edges[0].e, nv);
                     if (!e.ContainsVertexIdx(nv.idx))
                         SplitEdge(e, nv);
-                    Debug.Write("A\n");
                     return true;
                 }
                 if (GetLineIntersection(p2, p3, ep0, ep1, out t) && t > 0.01 && t < 0.99)
                 {
                     Vector3 newpt = f.edges[1].V0.pt + (f.edges[1].V1.pt - f.edges[1].V0.pt) * t;
                     Vertex nv = AddVertex(newpt);
-                    float dist = e.DistanceFromPt(newpt);
+                    double dist = e.DistanceFromPt(newpt);
                     SplitEdge(f.edges[1].e, nv);
                     if (!e.ContainsVertexIdx(nv.idx))
                         SplitEdge(e, nv);
-                    Debug.Write("B\n");
                     return true;
                 }
                 if (GetLineIntersection(p3, p1, ep0, ep1, out t) && t > 0.01 && t < 0.99)
                 {
                     Vector3 newpt = f.edges[2].V0.pt + (f.edges[2].V1.pt - f.edges[2].V0.pt) * t;
                     Vertex nv = AddVertex(newpt);
-                    float dist = e.DistanceFromPt(newpt);
+                    double dist = e.DistanceFromPt(newpt);
                     SplitEdge(f.edges[2].e, nv);
                     if (!e.ContainsVertexIdx(nv.idx))
                         SplitEdge(e, nv);
-                    Debug.Write("C\n");
                     return true;
                 }
 
@@ -725,24 +1133,31 @@ namespace partmake
                     List<Edge> allEdges = new List<Edge>(edgeDict.Values);
                     foreach (var e in allEdges)
                     {
-                        AABB aabb = AABB.CreateFromPoints(new List<Vector3>()
-                    { e.v0.pt, e.v1.pt });
-                        float elen = (e.v1.pt - e.v0.pt).Length();
+                        if (e.split)
+                            continue;
+                        AABB aabb = AABB.CreateFromPoints(new List<Vector3>() { e.v0.pt, e.v1.pt });
+                        double elen = (e.v1.pt - e.v0.pt).Length();
+
 
                         foreach (var vtx in vertices)
                         {
-                            if (aabb.Contains(vtx.pt) == AABB.ContainmentType.Disjoint)
+                            
+                            if (e.v0.idx == 333 &&
+                                e.v1.idx == 399 &&
+                                vtx.idx == 330
+                                )
+                                Debugger.Break();
+                            if (aabb.ContainsEpsilon(vtx.pt) == AABB.ContainmentType.Disjoint)
                                 continue;
 
                             Vector3 ptdir1 = Vector3.Normalize(vtx.pt - e.v0.pt);
                             Vector3 ptdir2 = Vector3.Normalize(e.v1.pt - vtx.pt);
-                            if ((ptdir1 - e.dir).LengthSquared() < 0.001f &&
-                                (ptdir2 - e.dir).LengthSquared() < 0.001f)
+                            if ((ptdir1 - e.dir).LengthSquared() < Mesh.Epsilon &&
+                                (ptdir2 - e.dir).LengthSquared() < Mesh.Epsilon)
                             {
-                                float len = (vtx.pt - e.v0.pt).Length();
+                                double len = (vtx.pt - e.v0.pt).Length();
                                 if (len < elen)
                                 {
-                                    Debug.WriteLine(String.Format("Split Edge [{0} {1}-{2}]", vtx.idx, e.v0.idx, e.v1.idx));
                                     SplitEdge(e, vtx);
                                     edgesSplit = true;
                                 }
@@ -755,6 +1170,10 @@ namespace partmake
             bool reported = false;
             void SplitEdge(Edge e, Vertex vtx)
             {
+                //Debug.WriteLine(string.Format("Split [{0} {1}] {2} l={3}", e.v0.idx, e.v1.idx, vtx.idx,
+                //    e.len));
+                Log(string.Format("Split Edge [{0} {1}] {2}", e.v0.idx, e.v1.idx, vtx.idx));
+                //if (e.v0.idx == 249 && e.v1.idx == 398 && vtx.idx == 421) Debugger.Break();
                 List<Face> splitFaces = new List<Face>();
                 e.v0.edges.Remove(e);
                 e.v1.edges.Remove(e);
@@ -762,16 +1181,24 @@ namespace partmake
                 foreach (EdgePtr ce in eptrs)
                 {
                     Face f = ce.parentFace;
-                    float area = f.Area();
+                    double area = f.Area();
+                    bool isvalid = f.IsValid();
                     if (f.ContainsVertex(vtx.idx))
                     {
+                        Log(String.Format("Face already contains split vtx [[{0}]] {1}",
+                            f, vtx.idx));
                         vtx.errorFlags |= 1;
                         continue;
                     }
                     int epIdx = f.edges.IndexOf(ce);
                     f.edges.RemoveAt(epIdx);
-                    EdgePtr e1 = new EdgePtr(e.v0, vtx, edgeDict, f);
-                    EdgePtr e2 = new EdgePtr(vtx, e.v1, edgeDict, f);
+                    EdgePtr e1 = MakeEdge(e.v0, vtx, f);
+                    EdgePtr e2 = MakeEdge(vtx, e.v1, f);
+                    e.splitEdges = new Edge[]
+                    {
+                        e1.e,
+                        e2.e
+                    };
                     f.edges.Add(e1);
                     f.edges.Insert(0, e2);
                     if (Face.CheckDuplicateEdges(f.edges))
@@ -779,9 +1206,8 @@ namespace partmake
                     splitFaces.Add(f);
                 }
                 e.edgePtrs.Clear();
-                if (e.v0.idx == 166 && e.v1.idx == 169)
-                    Debug.WriteLine("H");
-                this.edgeDict.Remove(e.ComputeHash());
+                
+                //this.edgeDict.Remove(e.ComputeHash());
 
                 foreach (Face f in splitFaces)
                 {
@@ -789,8 +1215,38 @@ namespace partmake
                     Face fa, fb;
                     TriangulateQuad(f, out fa, out fb);
                     this.faces.Remove(f);
+                    if (fa.Area() < 0.01f)
+                        Log(String.Format("Very small face {0} area = {1}, minedge = {2}", fa, fa.Area(),
+                            Math.Min(fa.edges[0].e.len,
+                            Math.Min(
+                            fa.edges[1].e.len,
+                            fa.edges[2].e.len))));
+
+                    if (fb.Area() < 0.01f)
+                        Log(String.Format("Very small face {0} area = {1}, minedge = {2}", fa, fb.Area(), 
+                            Math.Min(fb.edges[0].e.len,
+                            Math.Min(
+                            fb.edges[1].e.len,
+                            fb.edges[2].e.len))));
                     this.faces.Add(fa);
                     this.faces.Add(fb);
+                }
+            }
+
+            void RemoveSplitEdgesFromFaces()
+            {
+                foreach (Face f in faces)
+                {
+                    foreach (var eptr in f.edges)
+                    {
+                        if (eptr.e.split)
+                        {
+                            Log(
+                                String.Format("Edge is split {0} {1} --> {2} {3}", eptr.e, eptr.e.len, eptr.e.splitEdges[0], eptr.e.splitEdges[0].len));
+                            eptr.e.errorFlags |= 1;
+                            //Debugger.Break();
+                        }
+                    }
                 }
             }
 
@@ -805,7 +1261,7 @@ namespace partmake
             {
                 foreach (Edge e in edgeDict.Values)
                 {
-                    if (e.edgePtrs.Count < 2)
+                    if (!e.split && e.edgePtrs.Count < 2)
                         edges.Add(e);
                 }
             }
@@ -843,11 +1299,43 @@ namespace partmake
             {
                 if (faces.Count == 0)
                     return;
+
                 foreach (Face f in faces)
                 {
                     f.visited = false;
+                    f.isexterior = false;
                 }
-                FixWindingsRecursive(faces[0]);
+
+                Vertex[] maxvtx = new Vertex[6]
+                    { vertices[0], vertices[0], vertices[0], vertices[0], vertices[0], vertices[0] };
+                foreach (Vertex v in vertices)
+                {
+                    if (v.pt.X > maxvtx[0].pt.X)
+                        maxvtx[0] = v;
+                    if (v.pt.Y > maxvtx[1].pt.Y)
+                        maxvtx[1] = v;
+                    if (v.pt.Z > maxvtx[2].pt.Z)
+                        maxvtx[2] = v;
+                    if (v.pt.X < maxvtx[3].pt.X)
+                        maxvtx[3] = v;
+                    if (v.pt.Y < maxvtx[4].pt.Y)
+                        maxvtx[4] = v;
+                    if (v.pt.Z < maxvtx[5].pt.Z)
+                        maxvtx[5] = v;
+                }
+                foreach (Vertex v in maxvtx)
+                {
+                    var flist = v.GetFaces();
+                    foreach (Face f in flist)
+                    {
+                        f.visited = false;
+                        f.isexterior = false;
+                        FixWindingsRecursive(f);
+                    }
+                }
+                
+                var interiors = faces.Where(f => f.isexterior).ToList();
+                //this.faces = interiors;
             }
 
             void FixWindingsRecursive(Face f)
@@ -855,28 +1343,43 @@ namespace partmake
                 if (f.visited)
                     return;
                 f.visited = true;
+                f.isexterior = true;
                 foreach (var eptr in f.edges)
                 {
+                    bool isreversed = eptr.reverse;
+                    Edge e = eptr.e;
+                    if (e.edgePtrs.Count != 2)
+                        continue;
+                    foreach (var adjacent in e.edgePtrs)
+                    {
+                        if (adjacent.parentFace == f)
+                            continue;
+                        if (adjacent.reverse == isreversed)
+                        {
+                            adjacent.parentFace.ReverseWinding();
+                        }
+                        FixWindingsRecursive(adjacent.parentFace);
+                    }
                 }
             }
 
 
-            bool IsUnique(KdTree<float, Vector3> kd, Vector3 pt)
+            bool IsUnique(KdTree<double, Vector3> kd, Vector3 pt)
             {
-                var result = kd.GetNearestNeighbours(new float[] { pt.X, pt.Y, pt.Z }, 1);
+                var result = kd.GetNearestNeighbours(new double[] { pt.X, pt.Y, pt.Z }, 1);
                 if (result.Count() > 0 &&
                     Eps.Eq(result[0].Value, pt))
                 {
                     return false;
                 }
-                kd.Add(new float[] { pt.X, pt.Y, pt.Z }, pt);
+                kd.Add(new double[] { pt.X, pt.Y, pt.Z }, pt);
                 return true;
             }
 
             Vector3 NearestPt(Vector3 linePt1, Vector3 linePt2, Vector3 testPt)
             {
                 Vector3 lineDir = (linePt2 - linePt1);
-                float lineDistAlong = Vector3.Dot(testPt - linePt1, lineDir) / lineDir.LengthSquared();
+                double lineDistAlong = Vector3.Dot(testPt - linePt1, lineDir) / lineDir.LengthSquared();
                 if (lineDistAlong < 0)
                     return linePt1;
                 else if (lineDistAlong > 1)
@@ -895,14 +1398,14 @@ namespace partmake
                 List<Edge> edges = new List<Edge>();
                 List<Vector3> candidatePts = new List<Vector3>();
                 {
-                    KdTree<float, Vector3> kd = new KdTree<float, Vector3>(3, new KdTree.Math.FloatMath());
+                    KdTree<double, Vector3> kd = new KdTree<double, Vector3>(3, new KdTree.Math.DoubleMath());
                     GetBottomEdges(edges);
 
                     if (edges.Count == 0)
                         return outPts;
 
                     Vector3 planeNormal = new Vector3(0, 1, 0);
-                    float planeDist = Vector3.Dot(edges[0].v0.pt, planeNormal);
+                    double planeDist = Vector3.Dot(edges[0].v0.pt, planeNormal);
                     foreach (Vector3 c in candidates)
                     {
                         Vector3 pt = c - planeNormal * Vector3.Dot(c, planeNormal);
@@ -930,7 +1433,7 @@ namespace partmake
                             Vector3 v1bdir = Vector3.Normalize(v1b - v0);
 
                             Vector3 bisectAngle = Vector3.Normalize(v1adir + v1bdir);
-                            float sinTheta = Vector3.Cross(bisectAngle, v1adir).Length();
+                            double sinTheta = Vector3.Cross(bisectAngle, v1adir).Length();
                             Vector3 testPt = v0 + (6.0f / sinTheta) * bisectAngle;
                             bisectors.Add(new Tuple<Vector3, Vector3>(v0, testPt));
                             if (IsUnique(kd, testPt))
@@ -949,7 +1452,7 @@ namespace partmake
                             Vector3 v1bdir = Vector3.Normalize(v1b - v0);
 
                             Vector3 bisectAngle = Vector3.Normalize(v1adir + v1bdir);
-                            float sinTheta = Vector3.Cross(bisectAngle, v1adir).Length();
+                            double sinTheta = Vector3.Cross(bisectAngle, v1adir).Length();
                             Vector3 testPt = v0 + (6.0f / sinTheta) * bisectAngle;
                             bisectors.Add(new Tuple<Vector3, Vector3>(v0, testPt));
                             if (IsUnique(kd, testPt))
@@ -979,7 +1482,7 @@ namespace partmake
                     {
                         Vector3 nearestPt = NearestPt(e.v0.pt, e.v1.pt, cpt);
 
-                        float lenSq = (nearestPt - cpt).LengthSquared();
+                        double lenSq = (nearestPt - cpt).LengthSquared();
                         if (lenSq > 34 && lenSq < 38)
                         {
                             touchedEdges.Add(e);
@@ -1057,7 +1560,7 @@ namespace partmake
             public void GetBottomEdges(List<Edge> edges)
             {
                 AABB aabb = AABB.CreateFromPoints(this.vertices.Select(v => v.pt).ToList());
-                float maxy = aabb.Max.Y;
+                double maxy = aabb.Max.Y;
 
                 foreach (var e in this.edgeDict.Values)
                 {
@@ -1072,8 +1575,7 @@ namespace partmake
                         edges.Add(e);
                 }
             }
-
-            public void GetVertices(List<Vtx> vlist)
+            public void GetVertices(List<Vtx> vlist, bool allowQuads)
             {
                 foreach (var f in faces)
                 {
@@ -1084,7 +1586,7 @@ namespace partmake
                     vlist.Add(vtxs[0]);
                     vlist.Add(vtxs[1]);
                     vlist.Add(vtxs[2]);
-                    if (vtxs.Length == 4)
+                    if (allowQuads && vtxs.Length == 4)
                     {
                         vlist.Add(vtxs[0]);
                         vlist.Add(vtxs[2]);

@@ -6,11 +6,67 @@
         xmlns:local="clr-namespace:partmake"
         xmlns:topo="clr-namespace:partmake.Topology"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="1050" Width="1800">
+    <Window.Resources>
+        <DataTemplate DataType="x:Type topo:EdgePtr" >
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="V0" />
+                <TextBlock Text="{Binding V0}" />
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="EdgeTmp" DataType="x:Type topo:Edge">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="Edge" />
+                <TextBlock Grid.Row="2" Text="{Binding v0}" />
+                <TextBlock Grid.Row="3" Text="{Binding v1}" />
+                <TextBlock Grid.Row="5" Text="Faces" />
+                <ItemsControl Grid.Row="6" ItemsSource="{Binding Faces}" >
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="x:Type topo:Face">
+                            <Button Content="{Binding idx}" Click="Button_NodeNavClick" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="FaceTmp" DataType="x:Type topo:Face}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="{Binding idx}" />
+                <ItemsControl Grid.Row="1" ItemsSource="{Binding edges}" >
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="x:Type topo:Edge">
+                            <Button Content="{Binding }" Click="Button_NodeNavClick" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+        </DataTemplate>
+
+        <local:TopoTemplateSelector x:Key="selector"
+                                    EdgeTemplate="{StaticResource EdgeTmp}"
+                                    FaceTemplate="{StaticResource FaceTmp}"/>
+
+    </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="200" />
+            <ColumnDefinition Width="5" />
             <ColumnDefinition Width="200" />
+            <ColumnDefinition Width="5" />
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Grid>
@@ -23,66 +79,82 @@
             <ListBox Grid.Row="1" ItemsSource="{Binding LDrawParts}" SelectedItem="{Binding Path=SelectedItem}" />
             <Button Content="Write All" Grid.Row="2" Click="Button_Click"/>
         </Grid>
-        <Grid Grid.Column="1">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="30" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
-            <TextBlock Height="30" Text="{Binding Path=SelectedItemDesc}" />
-            <TreeView Grid.Row="1" Background="AliceBlue" ItemsSource="{Binding Path=CurrentPart}" 
+        <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
+        <TabControl Grid.Column="2">
+            <TabItem Header="Node">
+                <ContentControl Content="{Binding Path=SelectedINode}" 
+                                ContentTemplateSelector="{StaticResource selector}">
+                </ContentControl>
+            </TabItem>
+            <TabItem Header="Parts">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="30" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Height="30" Text="{Binding Path=SelectedItemDesc}" />
+                    <TreeView Grid.Row="1" Background="AliceBlue" ItemsSource="{Binding Path=CurrentPart}" 
                       SelectedItemChanged="TreeView_SelectedItemChanged">
-                <TreeView.Resources>
-                    <HierarchicalDataTemplate DataType="{x:Type local:LDrawDatNode}"
+                        <TreeView.Resources>
+                            <HierarchicalDataTemplate DataType="{x:Type local:LDrawDatNode}"
                                    ItemsSource="{Binding Path=File.Children}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="40" />
-                                <ColumnDefinition Width="5" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <CheckBox Grid.Column="0" IsChecked="{Binding Path=IsEnabled}" Checked="CheckBox_Checked" Unchecked="CheckBox_Checked"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Path=Invert}" />
-                            <TextBlock Grid.Column="2" Text="{Binding Path=File.Name}" />
-                        </Grid>
-                    </HierarchicalDataTemplate>
-                </TreeView.Resources>
-            </TreeView>
-            <TreeView Grid.Row="2" ItemsSource="{Binding Path=SelectedNode.TopoFaces}" SelectedItemChanged="TreeView_SelectedINodeChanged">
-                <TreeView.Resources>
-                    <HierarchicalDataTemplate DataType="{x:Type topo:Face}"
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="40" />
+                                        <ColumnDefinition Width="5" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Grid.Column="0" IsChecked="{Binding Path=IsEnabled}" Checked="CheckBox_Checked" Unchecked="CheckBox_Checked"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Path=Invert}" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Path=File.Name}" />
+                                </Grid>
+                            </HierarchicalDataTemplate>
+                        </TreeView.Resources>
+                    </TreeView>
+                    <TreeView Grid.Row="2" ItemsSource="{Binding Path=SelectedNode.TopoFaces}" SelectedItemChanged="TreeView_SelectedINodeChanged">
+                        <TreeView.Resources>
+                            <HierarchicalDataTemplate DataType="{x:Type topo:Face}"
                                    ItemsSource="{Binding Path=Children}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="9" Text="{Binding}" />
-                        </Grid>
-                    </HierarchicalDataTemplate>
-                    <HierarchicalDataTemplate DataType="{x:Type topo:Edge}"
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="9" Text="{Binding}" />
+                                </Grid>
+                            </HierarchicalDataTemplate>
+                            <HierarchicalDataTemplate DataType="{x:Type topo:Edge}"
                                    ItemsSource="{Binding Path=Children}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="9" Text="{Binding}" />
-                        </Grid>
-                    </HierarchicalDataTemplate>
-                </TreeView.Resources>
-            </TreeView>
-        </Grid>
-        <Grid Grid.Column="2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="9" Text="{Binding}" />
+                                </Grid>
+                            </HierarchicalDataTemplate>
+                        </TreeView.Resources>
+                    </TreeView>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Log" >
+                <TextBox Text="{Binding Path=Log, Mode=OneWay}" IsReadOnly="True" VerticalScrollBarVisibility="Visible" />
+            </TabItem>
+        </TabControl>
+        <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" />
+        <Grid Grid.Column="4">
             <Grid.RowDefinitions>
                 <RowDefinition Height="30" />
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <ComboBox>
-                <CheckBox Content="NonManifold" IsChecked="{Binding Path=NonManifold, ElementName=_RenderControl}"/>
-                <CheckBox Content="Edges" IsChecked="{Binding ShowEdges, ElementName=_RenderControl}"/>
-                <CheckBox Content="Raycast" IsChecked="{Binding Path=DoRaycast, ElementName=_RenderControl}"/>
-                <CheckBox Content="Show Connectors" IsChecked="{Binding ShowConnectors, ElementName=_RenderControl}"/>
-                <TextBox x:Name="Eps" Width="100" TextChanged="Eps_TextChanged" />
-            </ComboBox>
+            <StackPanel Orientation="Horizontal">
+                <ComboBox Width="400" HorizontalAlignment="Left">
+                    <CheckBox Content="NonManifold" IsChecked="{Binding Path=NonManifold, ElementName=_RenderControl}"/>
+                    <CheckBox Content="Edges" IsChecked="{Binding ShowEdges, ElementName=_RenderControl}"/>
+                    <CheckBox Content="Raycast" IsChecked="{Binding Path=DoRaycast, ElementName=_RenderControl}"/>
+                    <CheckBox Content="Show Connectors" IsChecked="{Binding ShowConnectors, ElementName=_RenderControl}"/>
+                </ComboBox>
+                <TextBox x:Name="Eps" Width="200" TextChanged="Eps_TextChanged" LostFocus="Eps_LostFocus" />
+            </StackPanel>
             <local:RenderControl x:Name="_RenderControl" Grid.Row="1"  KeyDown="_RenderControl_KeyDown" KeyUp="_RenderControl_KeyUp" />
         </Grid>
     </Grid>

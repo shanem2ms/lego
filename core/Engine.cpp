@@ -1,5 +1,6 @@
 #include "StdIncludes.h"
 #include "Engine.h"
+#include "Application.h"
 #include <bx/readerwriter.h>
 #include <bx/file.h>
 #include <bimg/bimg.h>
@@ -267,8 +268,11 @@ namespace sam
         if (itshd != m_shaders.end())
             return itshd->second;
         bx::FileReader fileReader;
-        bgfx::ShaderHandle vtxShader = bgfx::createShader(loadMem(&fileReader, vtx.c_str()));
-        bgfx::ShaderHandle fragShader = bgfx::createShader(loadMem(&fileReader, px.c_str()));
+        std::string path = Application::Inst().StartupPath();
+        std::string vtxpath = path + "\\" + vtx;
+        std::string pxpath = path + "\\" + px;
+        bgfx::ShaderHandle vtxShader = bgfx::createShader(loadMem(&fileReader, vtxpath.c_str()));
+        bgfx::ShaderHandle fragShader = bgfx::createShader(loadMem(&fileReader, pxpath.c_str()));
         bgfx::ProgramHandle pgm = bgfx::createProgram(vtxShader, fragShader, true);
         m_shaders.insert(std::make_pair(key, pgm));
         return pgm;

@@ -13,6 +13,7 @@
 #include <fstream>
 #include <filesystem>
 #include <regex>
+#define FMT_HEADER_ONLY 1
 #include <fmt/format.h>
 #include <VHACD.h>
 #include "Simplify.h"
@@ -312,9 +313,11 @@ namespace sam
         m_collisionShape = std::make_shared<btBvhTriangleMeshShape>(pMesh, true, true);
     }
 
+#define tricount (hires ? rpart.num_trianglesC : rpart.num_triangles)
+#define tris (hires ? rpart.trianglesC : rpart.triangles)
     void Brick::GenerateCacheItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
         const std::string& name, std::filesystem::path& filepath,
-        const std::vector<int> atlasMaterialMapping)
+        const std::vector<int> atlasMaterialMapping, bool hires)
     {
         LdrModelHDL model;
         LdrResult result;
@@ -359,6 +362,7 @@ namespace sam
         if (rmodel->num_instances == 0)
             return;
 
+
         //PosTexcoordNrmVertex 
         // access the model and part details directly
         uint32_t numvtx = 0;
@@ -367,7 +371,7 @@ namespace sam
             const LdrInstance& instance = model->instances[i];
             const LdrRenderPart& rpart = pLoader->getRenderPart(instance.part);
             numvtx += rpart.num_vertices;
-            numidx += rpart.num_trianglesC * 3;
+            numidx += tricount * 3;
         }
 
         std::vector<PosTexcoordNrmVertex> vtx;
@@ -389,15 +393,15 @@ namespace sam
                 m_bounds += Point3f(curVtx->m_x, curVtx->m_y, curVtx->m_z);
                 curVtx++;
             }
-            memcpy(curIdx, rpart.trianglesC, rpart.num_trianglesC * 3 * sizeof(uint32_t));
-            for (uint32_t idx = 0; idx < rpart.num_trianglesC * 3; ++idx, curIdx++)
+            memcpy(curIdx, tris, tricount * 3 * sizeof(uint32_t));
+            for (uint32_t idx = 0; idx < tricount * 3; ++idx, curIdx++)
                 *curIdx = *curIdx + vtxOffset;
             if (rpart.materials != nullptr)
             {
                 PosTexcoordNrmVertex* pvtx = (PosTexcoordNrmVertex*)vtx.data();
                 LdrMaterialID* curMat = rpart.materials;
-                LdrVertexIndex* pVtxIdx = rpart.trianglesC;
-                for (uint32_t idx = 0; idx < rpart.num_trianglesC * 3; ++idx, pVtxIdx++)
+                LdrVertexIndex* pVtxIdx = tris;
+                for (uint32_t idx = 0; idx < tricount * 3; ++idx, pVtxIdx++)
                 {
 
                     if (*pVtxIdx != LDR_INVALID_ID)
@@ -532,11 +536,12 @@ namespace sam
     constexpr int iconW = 256;
     constexpr int iconH = 256;
     static BrickManager* spMgr = nullptr;
-    BrickManager::BrickManager(const std::string& ldrpath) :
+    BrickManager::BrickManager(const std::string& _ldrpath) :
         m_ldrLoaderHR(std::make_shared<ldr::Loader>()),
         m_ldrLoaderLR(std::make_shared<ldr::Loader>()),
         m_mruCtr(0)
     {
+        std::string ldrpath = Application::Inst().Documents() + "/ldraw";
         // initialize library
         LdrLoaderCreateInfo  createInfo = {};
         // while parts are not directly fixed, we will implicitly create a fixed version
@@ -699,7 +704,7 @@ namespace sam
                 {
                     std::string name = entry.path().filename().string();
                     {
-                        std::ifstream ifs(entry);
+                        std::ifstream ifs(entry.path());
                         std::string line;
                         std::getline(ifs, line);
                         if (line._Starts_with("0 ~Moved to"))
@@ -767,7 +772,7 @@ namespace sam
                             if (!std::filesystem::exists(meshfilepath))
                             {
                                 b.GenerateCacheItem(m_ldrLoaderLR.get(), m_threadPool.get(),
-                                    name, meshfilepath, codeIdx);
+                                    name, meshfilepath, codeIdx, false);
                             }
 
                             m_partsMap.insert(std::make_pair(pd.filename, pd));
@@ -927,7 +932,7 @@ namespace sam
             {
                 cachemtx.lock();
                 b.GenerateCacheItem(m_ldrLoaderHR.get(), nullptr, name.GetFilename(),
-                    meshfilepath, std::vector<int>());
+                    meshfilepath, std::vector<int>(), true);
                 cachemtx.unlock();
             }
             b.LoadHires(name.GetFilename(), m_cachePath);

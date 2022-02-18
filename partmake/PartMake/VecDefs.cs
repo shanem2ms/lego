@@ -1,19 +1,34 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Numerics;
+using System.DoubleNumerics;
 
 namespace partmake
 {
     public struct Vtx
     {
         public const uint SizeInBytes = 32;
+
         public Vtx(Vector3 p, Vector3 n, Vector2 t)
-        { pos = p; nrm = n; tx = t; }
+        { 
+            pos = new System.Numerics.Vector3((float)p.X, (float)p.Y, (float)p.Z); 
+            nrm = new System.Numerics.Vector3((float)n.X, (float)n.Y, (float)n.Z);
+            tx = new System.Numerics.Vector2((float)t.X, (float)t.Y);
+        }
+
         public Vtx(Vector3 p, Vector2 t)
-        { pos = p; nrm = new Vector3(0,0,1); tx = t; }
-        public Vector3 pos;
-        public Vector3 nrm;
-        public Vector2 tx;
+        {
+            pos = new System.Numerics.Vector3((float)p.X, (float)p.Y, (float)p.Z);
+            nrm = new System.Numerics.Vector3(0,0,1);
+            tx = new System.Numerics.Vector2((float)t.X, (float)t.Y);
+        }
+
+        public Vtx(System.Numerics.Vector3 p, System.Numerics.Vector3 n, System.Numerics.Vector2 t)
+        { pos = p; nrm = n; tx = t; }
+        public Vtx(System.Numerics.Vector3 p, System.Numerics.Vector2 t)
+        { pos = p; nrm = new System.Numerics.Vector3(0,0,1); tx = t; }
+        public System.Numerics.Vector3 pos;
+        public System.Numerics.Vector3 nrm;
+        public System.Numerics.Vector2 tx;
     }
     public class LDrawDatNode
     {
@@ -60,26 +75,26 @@ namespace partmake
     public class Plane
     {
         public Vector3 nrm;
-        public float dist;
+        public double dist;
 
-        public float DistFromPlane(Vector3 v)
+        public double DistFromPlane(Vector3 v)
         {
             return Vector3.Dot(v, nrm) - dist;
         }
         public bool IsOnPlane(Vector3 v)
         {            
-            return (System.MathF.Abs(DistFromPlane(v)) < 0.01f);                
+            return (System.Math.Abs(DistFromPlane(v)) < 0.01);                
         }
 
         public int FaceSide(Face f)
         {
-            const float episilon = 0.01f;
+            const double episilon = 0.01f;
             bool neg = false;
             bool pos = false;
             bool eq = false;
             foreach (Vector3 v in f.v)
             {
-                float d = DistFromPlane(v);
+                double d = DistFromPlane(v);
                 if (d < -episilon)
                 {
                     if (pos)
@@ -109,7 +124,6 @@ namespace partmake
         }
         public Vector3[] v;
         public Vector2[] t;
-
         public bool IsSelected { get; set; }
         public bool IsEnabled
         {
@@ -134,7 +148,7 @@ namespace partmake
         public Plane GetPlane(bool inverted)
         {
             Vector3 nrm = Normal(inverted);
-            float d = Vector3.Dot(v[0], nrm);                                     
+            double d = Vector3.Dot(v[0], nrm);                                     
             return new Plane() { nrm = nrm, dist = d };
         }
 
@@ -211,25 +225,25 @@ namespace partmake
         /// <summary>
         /// Location with the lowest X, Y, and Z coordinates in the axis-aligned bounding box.
         /// </summary>
-        public System.Numerics.Vector3 Min;
+        public Vector3 Min;
 
         /// <summary>
         /// Location with the highest X, Y, and Z coordinates in the axis-aligned bounding box.
         /// </summary>
-        public System.Numerics.Vector3 Max;
+        public Vector3 Max;
 
         /// <summary>
         /// Constructs a bounding box from the specified minimum and maximum.
         /// </summary>
         /// <param name="min">Location with the lowest X, Y, and Z coordinates contained by the axis-aligned bounding box.</param>
         /// <param name="max">Location with the highest X, Y, and Z coordinates contained by the axis-aligned bounding box.</param>
-        public AABB(System.Numerics.Vector3 min, System.Numerics.Vector3 max)
+        public AABB(Vector3 min, Vector3 max)
         {
             this.Min = min;
             this.Max = max;
         }
 
-        public void Grow(float size)
+        public void Grow(double size)
         {
             this.Min -= new Vector3(size, size, size);
             this.Max += new Vector3(size, size, size);
@@ -239,16 +253,16 @@ namespace partmake
         /// Gets an array of locations corresponding to the 8 corners of the bounding box.
         /// </summary>
         /// <returns>Corners of the bounding box.</returns>
-        public System.Numerics.Vector3[] GetCorners()
+        public Vector3[] GetCorners()
         {
-            var toReturn = new System.Numerics.Vector3[8];
-            toReturn[0] = new System.Numerics.Vector3(Min.X, Max.Y, Max.Z);
+            var toReturn = new Vector3[8];
+            toReturn[0] = new Vector3(Min.X, Max.Y, Max.Z);
             toReturn[1] = Max;
-            toReturn[2] = new System.Numerics.Vector3(Max.X, Min.Y, Max.Z);
-            toReturn[3] = new System.Numerics.Vector3(Min.X, Min.Y, Max.Z);
-            toReturn[4] = new System.Numerics.Vector3(Min.X, Max.Y, Min.Z);
-            toReturn[5] = new System.Numerics.Vector3(Max.X, Max.Y, Min.Z);
-            toReturn[6] = new System.Numerics.Vector3(Max.X, Min.Y, Min.Z);
+            toReturn[2] = new Vector3(Max.X, Min.Y, Max.Z);
+            toReturn[3] = new Vector3(Min.X, Min.Y, Max.Z);
+            toReturn[4] = new Vector3(Min.X, Max.Y, Min.Z);
+            toReturn[5] = new Vector3(Max.X, Max.Y, Min.Z);
+            toReturn[6] = new Vector3(Max.X, Min.Y, Min.Z);
             toReturn[7] = Min;
             return toReturn;
         }
@@ -317,6 +331,18 @@ namespace partmake
             return ContainmentType.Intersects;
         }
 
+
+        public ContainmentType ContainsEpsilon(Vector3 v)
+        {
+            if (v.X < (Min.X - Topology.Mesh.Epsilon) || v.X > (Max.X + Topology.Mesh.Epsilon))
+                return ContainmentType.Disjoint;
+            if (v.Y < (Min.Y - Topology.Mesh.Epsilon) || v.Y > (Max.Y + Topology.Mesh.Epsilon))
+                return ContainmentType.Disjoint;
+            if (v.Z < (Min.Z - Topology.Mesh.Epsilon) || v.Z > (Max.Z + Topology.Mesh.Epsilon))
+                return ContainmentType.Disjoint;
+            return ContainmentType.Intersects;
+        }
+
         public ContainmentType Contains(Vector3 v)
         {
             if (v.X < Min.X || v.X > Max.X)
@@ -334,7 +360,7 @@ namespace partmake
         /// </summary>
         /// <param name="points">Points to enclose with a bounding box.</param>
         /// <returns>Bounding box which contains the list of points.</returns>
-        public static AABB CreateFromPoints(IEnumerable<System.Numerics.Vector3> points)
+        public static AABB CreateFromPoints(IEnumerable<Vector3> points)
         {
             AABB aabb;
             var ee = points.GetEnumerator();
@@ -343,7 +369,7 @@ namespace partmake
             aabb.Max = aabb.Min;
             while (ee.MoveNext())
             {
-                System.Numerics.Vector3 v = ee.Current;
+                Vector3 v = ee.Current;
                 if (v.X < aabb.Min.X)
                     aabb.Min.X = v.X;
                 else if (v.X > aabb.Max.X)

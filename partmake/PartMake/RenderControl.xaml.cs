@@ -23,7 +23,6 @@ namespace partmake
         
         public bool DoRaycast { get => Vis.DoRaycast; set => Vis.DoRaycast = value; }
         public bool ShowEdges { get => Vis.ShowEdges; set => Vis.ShowEdges = value; }
-
         
         public PartVis Vis => _veldridControl.Vis;
         public RenderControl()
