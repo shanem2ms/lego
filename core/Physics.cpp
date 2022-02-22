@@ -26,7 +26,6 @@ namespace sam
             Vec3f color;
         };
 
-
         float m_invWorldScale;
         int m_lineIdx;
         std::vector<Line> m_lines[3];

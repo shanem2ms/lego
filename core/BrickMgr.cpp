@@ -287,6 +287,59 @@ namespace sam
 
         m_vbhHR = bgfx::createVertexBuffer(bgfx::makeRef(m_verticesHR.data(), m_verticesHR.size() * sizeof(PosTexcoordNrmVertex)), PosTexcoordNrmVertex::ms_layout);
         m_ibhHR = bgfx::createIndexBuffer(bgfx::makeRef(m_indicesHR.data(), m_indicesHR.size() * sizeof(uint32_t)), BGFX_BUFFER_INDEX32);
+
+
+//#define HACD 1
+#ifdef HACD
+        Simplify::vertices.clear();
+        Simplify::triangles.clear();
+        for (auto& v : m_verticesHR)
+        {
+            Simplify::Vertex p;
+            p.p.x = v.m_x;
+            p.p.y = v.m_y;
+            p.p.z = v.m_z;
+            Simplify::vertices.push_back(p);
+        }
+
+        for (int i = 0; i < m_indicesHR.size(); i += 3)
+        {
+            Simplify::Triangle t;
+            t.v[0] = m_indicesHR[i + 2];
+            t.v[1] = m_indicesHR[i + 1];
+            t.v[2] = m_indicesHR[i];
+            Simplify::triangles.push_back(t);
+        }
+
+        Simplify::simplify_mesh(100, 7);
+
+        std::vector<Vec3f> pts(Simplify::vertices.size());
+        VHACD::IVHACD* pVHACD = VHACD::CreateVHACD();
+        auto it1 = Simplify::vertices.begin();
+        auto it2 = pts.begin();
+        for (; it1 != Simplify::vertices.end(); ++it1, ++it2)
+        {
+            it2->mData[0] = it1->p.x;
+            it2->mData[1] = it1->p.y;
+            it2->mData[2] = it1->p.z;
+        }
+        std::vector<uint32_t> ind;
+        ind.reserve(Simplify::triangles.size() * 3);
+        for (auto& t : Simplify::triangles)
+        {
+            ind.push_back(t.v[0]);
+            ind.push_back(t.v[1]);
+            ind.push_back(t.v[2]);
+        }
+
+        VHACD::IVHACD::Parameters p;
+        p.m_oclAcceleration = false;
+        pVHACD->Compute((const float*)pts.data(), pts.size(), ind.data(), ind.size() / 3,
+            p);
+
+        pVHACD->Release();
+#endif
+
     }
 
     void Brick::LoadCollisionMesh()

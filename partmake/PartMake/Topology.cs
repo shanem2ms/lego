@@ -11,6 +11,7 @@ namespace partmake
 {
     namespace Topology
     {
+
         public abstract class INode
         {
             public virtual IEnumerable<INode> Children { get; }
@@ -113,6 +114,10 @@ namespace partmake
                 aabb = AABB.CreateFromPoints(new Vector3[] { v0.pt, v1.pt });
             }
 
+            public Vector3 Interp(double t)
+            {
+                return v0.pt + (v1.pt - v0.pt) * t;
+            }
             public Vertex v0 { get; set; }
             public Vertex v1 { get; set; }
             public Vector3 dir { get; set; }
@@ -170,102 +175,7 @@ namespace partmake
             {
                 return v0.idx == idx || v1.idx == idx;
             }
-
-            public static bool Intersect2D(Vector2 A, Vector2 B, Vector2 C, Vector2 D, out Vector2 O)
-            {
-                // Line AB represented as a1x + b1y = c1 
-                double a1 = B.Y - A.Y;
-                double b1 = A.X - B.X;
-                double c1 = a1 * (A.X) + b1 * (A.Y);
-
-                // Line CD represented as a2x + b2y = c2 
-                double a2 = D.Y - C.Y;
-                double b2 = C.X - D.X;
-                double c2 = a2 * (C.X) + b2 * (C.Y);
-
-                double determinant = a1 * b2 - a2 * b1;
-
-                if (Eps.Eq(determinant, 0))
-                {
-                    O = new Vector2(0, 0);
-                    return false;
-                }
-                else
-                {
-                    double x = (b2 * c1 - b1 * c2) / determinant;
-                    double y = (a1 * c2 - a2 * c1) / determinant;
-                    O = new Vector2(x, y);
-                    return true;
-                }
-            }
-
-            static bool IntersectV(Vector3 A, Vector3 B, Vector3 C, Vector3 D, out double ot0,
-                out double ot1)
-            {
-                Vector2 i;
-                if (Intersect2D(new Vector2(A.X, A.Y), new Vector2(B.X, B.Y),
-                        new Vector2(C.X, C.Y), new Vector2(D.X, D.Y), out i))
-                {
-                    double t0 = (i.X - A.X) / (B.X - A.X);
-                    double t1 = (i.X - C.X) / (D.X - C.X);
-                    if (t0 > Mesh.Epsilon && t0 < (1 - Mesh.Epsilon) &&
-                        t1 > Mesh.Epsilon && t1 < (1 - Mesh.Epsilon))
-                    {
-                        double Z0 = A.Z + t0 * (B.Z - A.Z);
-                        double Z1 = C.Z + t1 * (D.Z - C.Z);
-                        ot0 = t0;
-                        ot1 = t1;
-                        if (Eps.Eq(Z0, Z1))
-                            return true;
-                    }
-                }
-                ot0 = ot1 = -1;
-                return false;
-            }
-
-            public bool Intersect(Edge b, out Vector3 ipt)
-            {
-                Vector3 A, B, C, D;
-                int xyzshuffle = 0;
-                if (Eps.Eq(dir.X, 0) && Eps.Eq(b.dir.X, 0))
-                {
-                    xyzshuffle = 1;
-                    A = new Vector3(v0.pt.Y, v0.pt.Z, v0.pt.X);
-                    B = new Vector3(v1.pt.Y, v1.pt.Z, v1.pt.X);
-                    C = new Vector3(b.v0.pt.Y, b.v0.pt.Z, b.v0.pt.X);
-                    D = new Vector3(b.v1.pt.Y, b.v1.pt.Z, b.v1.pt.X);
-                }
-                else if (Eps.Eq(dir.Y, 0) && Eps.Eq(b.dir.Y, 0))
-                {
-                    xyzshuffle = 2;
-                    A = new Vector3(v0.pt.X, v0.pt.Z, v0.pt.Y);
-                    B = new Vector3(v1.pt.X, v1.pt.Z, v1.pt.Y);
-                    C = new Vector3(b.v0.pt.X, b.v0.pt.Z, b.v0.pt.Y);
-                    D = new Vector3(b.v1.pt.X, b.v1.pt.Z, b.v1.pt.Y);
-                }
-                else
-                {
-                    A = v0.pt;
-                    B = v1.pt;
-                    C = b.v0.pt;
-                    D = b.v1.pt;
-                }
-
-                double t0, t1;
-                bool intersect = IntersectV(A, B, C, D, out t0, out t1);
-                if (intersect)
-                {
-                    ipt = A + t0 * (B - A);
-                    if (xyzshuffle == 1)
-                        ipt = new Vector3(ipt.Z, ipt.X, ipt.Y);
-                    else if (xyzshuffle == 2)
-                        ipt = new Vector3(ipt.X, ipt.Z, ipt.Y);
-                }
-                else
-                    ipt = Vector3.Zero;
-                return intersect;
-            }
-
+            
             public override string ToString()
             {
                 return String.Format("Edge [{0} {1}]", v0.idx, v1.idx);
@@ -319,6 +229,11 @@ namespace partmake
                 e.edgePtrs.Add(this);
             }
 
+            public bool IsValid()
+            {
+                return V0.idx != V1.idx;
+            }
+
             public override string ToString()
             {
                 return String.Format("Edge [{0} {1}]", V0.idx, V1.idx);
@@ -340,6 +255,11 @@ namespace partmake
 
             public bool IsValid()
             {
+                foreach (var e in edges)
+                {
+                    if (!e.IsValid())
+                        return false;
+                }
                 double d1 = Vector3.Dot(edges[0].Dir, edges[1].Dir);
                 double d2 = Vector3.Dot(edges[1].Dir, edges[2].Dir);
                 double d3 = Vector3.Dot(edges[2].Dir, edges[0].Dir);
@@ -575,7 +495,7 @@ namespace partmake
             int nextVtxIdx = 0;
             public Dictionary<ulong, Edge> edgeDict = new Dictionary<ulong, Edge>();
             double vertexMinDist = 0.0005;
-            EdgeIntersect edgeIntersect = new EdgeIntersect();
+            EdgeIntersectCPP edgeIntersect = new EdgeIntersectCPP();
             public List<string> logLines = new List<string>();
 
             string log = null;
@@ -628,6 +548,7 @@ namespace partmake
                     Log(string.Format("Add Vertex {0}", nextVtxIdx));
                     Vertex nv = new Vertex() { pt = v, idx = nextVtxIdx++, mindist = nodes.Length > 0 ? DSq(nodes[0].Point, v) : -1 };
                     kdTree.Add(new double[] { v.X, v.Y, v.Z }, nv);
+                    this.vertices.Add(nv);
                     ov = nv;
                     return true;
                 }
@@ -666,7 +587,6 @@ namespace partmake
                 {
                     eptr.parentFace = f;
                 }
-                this.vertices.AddRange(verlist);
                 this.faces.Add(f);
 
                 return f;
@@ -703,6 +623,21 @@ namespace partmake
                 return false;
             }
 
+            void DoBsp()
+            {
+                RemoveDuplicateFaces();
+                Triangulate();
+
+                BSPTree bSPTree = new BSPTree();
+                bSPTree.AddFaces(faces);
+                List<BSPFace> bspFacss = bSPTree.GetFaces();
+                faces.Clear();
+                foreach (BSPFace bf in bspFacss)
+                {
+                    AddFace(bf.f.id, bf.points);
+                }
+            }
+
             public void Fix()
             {
                 Log("Fix");
@@ -711,14 +646,13 @@ namespace partmake
                     RemoveDuplicateFaces();
                     Triangulate();
                     vertexMinDist *= 0.01;
-
                     //Log("SplitXJunctions");
                     //SplitXJunctions();                    
                     Log("SplitTJunctions");
                     logIndent++;
                     SplitTJunctions();
                     logIndent--;
-                    Log("SplitInteriorEdges");
+                    //Log("SplitInteriorEdges");
                     logIndent++;
                     SplitInteriorEdges();
                     logIndent--;
@@ -906,11 +840,14 @@ namespace partmake
                     foundintersections = false;
                     List<Intersection> intersections =
                         edgeIntersect.FindAllIntersections(
-                        edgeDict.Values.Where(v => !v.split).ToList());
+                            vertices,
+                        edgeDict.Values.Where(v => !v.split).ToList(), Log);
+                    int cnt = 0;
                     foreach (Intersection i in intersections)
                     {
                         Vertex ivtx;
                         bool isnew = AddVertex(i.pt, out ivtx);
+                        cnt++;
                         if (!isnew)
                             continue;
 
@@ -918,22 +855,24 @@ namespace partmake
                         Edge e1 = i.e1;
                         while (e1.split)
                         {
+                            double dppa = Vector3.Dot(e1.dir, ivtx.pt - e1.v0.pt);
+                            double dppb = Vector3.Dot(e1.dir, e1.v1.pt - e1.v0.pt);
+                            if (dppa < 0 || dppa > dppb)
+                                Debugger.Break();
                             Edge es1 = e1.splitEdges[0];
-                            double dp1a = Vector3.Dot(es1.dir, ivtx.pt - es1.v0.pt);
-                            double dp1b = Vector3.Dot(es1.dir, es1.v1.pt - es1.v0.pt);
                             Edge es2 = e1.splitEdges[1];
-                            double dp2a = Vector3.Dot(es2.dir, ivtx.pt - es2.v0.pt);
-                            double dp2b = Vector3.Dot(es2.dir, es2.v1.pt - es2.v0.pt);
-                            if (dp1a > 0 && dp1a < dp1b)
-                                e1 = es1;
-                            else if (dp2a > 0 && dp2a < dp2b)
+
+                            double dppc = Vector3.Dot(e1.dir, (es1.v0.idx == e1.v0.idx ? es1.v1.pt : es1.v0.pt) - e1.v0.pt);
+                            if (dppa > dppc)
                                 e1 = es2;
                             else
-                                Debugger.Break();
+                                e1 = es1;
                         }
                         SplitEdge(e1, ivtx);
 
                         Edge e2 = i.e2;
+                        double t = Vector3.Dot(ivtx.pt - e2.v0.pt, e2.dir);
+                        double t2 = Vector3.Dot(e2.v1.pt - e2.v0.pt, e2.dir);
                         while (e2.split)
                         {
                             Edge es1 = e2.splitEdges[0];
@@ -952,7 +891,7 @@ namespace partmake
 
                         SplitEdge(e2, ivtx);
                     }
-                } while (foundintersections);
+                } while (false);
             }
             void AddFaceInteriorPoint(Face f, Vertex v)
             {
@@ -992,14 +931,12 @@ namespace partmake
             {
                 EdgePtr e0a = f.edges[0];
                 EdgePtr e1a = f.edges[1];
-                if (Eps.Eq(Vector3.Dot(e0a.Dir, e1a.Dir), 1) ||
-                    Eps.Eq(Vector3.Dot(e0a.Dir, e1a.Dir), -1))
-                    Log(String.Format("Parallel edges in tri {0} {1}", e0a, e1a));
 
                 EdgePtr e2a = MakeEdge(e1a.V1, e0a.V0, null);
                 fa = new Face(f.id, new List<EdgePtr> { e0a, e1a, e2a });
                 EdgePtr e0b = f.edges[2];
                 EdgePtr e1b = f.edges[3];
+
                 EdgePtr e2b = MakeEdge(e1b.V1, e0b.V0, null);
                 fb = new Face(f.id, new List<EdgePtr> { e0b, e1b, e2b });
             }
