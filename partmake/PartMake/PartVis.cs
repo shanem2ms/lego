@@ -68,7 +68,7 @@ namespace partmake
         public bool ShowEdges { get; set; } = true;
         
         public bool ShowBisector { get; set; }
-        public bool NonManifold { get; set; } = true;
+        public bool NonManifold { get; set; } = false;
         public bool ShowConnectors { get; set; }
         Vector4[] edgePalette;
         uint numPrimitives;
@@ -299,7 +299,7 @@ namespace partmake
                 return;
             meshSelectedOffset = -1;
             List<Vtx> vlist = new List<Vtx>();
-            _part.GetTopoMesh().GetVertices(vlist, false);
+            _part.GetTopoMesh().GetVertices(vlist, true);
 
             if (vlist.Count == 0)
             {
