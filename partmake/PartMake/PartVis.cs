@@ -29,6 +29,15 @@ namespace partmake
         private DeviceBuffer _cubeIndexBuffer;
         private DeviceBuffer _planeVertexBuffer;
         private DeviceBuffer _planeIndexBuffer;
+        private DeviceBuffer _bspVertexBuffer;
+        private DeviceBuffer _bspIndexBuffer;
+        uint _bspIndexCount;
+
+        private DeviceBuffer _bspPortalsVertexBuffer;
+        private DeviceBuffer _bspPortalsIndexBuffer;
+        uint _bspPortalsIndexCount;
+        List<Tuple<uint, uint>> _bspPortalsIndexCounts;
+
         uint _cubeIndexCount;
         uint _planeIndexCount;
         private CommandList _cl;
@@ -63,10 +72,13 @@ namespace partmake
         float mouseDownZoom = 0;
         AABB primBbox;
         public event EventHandler<Topology.INode> OnINodeSelected;
+        
+        public bool DoMesh { get; set; } = true;
+        public bool BSPPortals { get; set; } = false;
 
         public bool DoRaycast { get; set; } = false;
         public bool ShowEdges { get; set; } = true;
-        
+
         public bool ShowBisector { get; set; }
         public bool NonManifold { get; set; } = false;
         public bool ShowConnectors { get; set; }
@@ -85,6 +97,13 @@ namespace partmake
         List<Tuple<Vector3, Vector3>> bisectors = new List<Tuple<Vector3, Vector3>>();
         List<Primitive> primitives = new List<Primitive>();
         LDrawDatNode selectedNode;
+        public Topology.BSPNode SelectedBSPNode
+        {
+            get => selectedBSPNode;
+            set { selectedBSPNode = value; OnBSPNodeUpdated(); }
+        }
+
+        Topology.BSPNode selectedBSPNode;
         public LDrawDatNode SelectedNode { get => selectedNode; set { selectedNode = value; OnPartUpdated(); } }
 
         LDrawDatFile _part;
@@ -307,7 +326,7 @@ namespace partmake
             }
 
             Vtx[] vertices = vlist.ToArray();
-            AABB aabb = AABB.CreateFromPoints(vertices.Select(v => 
+            AABB aabb = AABB.CreateFromPoints(vertices.Select(v =>
                 new System.DoubleNumerics.Vector3(v.pos.X, v.pos.Y, v.pos.Z)));
 
             partOffset = DTF((aabb.Min + aabb.Max) * 0.5);
@@ -402,9 +421,73 @@ namespace partmake
             GraphicsDevice.Unmap(_primStgTexture);
             this.numPrimitives = (uint)primitives.Count;
             this._primTexUpdate = true;
+
+            LoadPortalsMesh();
         }
 
+        void LoadPortalsMesh()
+        {
+            var leafPortals =
+                 _part.GetTopoMesh().bSPTree.GetLeafPortals();
 
+            List<Vtx> vlist = new List<Vtx>();
+            _bspPortalsIndexCounts = new List<Tuple<uint, uint>>();
+            foreach (var portal in leafPortals)
+            {
+                uint startIdx = (uint)vlist.Count;
+                foreach (var face in portal.faces)
+                {
+                    var triangles = face.GetTriangles();
+                    foreach (var tri in triangles)
+                    {
+                        vlist.AddRange(
+                        tri.Select(v => 
+                            new Vtx(v, face.Normal, new System.DoubleNumerics.Vector2(0, 0))));
+                    }
+                }
+                _bspPortalsIndexCounts.Add(new Tuple<uint, uint>(startIdx,
+                    (uint)vlist.Count - startIdx));
+            }
+
+            Vtx[] vertices = vlist.ToArray();
+            uint[] indices = new uint[vlist.Count];
+            for (uint i = 0; i < indices.Length; i++)
+            {
+                indices[i] = i;
+            }
+            _bspPortalsVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
+            GraphicsDevice.UpdateBuffer(_bspPortalsVertexBuffer, 0, vertices);
+
+            _bspPortalsIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)indices.Length, BufferUsage.IndexBuffer));
+            GraphicsDevice.UpdateBuffer(_bspPortalsIndexBuffer, 0, indices);
+            _bspPortalsIndexCount = (uint)indices.Length;
+        }
+        void OnBSPNodeUpdated()
+        {
+            List<Vtx> vlist = new List<Vtx>();
+            foreach (var face in selectedBSPNode.portal.faces)
+            {
+                List<List<System.DoubleNumerics.Vector3>> tris = face.GetTriangles();
+                foreach (var tri in tris)
+                {
+                    vlist.AddRange(
+                        tri.Select(v => new Vtx(v, face.Normal, new System.DoubleNumerics.Vector2(0, 0))));
+                }
+            }
+
+            Vtx[] vertices = vlist.ToArray();
+            uint[] indices = new uint[vlist.Count];
+            for (uint i = 0; i < indices.Length; i++)
+            {
+                indices[i] = i;
+            }
+            _bspVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
+            GraphicsDevice.UpdateBuffer(_bspVertexBuffer, 0, vertices);
+
+            _bspIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)indices.Length, BufferUsage.IndexBuffer));
+            GraphicsDevice.UpdateBuffer(_bspIndexBuffer, 0, indices);
+            _bspIndexCount = (uint)indices.Length;                    
+        }
         void UpdatePrimForTest()
         {
             int pcount = 1;
@@ -685,9 +768,14 @@ namespace partmake
             {
                 DrawMesh(ref mat);
 
+                DrawBSPPortals(ref mat);
+
                 DrawEdges(ref mat, ref viewmat, ref projMat);
 
                 DrawNonManifold(ref mat, ref viewmat, ref projMat);
+
+                if (selectedBSPNode != null)
+                    DrawBSP(ref mat);
 
                 DrawBisectors(ref mat);
                 Vector4 candidateColor = new Vector4(0f, 0.5f, 1.0f, 1.0f);
@@ -809,7 +897,10 @@ namespace partmake
         void DrawNonManifold(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
             if (NonManifold)
-            {
+            {            //_cl.ClearDepthStencil(1f);
+                _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+                _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+
                 Matrix4x4 viewPrj = viewmat * projMat;
                 _cl.ClearDepthStencil(1f);
 
@@ -854,6 +945,13 @@ namespace partmake
         {
             if (this.ShowEdges)
             {
+                _cl.SetPipeline(_pipeline);
+                _cl.SetGraphicsResourceSet(0, _projViewSet);
+                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+
+                _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+                _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+
                 Matrix4x4 viewPrj = viewmat * projMat;
 
                 Vector4 edgeColor = new Vector4(1, 1, 1, 1);
@@ -907,45 +1005,91 @@ namespace partmake
 
         void DrawMesh(ref Matrix4x4 mat)
         {
+            if (DoMesh)
+            {
+                _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
+                Vector4 col = new Vector4(1, 1, 0, 1) * 0.5f;
+                _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+
+                _cl.SetPipeline(_pipeline);
+                _cl.SetVertexBuffer(0, _vertexBuffer);
+                _cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt32);
+                _cl.SetGraphicsResourceSet(0, _projViewSet);
+                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+                if (meshSelectedOffset < 0)
+                {
+                    _cl.DrawIndexed((uint)_indexCount);
+                }
+                else
+                {
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+                    _cl.DrawIndexed((uint)meshSelectedOffset * 3, 1, (uint)(0), 0, 0);
+
+                    Vector4 selectedCol = new Vector4(1, 0, 0, 1);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref selectedCol);
+                    _cl.DrawIndexed(3, 1, (uint)(meshSelectedOffset) * 3, 0, 0);
+
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+                    uint remainingCount = (uint)_indexCount - (uint)(meshSelectedOffset - 1) * 3;
+                    _cl.DrawIndexed(remainingCount, 1, (uint)(meshSelectedOffset + 1) * 3, 0, 0);
+                }
+
+                if (_selectedVertexBuffer != null)
+                {
+                    _cl.ClearDepthStencil(1f);
+                    Vector4 co2l = new Vector4(1, 0, 0, 1) * 0.5f;
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref co2l);
+                    _cl.SetVertexBuffer(0, _selectedVertexBuffer);
+                    _cl.SetIndexBuffer(_selectedIndexBuffer, IndexFormat.UInt32);
+                    _cl.DrawIndexed((uint)_selectedIndexCount);
+                }
+            }
+        }
+
+        List<Vector4> bspColors = new List<Vector4>();
+        void DrawBSPPortals(ref Matrix4x4 mat)
+        {
+            if (BSPPortals)
+            {
+                _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
+                _cl.SetPipeline(_pipeline);
+                _cl.SetVertexBuffer(0, _bspPortalsVertexBuffer);
+                _cl.SetIndexBuffer(_bspPortalsIndexBuffer, IndexFormat.UInt32);
+                _cl.SetGraphicsResourceSet(0, _projViewSet);
+                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+
+                Random r = new Random();
+                for (int i = bspColors.Count; i < _bspPortalsIndexCounts.Count; i++)
+                {
+                    bspColors.Add(new Vector4((float)r.NextDouble(),
+                        (float)r.NextDouble(), (float)r.NextDouble(), 1));
+
+                }
+
+                var colorCur = bspColors.GetEnumerator();
+                foreach (var offsets in _bspPortalsIndexCounts)
+                {
+                    Vector4 col = colorCur.Current;
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+                    _cl.DrawIndexed(offsets.Item2, 1, offsets.Item1, 0, 0);
+                    colorCur.MoveNext();
+                }
+            }
+        }
+
+        void DrawBSP(ref Matrix4x4 mat)
+        {
+            _cl.ClearDepthStencil(1f);
             _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
-            Vector4 col = new Vector4(1, 1, 0, 1) * 0.5f;
+            Vector4 col = new Vector4(0, 1, 0, 1) * 0.5f;
             _cl.UpdateBuffer(_materialBuffer, 0, ref col);
 
             _cl.SetPipeline(_pipeline);
-            _cl.SetVertexBuffer(0, _vertexBuffer);
-            _cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt32);
+            _cl.SetVertexBuffer(0, _bspVertexBuffer);
+            _cl.SetIndexBuffer(_bspIndexBuffer, IndexFormat.UInt32);
             _cl.SetGraphicsResourceSet(0, _projViewSet);
             _cl.SetGraphicsResourceSet(1, _worldTextureSet);
-            if (meshSelectedOffset < 0)
-            {
-                _cl.DrawIndexed((uint)_indexCount);
-            }
-            else
-            {
-                _cl.UpdateBuffer(_materialBuffer, 0, ref col);
-                _cl.DrawIndexed((uint)meshSelectedOffset * 3, 1, (uint)(0), 0, 0);
-
-                Vector4 selectedCol = new Vector4(1, 0, 0, 1);
-                _cl.UpdateBuffer(_materialBuffer, 0, ref selectedCol);
-                _cl.DrawIndexed(3, 1, (uint)(meshSelectedOffset) * 3, 0, 0);
-
-                _cl.UpdateBuffer(_materialBuffer, 0, ref col);
-                uint remainingCount = (uint)_indexCount - (uint)(meshSelectedOffset - 1) * 3;
-                _cl.DrawIndexed(remainingCount, 1, (uint)(meshSelectedOffset+1)*3, 0, 0);
-            }
-
-            if (_selectedVertexBuffer != null)
-            {
-                _cl.ClearDepthStencil(1f);
-                Vector4 co2l = new Vector4(1, 0, 0, 1) * 0.5f;
-                _cl.UpdateBuffer(_materialBuffer, 0, ref co2l);
-                _cl.SetVertexBuffer(0, _selectedVertexBuffer);
-                _cl.SetIndexBuffer(_selectedIndexBuffer, IndexFormat.UInt32);
-                _cl.DrawIndexed((uint)_selectedIndexCount);
-            }
-            //_cl.ClearDepthStencil(1f);
-            _cl.SetVertexBuffer(0, _cubeVertexBuffer);
-            _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+            _cl.DrawIndexed((uint)_bspIndexCount);
         }
         void DrawRaycast(ref Matrix4x4 viewmat)
         {

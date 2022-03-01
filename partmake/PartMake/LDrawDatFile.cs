@@ -29,6 +29,7 @@ namespace partmake
         Topology.Mesh topoMesh;
         string topoId;
         public List<Topology.Face> TopoFaces => topoMesh?.FacesFromId(topoId);
+        public Topology.BSPTree BSPTree => topoMesh?.bSPTree;
 
         public string Name { get => name; }
         public bool IsMultiColor { get => multiColor; }
@@ -172,6 +173,10 @@ namespace partmake
             this.faces = fl.ToArray();
         }
 
+        public void ClearTopoMesh()
+        {
+            topoMesh = null;
+        }
         public Topology.Mesh GetTopoMesh()
         {
             if (topoMesh == null)

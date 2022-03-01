@@ -35,11 +35,16 @@ namespace partmake
         public Topology.INode SelectedINode { get; set; }
         public string Log => selectedPart?.GetTopoMesh().LogString;
 
+        public List<Topology.BSPNode> BSPNodes =>
+            new List<Topology.BSPNode>() {selectedPart?.GetTopoMesh().bSPTree.Top };
+
+        public Topology.Settings TopoSettings { get; } = new Topology.Settings();
         public string SelectedType { get => LDrawFolders.SelectedType; 
             set { LDrawFolders.SelectedType = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("LDrawParts"));
             }
         }
+
         public LDrawFolders.Entry SelectedItem
         {
             get { return selectedItem; }
@@ -54,6 +59,8 @@ namespace partmake
 
         public MainWindow()
         {
+            Topology.Mesh.settings = this.TopoSettings;
+            Topology.Mesh.settings.SettingsChanged += Settings_SettingsChanged;
             LDrawFolders.SetRoot(@"C:\homep4\lego\ldraw");
             this.DataContext = this;
             InitializeComponent();
@@ -69,6 +76,12 @@ namespace partmake
             vis.Part = selectedPart;
             Eps.Text = Topology.Mesh.Epsilon.ToString();
             vis.OnINodeSelected += Vis_OnINodeSelected;
+        }
+
+        private void Settings_SettingsChanged(object sender, EventArgs e)
+        {
+            selectedPart.ClearTopoMesh();
+            vis.Part = selectedPart;
         }
 
         private void Vis_OnINodeSelected(object sender, Topology.INode e)
@@ -90,6 +103,7 @@ namespace partmake
                 vis.Part = selectedPart;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentPart"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Log"));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("BSPNodes"));            
             File.WriteAllLines("PartMake.ini", new string[] { item.name });
         }
 
@@ -158,6 +172,29 @@ namespace partmake
             if (dc is Topology.EdgePtr)
                 dc = (dc as Topology.EdgePtr).e;
             Vis_OnINodeSelected(sender, (dc as Topology.INode));
+        }
+
+        private void BSPTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+            vis.SelectedBSPNode = e.NewValue as Topology.BSPNode;
+        }
+
+        private void Goto_BSPNode_BtnClick(object sender, RoutedEventArgs e)
+        {
+            Topology.BSPNode node = (sender as Button).Content as Topology.BSPNode;
+            
+            vis.SelectedBSPNode = node;
+
+            if (node != null)
+            {
+                node.IsSelected = true;
+
+                while (node != null)
+                {
+                    node.IsExpanded = true;
+                    node = node.parent;
+                }                        
+            }
         }
     }
 

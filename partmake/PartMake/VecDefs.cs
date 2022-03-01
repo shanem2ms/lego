@@ -44,7 +44,7 @@ namespace partmake
 
         public IEnumerable<Face> Faces => File.Faces;
         public IEnumerable<Topology.Face> TopoFaces => File.TopoFaces;
-
+        public Topology.BSPTree BSPTree => File.BSPTree;
         public LDrawDatNode Clone()
         {
             LDrawDatNode c = new LDrawDatNode();

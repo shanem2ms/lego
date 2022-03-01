@@ -12,6 +12,26 @@ namespace partmake
     namespace Topology
     {
 
+        public class Settings
+        {
+            bool triangulate = true;
+            bool addinterioredges = true;
+            bool splitxjunctions = false;
+            bool splittjunctions = false;
+            bool splitintersectingedges = false;
+            bool splitinterioredges = false;
+            bool removesplitedgesfromfaces = false;
+
+            public bool Triangulate { get => triangulate; set { triangulate = value; SettingsChanged?.Invoke(this, new EventArgs()); } }
+            public bool AddInteriorEdges { get => addinterioredges; set { addinterioredges = value; SettingsChanged?.Invoke(this, new EventArgs()); } }
+            public bool SplitXJunctions { get => splitxjunctions; set { splitxjunctions = value; SettingsChanged?.Invoke(this, new EventArgs()); } }
+            public bool SplitTJunctions { get => splittjunctions; set { splittjunctions = value; SettingsChanged?.Invoke(this, new EventArgs()); } }
+            public bool SplitIntersectingEdges { get => splitintersectingedges; set { splitintersectingedges = value; SettingsChanged?.Invoke(this, new EventArgs()); } }
+            public bool SplitInteriorEdges { get => splitinterioredges; set { splitinterioredges = value; SettingsChanged?.Invoke(this, new EventArgs()); } }
+            public bool RemoveSplitEdgesFromFaces { get => removesplitedgesfromfaces; set { removesplitedgesfromfaces = value; SettingsChanged?.Invoke(this, new EventArgs()); } }
+
+            public event EventHandler SettingsChanged;
+        }
         public abstract class INode
         {
             public virtual IEnumerable<INode> Children { get; }
@@ -77,6 +97,10 @@ namespace partmake
             }
 
             public static bool Eq(Vector3 a, Vector3 v)
+            {
+                return (a - v).LengthSquared() < (Mesh.Epsilon * 4);
+            }
+            public static bool Eq(Vector2 a, Vector2 v)
             {
                 return (a - v).LengthSquared() < (Mesh.Epsilon * 4);
             }
@@ -249,6 +273,8 @@ namespace partmake
             public bool isinvalid = false;
             public AABB aabb;
             public string id;
+
+            public BSPNode bspNode { get; set; }
             public int idx { get; set; }
             public IEnumerable<Vertex> Vtx => edges.Select(e => e.V0);
 
@@ -513,13 +539,9 @@ namespace partmake
             public override IEnumerable<INode> Children => edges;
         }
 
-        public class Face2D
-        {
-            public List<Vector2> vertices = new List<Vector2>();
-        }
-
         public class Mesh
         {
+            public static Settings settings = null;
             public static double Epsilon = 0.00001f;
             public KdTree<double, Vertex> kdTree = new KdTree<double, Vertex>(3, new KdTree.Math.DoubleMath());
             List<Vertex> vertices = new List<Vertex>();
@@ -600,6 +622,33 @@ namespace partmake
                     throw e;
                 }
             }
+
+            public Face MakeFace(Face origFace, List<Vector3> vertices)
+            {
+                List<Vertex> verlist = new List<Vertex>();
+                foreach (var v in vertices)
+                {
+                    verlist.Add(AddVertex(v));
+                }
+                List<EdgePtr> elist = new List<EdgePtr>();
+                for (int idx = 0; idx < verlist.Count; ++idx)
+                {
+                    Vertex v0 = verlist[idx];
+                    Vertex v1 = verlist[(idx + 1) % verlist.Count];
+
+                    EdgePtr eptr = MakeEdge(v0, v1, null);
+                    elist.Add(eptr);
+                }
+
+                Face f = new Face(origFace.id, elist);
+                f.bspNode = origFace.bspNode;
+                foreach (EdgePtr eptr in f.edges)
+                {
+                    eptr.parentFace = f;
+                }
+
+                return f;
+            }
             public Face MakeFace(string id, List<Vector3> vertices)
             {
                 List<Vertex> verlist = new List<Vertex>();
@@ -625,7 +674,7 @@ namespace partmake
 
                 return f;
             }
-            
+
             public Face AddFace(string id, List<Vector3> vertices)
             {
                 Face f = MakeFace(id, vertices);
@@ -664,38 +713,38 @@ namespace partmake
                 return false;
             }
 
+            public BSPTree bSPTree;
             void DoBsp()
             {
-                RemoveDuplicateFaces();
-                Triangulate();
-
-                BSPTree bSPTree = new BSPTree();
+                bSPTree = new BSPTree();
                 bSPTree.AddFaces(faces);
-                List<BSPFace> bspFacss = bSPTree.GetFaces();
-                faces.Clear();
-                foreach (BSPFace bf in bspFacss)
-                {
-                    AddFace(bf.f.id, bf.points);
-                }
             }
 
             public void Fix()
             {
+                DoBsp();
                 this.logLines.Clear();
                 Log("Fix");
                 try
                 {
                     //RemoveDuplicateFaces();
                     vertexMinDist *= 0.01;
-                    AddInteriorEdges();
-                    Triangulate();
-                    //SplitXJunctions();                    
+                    if (settings.AddInteriorEdges)
+                        AddInteriorEdges();
+                    if (settings.Triangulate)
+                        Triangulate();
+                    if (settings.SplitXJunctions)
+                        SplitXJunctions();
+                    if (settings.SplitTJunctions)
+                        SplitTJunctions();
+                    if (settings.SplitIntersectingEdges)
+                        SplitIntersectingEdges();
+                    if (settings.SplitInteriorEdges)
+                        SplitInteriorEdges();
+                    if (settings.RemoveSplitEdgesFromFaces)
+                        RemoveSplitEdgesFromFaces();
                     //SplitTJunctions();
-                    /*                   
-                    SplitIntersectingEdges();
-                    SplitInteriorEdges();
-                    RemoveSplitEdgesFromFaces();
-                    SplitTJunctions();
+                    /*
                     FixWindings();
                     List<Edge> nme = new List<Edge>();
                     GetNonManifold(nme);*/
@@ -982,7 +1031,7 @@ namespace partmake
                         var tris = Triangulator.Face(f);
                         foreach (var tri in tris)
                         {
-                            newFaces.Add(this.MakeFace(f.id, tri));
+                            newFaces.Add(this.MakeFace(f, tri));
                         }
                         //set_surfaces.AddRange()
                         Log(String.Format("{0} sides", f.edges.Count()));
@@ -1016,11 +1065,13 @@ namespace partmake
 
                 EdgePtr e2a = MakeEdge(e1a.V1, e0a.V0, null);
                 fa = new Face(f.id, new List<EdgePtr> { e0a, e1a, e2a });
+                fa.bspNode = f.bspNode;
                 EdgePtr e0b = f.edges[2];
                 EdgePtr e1b = f.edges[3];
 
                 EdgePtr e2b = MakeEdge(e1b.V1, e0b.V0, null);
                 fb = new Face(f.id, new List<EdgePtr> { e0b, e1b, e2b });
+                fb.bspNode = f.bspNode;
             }
 
             void SplitXJunctions()

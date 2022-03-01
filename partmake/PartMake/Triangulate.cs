@@ -77,8 +77,8 @@ namespace partmake.Topology
                 } while (removed && !foundloop);
                 if (foundloop)
                     loops.Add(vertices);
-                else
-                    loops[0].AddRange(vertices);
+                //else
+                //    loops[0].AddRange(vertices);
             }
             int surfaceIdx = 0;
             var set_surfaces = new List<pslg_datastructure.surface_store>();
@@ -112,7 +112,7 @@ namespace partmake.Topology
                 List<Vector3> tri = new List<Vector3>() { 
                                 f.ToMeshPt(new Vector2(dtri.vertices[0].x, dtri.vertices[0].y)),
                                 f.ToMeshPt(new Vector2(dtri.vertices[1].x, dtri.vertices[1].y)),
-                                f.ToMeshPt(new Vector2(dtri.vertices[1].x, dtri.vertices[1].y)) };
+                                f.ToMeshPt(new Vector2(dtri.vertices[2].x, dtri.vertices[2].y)) };
                 triangles.Add(tri);
             }
 

@@ -16,13 +16,15 @@ namespace partmake
     public partial class RenderControl : System.Windows.Controls.UserControl, IDisposable
     {
         private readonly VeldridControl _veldridControl;
-        
+       
+        public bool DoMesh { get => Vis.DoMesh; set => Vis.DoMesh = value; }
         public bool ShowBisector { get => Vis.ShowBisector; set => Vis.ShowBisector = value; }
         public bool NonManifold { get => Vis.NonManifold; set => Vis.NonManifold = value; }        
         public bool ShowConnectors { get => Vis.ShowConnectors; set => Vis.ShowConnectors = value; }
         
         public bool DoRaycast { get => Vis.DoRaycast; set => Vis.DoRaycast = value; }
         public bool ShowEdges { get => Vis.ShowEdges; set => Vis.ShowEdges = value; }
+        public bool BSPPortals { get => Vis.BSPPortals; set => Vis.BSPPortals = value; }
         
         public PartVis Vis => _veldridControl.Vis;
         public RenderControl()
