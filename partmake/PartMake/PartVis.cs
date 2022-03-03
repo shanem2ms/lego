@@ -37,6 +37,7 @@ namespace partmake
         private DeviceBuffer _bspPortalsIndexBuffer;
         uint _bspPortalsIndexCount;
         List<Tuple<uint, uint>> _bspPortalsIndexCounts;
+        List<Topology.BSPPortal> _bspPortals;
 
         uint _cubeIndexCount;
         uint _planeIndexCount;
@@ -72,9 +73,10 @@ namespace partmake
         float mouseDownZoom = 0;
         AABB primBbox;
         public event EventHandler<Topology.INode> OnINodeSelected;
-        
-        public bool DoMesh { get; set; } = true;
-        public bool BSPPortals { get; set; } = false;
+        public event EventHandler<Topology.BSPNode> OnBSPNodeSelected;
+
+        public bool DoMesh { get; set; } = false;
+        public bool BSPPortals { get; set; } = true;
 
         public bool DoRaycast { get; set; } = false;
         public bool ShowEdges { get; set; } = true;
@@ -427,15 +429,15 @@ namespace partmake
 
         void LoadPortalsMesh()
         {
-            var leafPortals =
+            _bspPortals =
                  _part.GetTopoMesh().bSPTree.GetLeafPortals();
 
             List<Vtx> vlist = new List<Vtx>();
             _bspPortalsIndexCounts = new List<Tuple<uint, uint>>();
-            foreach (var portal in leafPortals)
+            foreach (var portal in _bspPortals)
             {
                 uint startIdx = (uint)vlist.Count;
-                foreach (var face in portal.faces)
+                foreach (var face in portal.Faces)
                 {
                     var triangles = face.GetTriangles();
                     foreach (var tri in triangles)
@@ -464,8 +466,13 @@ namespace partmake
         }
         void OnBSPNodeUpdated()
         {
+            _bspVertexBuffer = null;
+            _bspIndexBuffer = null;
+            _bspIndexCount = 0;
+            if (selectedBSPNode == null)
+                return;
             List<Vtx> vlist = new List<Vtx>();
-            foreach (var face in selectedBSPNode.portal.faces)
+            foreach (var face in selectedBSPNode.Portal.Faces)
             {
                 List<List<System.DoubleNumerics.Vector3>> tris = face.GetTriangles();
                 foreach (var tri in tris)
@@ -789,7 +796,10 @@ namespace partmake
                     _cl.DrawIndexed((uint)_cubeIndexCount);
                 }
             }
-            DrawPicking(ref mat, ref viewmat, ref projMat);
+            if (BSPPortals)
+                DrawPickingBSP(ref mat, ref viewmat, ref projMat);
+            else
+                DrawPicking(ref mat, ref viewmat, ref projMat);
             _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
             GraphicsDevice.SwapBuffers(MainSwapchain);
@@ -871,6 +881,43 @@ namespace partmake
             }
 
         }
+        void DrawPickingBSP(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
+        {
+            if (pickReady == 0)
+            {
+                Matrix4x4 viewPrj = viewmat * projMat;
+
+                _cl.SetPipeline(_pipelinePick);
+                _cl.SetFramebuffer(_pickFB);
+                _cl.ClearColorTarget(0, RgbaFloat.Black);
+                _cl.ClearDepthStencil(1f);
+                _cl.SetGraphicsResourceSet(0, _projViewSet);
+                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+                Matrix4x4 wmat =
+                    Matrix4x4.CreateTranslation(-partOffset) *
+                    Matrix4x4.CreateScale(partScale);
+                _cl.UpdateBuffer(_worldBuffer, 0, ref wmat);
+                _cl.SetVertexBuffer(0, _bspPortalsVertexBuffer);
+                _cl.SetIndexBuffer(_bspPortalsIndexBuffer, IndexFormat.UInt32);
+
+                for (int i = 0; i < _bspPortalsIndexCounts.Count; i++)
+                {
+                    int pidx = i + 1;
+                    int r = pidx & 0xFF;
+                    int g = (pidx >> 8) & 0xFF;
+                    int b = (pidx >> 16) & 0xFF;
+                    Vector4 meshColor = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
+                    var offsets = _bspPortalsIndexCounts[i];
+                    
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref meshColor);
+                    _cl.DrawIndexed(offsets.Item2, 1, offsets.Item1, 0, 0);
+                }
+               
+                _cl.CopyTexture(this._pickTexture, this._pickStgTexture);
+                pickReady = 1;
+            }
+
+        }
         void HandlePick()
         {
             if (pickReady == 1)
@@ -879,18 +926,26 @@ namespace partmake
                 MappedResourceView<Rgba> rView = GraphicsDevice.Map<Rgba>(_pickStgTexture, MapMode.Read);
                 Rgba r = rView[pickX, pickY];
                 int pickIdx = r.r + (r.g << 8) + (r.b << 16);
-                if (pickIdx > _triangleCount)
-                {
-                    Topology.Edge e = this.edges[pickIdx - (_triangleCount + 1)];
-                    OnINodeSelected?.Invoke(this, e);
-                }
-                else if (pickIdx > 0)
-                {
-                    var face = _part.GetTopoMesh().faces[pickIdx - 1];
-                    OnINodeSelected?.Invoke(this, face);
-                    meshSelectedOffset = pickIdx - 1;
-                }
                 GraphicsDevice.Unmap(_pickStgTexture);
+                if (BSPPortals)
+                {
+                    if (pickIdx > 0)
+                        OnBSPNodeSelected?.Invoke(this, _bspPortals[pickIdx - 1].parentNode);
+                }
+                else
+                {
+                    if (pickIdx > _triangleCount)
+                    {
+                        Topology.Edge e = this.edges[pickIdx - (_triangleCount + 1)];
+                        OnINodeSelected?.Invoke(this, e);
+                    }
+                    else if (pickIdx > 0)
+                    {
+                        var face = _part.GetTopoMesh().faces[pickIdx - 1];
+                        OnINodeSelected?.Invoke(this, face);
+                        meshSelectedOffset = pickIdx - 1;
+                    }
+                }
                 pickReady = -1;
             }
         }

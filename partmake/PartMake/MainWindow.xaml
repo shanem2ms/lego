@@ -173,20 +173,56 @@
                 </StackPanel>
             </TabItem>
             <TabItem Header="BSP" >
-                <TreeView x:Name="bspTreeView" ItemContainerStyle="{StaticResource LibraryTreeViewItemStyle}" 
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TreeView Grid.Row="0" x:Name="bspTreeView" ItemContainerStyle="{StaticResource LibraryTreeViewItemStyle}" 
                           Background="Beige" ItemsSource="{Binding Path=BSPNodes}" SelectedItemChanged="BSPTreeView_SelectedItemChanged">
-                    <TreeView.Resources>
-                        <HierarchicalDataTemplate DataType="{x:Type topo:BSPNode}"
+                        <TreeView.Resources>
+                            <HierarchicalDataTemplate DataType="{x:Type topo:BSPNode}"
                                    ItemsSource="{Binding Path=Children}">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
-                                <TextBlock Text="{Binding nodeIdx}" />
-                            </Grid>
-                        </HierarchicalDataTemplate>
-                    </TreeView.Resources>
-                </TreeView>
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="{Binding nodeIdx}" />
+                                </Grid>
+                            </HierarchicalDataTemplate>
+                        </TreeView.Resources>
+                    </TreeView>
+                    <ContentControl Grid.Row="1" Content="{Binding Path=SelectedBSPNode}" >
+                        <ContentControl.ContentTemplate>
+                            <DataTemplate DataType="x:Type topo:BSPNode">
+                                <ScrollViewer>
+                                    <Grid>
+                                        <ItemsControl ItemsSource="{Binding Path=Portal.Faces}" >
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="x:Type topo:PortalFace">
+                                                    <Grid Margin="5">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <TextBlock Text="Connects To: " />
+                                                        <ItemsControl Grid.Row="1" ItemsSource="{Binding Path=ConnectedNodes}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate DataType="x:Type topo:BSPNode">
+                                                                    <Button Content="{Binding }" Click="Goto_BSPNode_BtnClick"/>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                </ScrollViewer>
+                            </DataTemplate>
+                        </ContentControl.ContentTemplate>
+                    </ContentControl>
+                </Grid>
             </TabItem>
         </TabControl>
         <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" />

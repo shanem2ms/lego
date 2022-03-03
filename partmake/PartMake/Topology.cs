@@ -14,7 +14,7 @@ namespace partmake
 
         public class Settings
         {
-            bool triangulate = true;
+            bool triangulate = false;
             bool addinterioredges = true;
             bool splitxjunctions = false;
             bool splittjunctions = false;
@@ -717,7 +717,7 @@ namespace partmake
             void DoBsp()
             {
                 bSPTree = new BSPTree();
-                bSPTree.AddFaces(faces);
+                bSPTree.BuildTree(faces);
             }
 
             public void Fix()

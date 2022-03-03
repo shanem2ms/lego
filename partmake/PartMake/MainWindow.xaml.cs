@@ -35,6 +35,7 @@ namespace partmake
         public Topology.INode SelectedINode { get; set; }
         public string Log => selectedPart?.GetTopoMesh().LogString;
 
+        public Topology.BSPNode SelectedBSPNode => vis?.SelectedBSPNode;
         public List<Topology.BSPNode> BSPNodes =>
             new List<Topology.BSPNode>() {selectedPart?.GetTopoMesh().bSPTree.Top };
 
@@ -76,12 +77,18 @@ namespace partmake
             vis.Part = selectedPart;
             Eps.Text = Topology.Mesh.Epsilon.ToString();
             vis.OnINodeSelected += Vis_OnINodeSelected;
+            vis.OnBSPNodeSelected += Vis_OnBSPNodeSelected;
         }
-
+      
         private void Settings_SettingsChanged(object sender, EventArgs e)
         {
             selectedPart.ClearTopoMesh();
             vis.Part = selectedPart;
+        }
+
+        private void Vis_OnBSPNodeSelected(object sender, Topology.BSPNode e)
+        {
+            SelectBSPNode(e);
         }
 
         private void Vis_OnINodeSelected(object sender, Topology.INode e)
@@ -176,13 +183,16 @@ namespace partmake
 
         private void BSPTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            vis.SelectedBSPNode = e.NewValue as Topology.BSPNode;
+            Topology.BSPNode node = e.NewValue as Topology.BSPNode;
+            if (node != null && node.nodeIdx == 0)
+                node = null;
+            vis.SelectedBSPNode = node;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedBSPNode"));
+
         }
 
-        private void Goto_BSPNode_BtnClick(object sender, RoutedEventArgs e)
+        void SelectBSPNode(Topology.BSPNode node)
         {
-            Topology.BSPNode node = (sender as Button).Content as Topology.BSPNode;
-            
             vis.SelectedBSPNode = node;
 
             if (node != null)
@@ -193,8 +203,17 @@ namespace partmake
                 {
                     node.IsExpanded = true;
                     node = node.parent;
-                }                        
+                }
             }
+
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedBSPNode"));
+        }
+        private void Goto_BSPNode_BtnClick(object sender, RoutedEventArgs e)
+        {
+            Topology.BSPNode node = (sender as Button).Content as Topology.BSPNode;
+            
+            vis.SelectedBSPNode = node;
+            SelectBSPNode(node);           
         }
     }
 
