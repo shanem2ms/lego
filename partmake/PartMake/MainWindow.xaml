@@ -98,7 +98,7 @@
             <Button Content="Write All" Grid.Row="2" Click="Button_Click"/>
         </Grid>
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
-        <TabControl Grid.Column="2">
+        <TabControl Grid.Column="2" SelectedIndex="4">
             <TabItem Header="Node">
                 <ContentControl Content="{Binding Path=SelectedINode}" 
                                 ContentTemplateSelector="{StaticResource selector}">
@@ -172,7 +172,7 @@
                     <CheckBox Content="RemoveSplitEdgesFromFaces" IsChecked="{Binding Path=TopoSettings.RemoveSplitEdgesFromFaces}"/>
                 </StackPanel>
             </TabItem>
-            <TabItem Header="BSP" >
+            <TabItem Header="BSP">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
@@ -200,17 +200,27 @@
                                         <ItemsControl ItemsSource="{Binding Path=Portal.Faces}" >
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="x:Type topo:PortalFace">
-                                                    <StackPanel Orientation="Vertical" Margin="5">
-                                                        <TextBlock Text="{Binding Center}" />
-                                                        <TextBlock Text="Connects To: " />
-                                                        <ItemsControl Grid.Row="1" ItemsSource="{Binding Path=ConnectedNodes}">
-                                                            <ItemsControl.ItemTemplate>
-                                                                <DataTemplate DataType="x:Type topo:BSPNode">
-                                                                    <Button Content="{Binding }" Click="Goto_BSPNode_BtnClick"/>
-                                                                </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
-                                                    </StackPanel>
+                                                    <Border BorderBrush="Blue" Padding="5">
+                                                        <StackPanel Orientation="Vertical">
+                                                            <TextBlock Text="{Binding Center}" />
+                                                            <TextBlock Text="Neighbor Portals: " />
+                                                            <ItemsControl ItemsSource="{Binding Path=ConnectedNodes}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate DataType="x:Type topo:BSPNode">
+                                                                        <Button Content="{Binding }" Click="Goto_BSPNode_BtnClick"/>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                            <TextBlock Text="Model Faces: " />
+                                                            <ItemsControl ItemsSource="{Binding Path=ConnectedModelFaces}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate DataType="x:Type topo:Face">
+                                                                        <Button Content="{Binding idx}" Click="Goto_BSPNode_BtnClick"/>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </StackPanel>
+                                                    </Border>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>

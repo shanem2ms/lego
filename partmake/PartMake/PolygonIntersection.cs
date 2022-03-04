@@ -11,9 +11,11 @@ namespace partmake
     {
 
         private readonly Vector2[] vertices;
+        public PolyAABB aabb;
 
         public Polygon(IEnumerable<Vector2> _vertices)
         {
+            this.aabb = new PolyAABB(_vertices);
             this.vertices = _vertices.ToArray();
         }
 
@@ -66,6 +68,8 @@ namespace partmake
     {
         public static bool Intersect(Polygon polygon1, Polygon polygon2)
         {
+            if (!polygon1.aabb.Intersects(polygon2.aabb))
+                return false;
             List<Vector2> normals = new List<Vector2>();
             normals.AddRange(polygon1.GetEdgeNormals());
             normals.AddRange(polygon2.GetEdgeNormals());
@@ -105,5 +109,32 @@ namespace partmake
             return Vector2.Dot(vertex, axis);
         }
 
+    }
+
+    public class PolyAABB
+    {
+        Vector2 max;
+        Vector2 min;
+        public PolyAABB(IEnumerable<Vector2> vecs)
+        {
+            max = min = vecs.First();
+            foreach (Vector2 v in vecs)
+            {
+                if (v.X < min.X) min.X = v.X;
+                if (v.Y < min.Y) min.Y = v.Y;
+                if (v.X > max.X) max.X = v.X;
+                if (v.Y > max.Y) max.Y = v.Y;
+            }
+        }
+
+        public bool Intersects(PolyAABB other)
+        {
+            if (other.min.X > max.X ||
+                other.min.Y > max.Y ||
+                other.max.X < min.X ||
+                other.max.Y < min.Y)
+                return false;
+            return true;
+        }
     }
 }

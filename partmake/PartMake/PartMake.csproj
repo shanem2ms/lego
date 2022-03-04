@@ -23,10 +23,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="MatrixVecDouble.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Remove="fs.glsl" />
     <None Remove="pick.glsl" />
     <None Remove="raycast.glsl" />

@@ -170,6 +170,12 @@ namespace partmake
                     case System.Windows.Input.Key.S:
                         _testPrimPos.Z -= move;
                         break;
+                    case System.Windows.Input.Key.Space:
+                        if (selectedBSPNode != null && selectedBSPNode.Portal != null)
+                            selectedBSPNode.Portal.Visible = !selectedBSPNode.Portal.Visible;
+                        LoadPortalsMesh();
+                        break;
+
                 }
             }
             else if (mode == 1)
@@ -430,7 +436,7 @@ namespace partmake
         void LoadPortalsMesh()
         {
             _bspPortals =
-                 _part.GetTopoMesh().bSPTree.GetLeafPortals();
+                 _part.GetTopoMesh().bSPTree.GetLeafPortals().Where(p => p.Visible).ToList();
 
             List<Vtx> vlist = new List<Vtx>();
             _bspPortalsIndexCounts = new List<Tuple<uint, uint>>();
@@ -626,7 +632,7 @@ namespace partmake
 
 
                 _pipeline = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
-                    BlendStateDescription.SingleOverrideBlend,
+                    BlendStateDescription.SingleAlphaBlend,
                     DepthStencilStateDescription.DepthOnlyLessEqual,
                     new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
                     PrimitiveTopology.TriangleList,

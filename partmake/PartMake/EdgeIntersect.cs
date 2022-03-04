@@ -59,10 +59,10 @@ namespace partmake
                     outOIptr, maxIntersections);
                 int outCnt = Math.Min(intersectionCnt, maxIntersections);
                 IntPtr outOICur = outOIptr;
-                List<Intersection>  outIntersections = new List<Intersection>();
+                List<Intersection> outIntersections = new List<Intersection>();
                 for (int i = 0; i < outCnt; ++i)
                 {
-                    OutIntersection oi = 
+                    OutIntersection oi =
                         Marshal.PtrToStructure<OutIntersection>(outOICur);
                     outOICur = IntPtr.Add(outOICur, oiSize);
                     outIntersections.Add(new Intersection()
@@ -76,6 +76,83 @@ namespace partmake
                 Marshal.FreeHGlobal(edgeptr);
                 Marshal.FreeHGlobal(outOIptr);
                 return outIntersections;
+            }
+        }
+
+        public class PolygonClip
+        {
+            [DllImport("EdgeIntersect.dll")]
+            static extern int ClipPolygons(IntPtr pointList, IntPtr polyPointCounts, int nPortalPolys, int nModelPolys,
+                IntPtr outConnectedPortals);
+
+            List<Polygon> portalPolys = new List<Polygon>();
+            List<Polygon> modelPolys = new List<Polygon>();
+            public void AddPortalPolygon(Polygon p)
+            {
+                portalPolys.Add(p);
+            }
+            public void AddModelPolygon(Polygon p)
+            {
+                modelPolys.Add(p);
+            }
+
+            public Tuple<int,int> []Process()
+            {
+                List<Vector2> points = new List<Vector2>();
+                List<int> polyOffsets = new List<int>();
+                int pointCout = 0;
+                foreach (Polygon p in portalPolys)
+                {
+                    pointCout += p.GetVertices().Length;
+                    polyOffsets.Add(pointCout);
+                }
+                foreach (Polygon p in modelPolys)
+                {
+                    pointCout += p.GetVertices().Length;
+                    polyOffsets.Add(pointCout);
+                }
+
+                int v2size = Marshal.SizeOf<Vector2>();
+                IntPtr ptr = Marshal.AllocHGlobal(pointCout * v2size);
+                IntPtr ptrSizes = Marshal.AllocHGlobal(polyOffsets.Count * sizeof(int));
+                IntPtr outConnectedPortals = Marshal.AllocHGlobal(portalPolys.Count * portalPolys.Count * sizeof(int) * 2);
+                Marshal.Copy(polyOffsets.ToArray(), 0, ptrSizes, polyOffsets.Count);
+
+                IntPtr curptr = ptr;
+                foreach (Polygon p in portalPolys)
+                {
+                    var vertices = p.GetVertices();
+                    foreach (var v in vertices)
+                    {
+                        Marshal.StructureToPtr<Vector2>(v, curptr, false);
+                        curptr = IntPtr.Add(curptr, v2size);
+                    }
+                }
+                foreach (Polygon p in modelPolys)
+                {
+                    var vertices = p.GetVertices();
+                    foreach (var v in vertices)
+                    {
+                        Marshal.StructureToPtr<Vector2>(v, curptr, false);
+                        curptr = IntPtr.Add(curptr, v2size);
+                    }
+                }
+
+                int connectedPortalCount =
+                    ClipPolygons(ptr, ptrSizes, portalPolys.Count, modelPolys.Count, outConnectedPortals);
+                int []connectedPortals = new int [connectedPortalCount * 2];
+                Marshal.Copy(outConnectedPortals, connectedPortals, 0, connectedPortalCount * 2);
+                Marshal.FreeHGlobal(ptr);
+                Marshal.FreeHGlobal(ptrSizes);
+                Marshal.FreeHGlobal(outConnectedPortals);
+
+                Tuple<int, int>[] tuples = new Tuple<int, int>[connectedPortalCount];
+                for (int i = 0; i < tuples.Length; i++)
+                {
+                    tuples[i] = new Tuple<int, int>(connectedPortals[i * 2],
+                        connectedPortals[i * 2 + 1]);
+                }
+                return tuples;
             }
         }
     }
