@@ -91,7 +91,7 @@ namespace partmake
                 foreach (var pt in sf.points)
                 {
                     double r = Vector3.Dot(pt - Origin, normal);
-                    if (Eps.Eq(r * 0.01, 0))
+                    if (Eps.Eq(r, 0))
                         zero++;
                     else if (r < 0) neg++;
                     else pos++;
@@ -227,6 +227,10 @@ namespace partmake
             {
                 if (_pts.Count < 3)
                     Debugger.Break();
+                Vector3 nrm = Vector3.Normalize(Vector3.Cross((_pts[1] - _pts[0]),
+                        (_pts[2] - _pts[1])));
+                double d = Vector3.Dot(_pts[0], nrm);
+
                 points = _pts;
                 planedef = _p;
             }
@@ -272,14 +276,26 @@ namespace partmake
                 {
                     return connectedFaces?.Select(p => p.portal.parentNode).ToList();
                 } }
+
+            public Vector3 Center { get
+                {
+                    Vector3 tot = Vector3.Zero;
+                    foreach (var pt in points)
+                    { tot += pt; }
+                    return tot / points.Count;
+                } }
             public PortalFace(BSPPlane pl, List<Vector3> _pts) : base(pl.Def, _pts)
             {
                 Plane = pl;
             }
 
+            public PortalFace(PortalFace planeFace, List<Vector3> _pts) : base(planeFace.PlaneDef, _pts)
+            {
+                Plane = planeFace.Plane;
+            }
             public PortalFace(PlaneMgr mgr, List<Vector3> _pts) : base(mgr, _pts)
             {
-                Plane = new BSPPlane(base.PlaneDef, null);
+                Plane = null;
             }
 
             public static PortalFace FromPts(BSPPlane pl, BSPPortal pr, List<Vector3> inPts)
@@ -376,10 +392,10 @@ namespace partmake
                     })
                 };
             }
-
             public BSPPortal(List<PortalFace> _faces)
+
             {
-                faces = _faces.Select(p => new PortalFace(p.Plane, p.points)).ToList();
+                faces = _faces.Select(p => new PortalFace(p, p.points)).ToList();
                 foreach (var f in faces)
                 {
                     f.portal = this;
@@ -408,9 +424,9 @@ namespace partmake
                         BSPFace p, n;
                         plane.SplitFace(f, out n, out p, planePts);
                         if ((s & 1) != 0 && n != null)
-                            negFaces.Add(new PortalFace(f.Plane, n.points));
+                            negFaces.Add(new PortalFace(f, n.points));
                         if ((s & 4) != 0 && p != null)
-                            posFaces.Add(new PortalFace(f.Plane, n.points));
+                            posFaces.Add(new PortalFace(f, p.points));
                     }
                 }
 
@@ -521,8 +537,8 @@ namespace partmake
                     }
                     else if (splitMask == 2)
                     {
-                        Debugger.Break();
-                        //faces.Add(inface);
+                        //Debugger.Break();
+                        faces.Add(inface);
                     }
                     else
                     {
@@ -630,6 +646,7 @@ namespace partmake
 
                 var nodes = kdTree.GetNearestNeighbours(new double[] { normal.X, normal.Y, normal.Z,
                         d }, 1);
+
                 if (nodes.Length > 0 && nodes[0].Value.IsEqual(normal, d))
                 {
                     return nodes[0].Value;
