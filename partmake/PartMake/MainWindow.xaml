@@ -44,11 +44,13 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <TextBlock Text="{Binding idx}" />
                 <Button Grid.Row="1" Content="{Binding bspNode}" Click="Goto_BSPNode_BtnClick"/>
-                <ItemsControl Grid.Row="2" ItemsSource="{Binding edges}" >
+                <ItemsControl Grid.Row="2" Background="AliceBlue" ItemsSource="{Binding bspNodes}" />
+                <ItemsControl Grid.Row="3" ItemsSource="{Binding edges}" >
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="x:Type topo:Edge">
                             <Button Content="{Binding }" Click="Button_NodeNavClick" />
@@ -98,11 +100,88 @@
             <Button Content="Write All" Grid.Row="2" Click="Button_Click"/>
         </Grid>
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
-        <TabControl Grid.Column="2" SelectedIndex="4">
+        <TabControl Grid.Column="2" SelectedIndex="1">
             <TabItem Header="Node">
                 <ContentControl Content="{Binding Path=SelectedINode}" 
                                 ContentTemplateSelector="{StaticResource selector}">
                 </ContentControl>
+            </TabItem>
+            <TabItem Header="BSP">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TreeView Grid.Row="0" x:Name="bspTreeView" ItemContainerStyle="{StaticResource LibraryTreeViewItemStyle}" 
+                          Background="Beige" ItemsSource="{Binding Path=BSPNodes}" SelectedItemChanged="BSPTreeView_SelectedItemChanged">
+                        <TreeView.Resources>
+                            <HierarchicalDataTemplate DataType="{x:Type topo:BSPNode}"
+                                   ItemsSource="{Binding Path=Children}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="{Binding nodeIdx}" />
+                                </Grid>
+                            </HierarchicalDataTemplate>
+                        </TreeView.Resources>
+                    </TreeView>
+                    <ContentControl Grid.Row="1" Content="{Binding Path=SelectedBSPNode}" >
+                        <ContentControl.ContentTemplate>
+                            <DataTemplate DataType="x:Type topo:BSPNode">
+                                <ScrollViewer>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="{Binding nodeIdx}" />
+                                        <ItemsControl Grid.Row="1" ItemsSource="{Binding Path=Portal.Faces}" >
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="x:Type topo:PortalFace">
+                                                    <Border BorderThickness="5" BorderBrush="Blue" Padding="5">
+                                                        <StackPanel Orientation="Vertical">
+                                                            <Button Content="Show" Click="ShowPlanePolys_Click" />
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="PlaneNode: " />
+                                                                <TextBlock Text="{Binding PlaneNode}" />
+                                                                <Button Content="->" Click="ShowPlaneNode_Click" />
+                                                            </StackPanel>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="Exterior: " />
+                                                                <TextBlock Text="{Binding IsExteriorWall}" />
+                                                            </StackPanel>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="Covered: " />
+                                                                <TextBlock Text="{Binding IsCovered}" />
+                                                            </StackPanel>
+                                                            <TextBlock Text="Neighbor Portals: " />
+                                                            <ItemsControl ItemsSource="{Binding Path=ConnectedNodes}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate DataType="x:Type topo:BSPNode">
+                                                                        <Button Content="{Binding }" Click="Goto_BSPNode_BtnClick"/>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                            <TextBlock Text="Model Faces: " />
+                                                            <ItemsControl ItemsSource="{Binding Path=ConnectedModelFaces}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate DataType="x:Type topo:Face">
+                                                                        <Button Content="{Binding idx}" Click="BSPFace_BtnClick"/>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                </ScrollViewer>
+                            </DataTemplate>
+                        </ContentControl.ContentTemplate>
+                    </ContentControl>
+                </Grid>
             </TabItem>
             <TabItem Header="Parts">
                 <Grid>
@@ -172,65 +251,6 @@
                     <CheckBox Content="RemoveSplitEdgesFromFaces" IsChecked="{Binding Path=TopoSettings.RemoveSplitEdgesFromFaces}"/>
                 </StackPanel>
             </TabItem>
-            <TabItem Header="BSP">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <TreeView Grid.Row="0" x:Name="bspTreeView" ItemContainerStyle="{StaticResource LibraryTreeViewItemStyle}" 
-                          Background="Beige" ItemsSource="{Binding Path=BSPNodes}" SelectedItemChanged="BSPTreeView_SelectedItemChanged">
-                        <TreeView.Resources>
-                            <HierarchicalDataTemplate DataType="{x:Type topo:BSPNode}"
-                                   ItemsSource="{Binding Path=Children}">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="*"/>
-                                    </Grid.RowDefinitions>
-                                    <TextBlock Text="{Binding nodeIdx}" />
-                                </Grid>
-                            </HierarchicalDataTemplate>
-                        </TreeView.Resources>
-                    </TreeView>
-                    <ContentControl Grid.Row="1" Content="{Binding Path=SelectedBSPNode}" >
-                        <ContentControl.ContentTemplate>
-                            <DataTemplate DataType="x:Type topo:BSPNode">
-                                <ScrollViewer>
-                                    <Grid>
-                                        <ItemsControl ItemsSource="{Binding Path=Portal.Faces}" >
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate DataType="x:Type topo:PortalFace">
-                                                    <Border BorderBrush="Blue" Padding="5">
-                                                        <StackPanel Orientation="Vertical">
-                                                            <TextBlock Text="{Binding Center}" />
-                                                            <TextBlock Text="Neighbor Portals: " />
-                                                            <ItemsControl ItemsSource="{Binding Path=ConnectedNodes}">
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate DataType="x:Type topo:BSPNode">
-                                                                        <Button Content="{Binding }" Click="Goto_BSPNode_BtnClick"/>
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
-                                                            <TextBlock Text="Model Faces: " />
-                                                            <ItemsControl ItemsSource="{Binding Path=ConnectedModelFaces}">
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate DataType="x:Type topo:Face">
-                                                                        <Button Content="{Binding idx}" Click="Goto_BSPNode_BtnClick"/>
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
-                                                        </StackPanel>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </Grid>
-                                </ScrollViewer>
-                            </DataTemplate>
-                        </ContentControl.ContentTemplate>
-                    </ContentControl>
-                </Grid>
-            </TabItem>
         </TabControl>
         <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" />
         <Grid Grid.Column="4">
@@ -249,7 +269,14 @@
                 </ComboBox>
                 <TextBox x:Name="Eps" Width="200" TextChanged="Eps_TextChanged" LostFocus="Eps_LostFocus" />
             </StackPanel>
-            <local:RenderControl x:Name="_RenderControl" Grid.Row="1"  KeyDown="_RenderControl_KeyDown" KeyUp="_RenderControl_KeyUp" />
+            <TabControl Grid.Row="1" >
+                <TabItem Header="Render">
+                    <local:RenderControl x:Name="_RenderControl" KeyDown="_RenderControl_KeyDown" KeyUp="_RenderControl_KeyUp" />
+                </TabItem>
+                <TabItem Header="Points">
+                    <local:PolyLog x:Name="polyLog"/>
+                </TabItem>
+            </TabControl>
         </Grid>
     </Grid>
 </Window>

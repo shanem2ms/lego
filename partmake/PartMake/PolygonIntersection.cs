@@ -64,53 +64,6 @@ namespace partmake
         }
     }
 
-    public static class PolygonIntersection
-    {
-        public static bool Intersect(Polygon polygon1, Polygon polygon2)
-        {
-            if (!polygon1.aabb.Intersects(polygon2.aabb))
-                return false;
-            List<Vector2> normals = new List<Vector2>();
-            normals.AddRange(polygon1.GetEdgeNormals());
-            normals.AddRange(polygon2.GetEdgeNormals());
-            foreach (Vector2 axis in normals)
-            {
-                var (min1, max1) = GetMinMaxProjections(polygon1, axis);
-                var (min2, max2) = GetMinMaxProjections(polygon2, axis);
-                double intervalDistance = min1 < min2 ? min2 - max1 : min1 - max2;
-                if (intervalDistance >= 0) return false;
-            }
-            return true;
-        }
-
-        private static (double, double) GetMinMaxProjections(Polygon polygon, Vector2 axis)
-        {
-            double min = Int32.MaxValue;
-            double max = Int32.MinValue;
-            foreach (Vector2 vertex in polygon.GetVertices())
-            {
-                Vector2 projection = Project(vertex, axis);
-                double scalar = Scalar(projection, axis);
-                if (scalar < min) min = scalar;
-                if (scalar > max) max = scalar;
-            }
-            return (min, max);
-        }
-
-        private static Vector2 Project(Vector2 vertex, Vector2 axis)
-        {
-            double dot = Vector2.Dot(vertex, axis);
-            double mag2 = axis.LengthSquared();
-            return dot / mag2 * axis;
-        }
-
-        private static double Scalar(Vector2 vertex, Vector2 axis)
-        {
-            return Vector2.Dot(vertex, axis);
-        }
-
-    }
-
     public class PolyAABB
     {
         Vector2 max;

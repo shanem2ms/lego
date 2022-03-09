@@ -4,7 +4,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.IO;
 using System.Linq;
+using System.Timers;
 using System.ComponentModel;
+using System.Windows.Media;
 
 namespace partmake
 {
@@ -78,8 +80,14 @@ namespace partmake
             Eps.Text = Topology.Mesh.Epsilon.ToString();
             vis.OnINodeSelected += Vis_OnINodeSelected;
             vis.OnBSPNodeSelected += Vis_OnBSPNodeSelected;
+            vis.OnLogUpdated += Vis_OnLogUpdated;
         }
-      
+
+        private void Vis_OnLogUpdated(object sender, string e)
+        {
+            polyLog.LogText = e;
+        }
+
         private void Settings_SettingsChanged(object sender, EventArgs e)
         {
             selectedPart.ClearTopoMesh();
@@ -214,6 +222,25 @@ namespace partmake
             
             vis.SelectedBSPNode = node;
             SelectBSPNode(node);           
+        }
+
+        private void BSPFace_BtnClick(object sender, RoutedEventArgs e)
+        {
+            int faceidx = (int)(sender as Button).Content;
+        }
+        
+        private void ShowPlaneNode_Click(object sender, RoutedEventArgs e)
+        {
+            Topology.PortalFace portalFace = (sender as Button).DataContext as Topology.PortalFace;
+            vis.SelectedPortalFace = portalFace;
+            Topology.PolygonClip.SetLogIdx(portalFace.PlaneNode.nodeIdx);
+            OnSelectedItem(this.selectedItem);
+        }
+
+        private void ShowPlanePolys_Click(object sender, RoutedEventArgs e)
+        {
+            Topology.PortalFace portalFace = (sender as Button).DataContext as Topology.PortalFace;
+            polyLog.LogText = portalFace.GenPolyLog();
         }
     }
 

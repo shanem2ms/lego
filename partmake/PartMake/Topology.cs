@@ -273,8 +273,7 @@ namespace partmake
             public bool isinvalid = false;
             public AABB aabb;
             public string id;
-
-            public BSPNode bspNode { get; set; }
+            public List<BSPNode> bspNodes { get; set; }
             public int idx { get; set; }
             public IEnumerable<Vertex> Vtx => edges.Select(e => e.V0);
 
@@ -548,7 +547,7 @@ namespace partmake
             public List<Face> faces = new List<Face>();
             int nextVtxIdx = 0;
             public Dictionary<ulong, Edge> edgeDict = new Dictionary<ulong, Edge>();
-            double vertexMinDist = 0.0005;
+            static double vertexMinDist = 0.0005;
             EdgeIntersectCPP edgeIntersect = new EdgeIntersectCPP();
             public List<string> logLines = new List<string>();
 
@@ -573,10 +572,15 @@ namespace partmake
                 Vector3 v1 = new Vector3(vals[0], vals[1], vals[2]);
                 return Vector3.DistanceSquared(v1, v2);
             }
-            public bool IsEqual(double[] vals, Vector3 v2)
+            public static bool IsEqual(double[] vals, Vector3 v2)
             {
                 Vector3 v1 = new Vector3(vals[0], vals[1], vals[2]);
                 return Vector3.DistanceSquared(v1, v2) < vertexMinDist;
+            }
+            public static bool IsEqual(double[] vals, Vector2 v2)
+            {
+                Vector2 v1 = new Vector2(vals[0], vals[1]);
+                return Vector2.DistanceSquared(v1, v2) < vertexMinDist;
             }
             public delegate void LogDel(string line);
 
@@ -641,7 +645,6 @@ namespace partmake
                 }
 
                 Face f = new Face(origFace.id, elist);
-                f.bspNode = origFace.bspNode;
                 foreach (EdgePtr eptr in f.edges)
                 {
                     eptr.parentFace = f;
@@ -722,6 +725,11 @@ namespace partmake
 
             public void Fix()
             {
+                int idx = 0;
+                foreach (Face f in faces)
+                {
+                    f.idx = idx++;
+                }
                 DoBsp();
                 this.logLines.Clear();
                 Log("Fix");
@@ -757,11 +765,7 @@ namespace partmake
                     new Dictionary<ulong, Edge>(
                         edgeDict.Where(kv => !kv.Value.split));
                 edgeDict = newDict;
-                int idx = 0;
-                foreach (Face f in faces)
-                {
-                    f.idx = idx++;
-                }
+               
                 //faces = faces.Where(f => f.visited).ToList();
             }
 
@@ -1065,13 +1069,11 @@ namespace partmake
 
                 EdgePtr e2a = MakeEdge(e1a.V1, e0a.V0, null);
                 fa = new Face(f.id, new List<EdgePtr> { e0a, e1a, e2a });
-                fa.bspNode = f.bspNode;
                 EdgePtr e0b = f.edges[2];
                 EdgePtr e1b = f.edges[3];
 
                 EdgePtr e2b = MakeEdge(e1b.V1, e0b.V0, null);
                 fb = new Face(f.id, new List<EdgePtr> { e0b, e1b, e2b });
-                fb.bspNode = f.bspNode;
             }
 
             void SplitXJunctions()
@@ -1649,8 +1651,9 @@ namespace partmake
                         edges.Add(e);
                 }
             }
-            public void GetVertices(List<Vtx> vlist, bool allowQuads)
+            public void GetVertices(List<Vtx> vlist, List<int> faceIndices, bool allowQuads)
             {
+                int faceIdx = 0;
                 foreach (var f in faces)
                 {
                     Vector3 nrm = f.Normal;
@@ -1659,12 +1662,15 @@ namespace partmake
                     vlist.Add(vtxs[0]);
                     vlist.Add(vtxs[1]);
                     vlist.Add(vtxs[2]);
+                    faceIndices.Add(faceIdx);
                     if (allowQuads && vtxs.Length == 4)
                     {
                         vlist.Add(vtxs[0]);
                         vlist.Add(vtxs[2]);
                         vlist.Add(vtxs[3]);
+                        faceIndices.Add(faceIdx);
                     }
+                    faceIdx++;
                 }
             }
             void RemoveDuplicateFaces()
