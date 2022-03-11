@@ -296,6 +296,22 @@ namespace partmake
                 return true;
             }
 
+            static public List<List<Vector3>> GetTriangles(List<Vector3> points)
+            {
+                List<List<Vector3>> tris = new List<List<Vector3>>();
+                if (points.Count == 3)
+                {
+                    tris.Add(points);
+                }
+                else if (points.Count > 3)
+                {
+                    for (int i = 0; i < points.Count - 2; ++i)
+                    {
+                        tris.Add(new List<Vector3>() { points[0], points[i + 1], points[i + 2] });
+                    }
+                }
+                return tris;
+            }
             static double Area(Vector2 d0, Vector2 d1, Vector2 d2)
             {
                 double dArea = ((d1.X - d0.X) * (d2.Y - d0.Y) - (d2.X - d0.X) * (d1.Y - d0.Y)) / 2.0f;

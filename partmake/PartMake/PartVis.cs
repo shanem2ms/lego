@@ -36,12 +36,13 @@ namespace partmake
 
         private DeviceBuffer _bspPortalsVertexBuffer;
         private DeviceBuffer _bspPortalsIndexBuffer;
-        uint _bspPortalsIndexCount;
+        List<Tuple<uint, uint>> _bspPortalsIndexCounts;
+        List<Topology.BSPPortal> _bspPortals;
+
         private DeviceBuffer _bspFacesVertexBuffer;
         private DeviceBuffer _bspFacesIndexBuffer;
         uint _bspFacesIndexCount;
-        List<Tuple<uint, uint>> _bspPortalsIndexCounts;
-        List<Topology.BSPPortal> _bspPortals;
+        List<Tuple<uint, uint>> _bspFacesIndexCounts;
 
         uint _cubeIndexCount;
         uint _planeIndexCount;
@@ -83,6 +84,7 @@ namespace partmake
 
         public bool DoMesh { get; set; } = false;
         public bool BSPPortals { get; set; } = true;
+        public bool BSPFaces { get; set; } = false;
 
         public bool DoRaycast { get; set; } = false;
         public bool ShowEdges { get; set; } = true;
@@ -90,6 +92,8 @@ namespace partmake
         public bool ShowBisector { get; set; }
         public bool NonManifold { get; set; } = false;
         public bool ShowConnectors { get; set; }
+
+        public bool ShowExteriorPortals { get; set; } = false;
         Vector4[] edgePalette;
         uint numPrimitives;
 
@@ -185,6 +189,10 @@ namespace partmake
                     case System.Windows.Input.Key.S:
                         _testPrimPos.Z -= move;
                         break;
+                    case System.Windows.Input.Key.E:
+                        ShowExteriorPortals = !ShowExteriorPortals;
+                        LoadPortalsMesh();
+                        break;
                     case System.Windows.Input.Key.V:
                         if (selectedBSPNode != null && selectedBSPNode.Portal != null)
                             selectedBSPNode.Portal.Visible = !selectedBSPNode.Portal.Visible;
@@ -221,6 +229,17 @@ namespace partmake
                     case System.Windows.Input.Key.M:
                         DoMesh = !DoMesh;
                         BSPPortals = !DoMesh;
+                        break;
+                    case System.Windows.Input.Key.K:
+                        {
+                            var portals = _part.GetTopoMesh().bSPTree.GetLeafPortals();
+                            foreach (var portal in portals)
+                            {
+                                portal.Visible = false;
+                            }
+                            _part.GetTopoMesh().bSPTree.TraceToPortal(selectedBSPNode.Portal);
+                            LoadPortalsMesh();
+                        }
                         break;
 
                 }
@@ -487,44 +506,83 @@ namespace partmake
         void LoadPortalsMesh()
         {
             _bspPortals =
-                 _part.GetTopoMesh().bSPTree.GetLeafPortals().Where(p => p.Visible && !p.IsExterior).ToList();
+                 _part.GetTopoMesh().bSPTree.GetLeafPortals().Where(p => p.Visible && (ShowExteriorPortals || !p.IsExterior)).ToList();
 
-            List<Vtx> vlist = new List<Vtx>();
-            _bspPortalsIndexCounts = new List<Tuple<uint, uint>>();
-            foreach (var portal in _bspPortals)
             {
-                uint startIdx = (uint)vlist.Count;
-                foreach (var face in portal.Faces)
+                List<Vtx> vlist = new List<Vtx>();
+                _bspPortalsIndexCounts = new List<Tuple<uint, uint>>();
+                foreach (var portal in _bspPortals)
                 {
-                    if (onlyShowCoveredPortalFaces && !face.IsCovered)
-                        continue;
-                    var triangles = face.GetTriangles();
-                    foreach (var tri in triangles)
+                    uint startIdx = (uint)vlist.Count;
+                    foreach (var face in portal.Faces)
                     {
-                        vlist.AddRange(
-                        tri.Select(v => 
-                            new Vtx(v, face.Normal, new System.DoubleNumerics.Vector2(0, 0))));
+                        if (onlyShowCoveredPortalFaces && !face.IsCovered)
+                            continue;
+                        var triangles = Topology.Face.GetTriangles(face.points);
+                        foreach (var tri in triangles)
+                        {
+                            vlist.AddRange(
+                            tri.Select(v =>
+                                new Vtx(v, face.Normal, new System.DoubleNumerics.Vector2(0, 0))));
+                        }
                     }
+                    _bspPortalsIndexCounts.Add(new Tuple<uint, uint>(startIdx,
+                        (uint)vlist.Count - startIdx));
                 }
-                _bspPortalsIndexCounts.Add(new Tuple<uint, uint>(startIdx,
-                    (uint)vlist.Count - startIdx));
-            }
 
-            Vtx[] vertices = vlist.ToArray();
-            uint[] indices = new uint[vlist.Count];
-            for (uint i = 0; i < indices.Length; i++)
+                Vtx[] vertices = vlist.ToArray();
+                uint[] indices = new uint[vlist.Count];
+                for (uint i = 0; i < indices.Length; i++)
+                {
+                    indices[i] = i;
+                }
+                _bspPortalsVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
+                GraphicsDevice.UpdateBuffer(_bspPortalsVertexBuffer, 0, vertices);
+
+                _bspPortalsIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)indices.Length, BufferUsage.IndexBuffer));
+                GraphicsDevice.UpdateBuffer(_bspPortalsIndexBuffer, 0, indices);
+            }
             {
-                indices[i] = i;
+                _bspFacesIndexCounts = new List<Tuple<uint, uint>>();
+                List<Vtx> vlist = new List<Vtx>();
+                foreach (var portal in _bspPortals)
+                {
+                    uint startIdx = (uint)vlist.Count;
+                    foreach (var face in portal.Faces)
+                    {
+                        if (face.modelFaces != null)
+                        {
+                            foreach (var pts in face.modelFaces)
+                            {
+                                var triangles = Topology.Face.GetTriangles(pts);
+                                foreach (var tri in triangles)
+                                {
+                                    vlist.AddRange(
+                                    tri.Select(v =>
+                                        new Vtx(v, face.Normal, new System.DoubleNumerics.Vector2(0, 0))));
+                                }
+                            }
+                        }
+                    }
+                    _bspFacesIndexCounts.Add(new Tuple<uint, uint>(startIdx,
+                        (uint)vlist.Count - startIdx));
+
+                }
+                if (vlist.Count > 0)
+                {
+                    Vtx[] vertices = vlist.ToArray();
+                    uint[] indices = new uint[vlist.Count];
+                    for (uint i = 0; i < indices.Length; i++)
+                    {
+                        indices[i] = i;
+                    }
+                    _bspFacesVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
+                    GraphicsDevice.UpdateBuffer(_bspFacesVertexBuffer, 0, vertices);
+
+                    _bspFacesIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)indices.Length, BufferUsage.IndexBuffer));
+                    GraphicsDevice.UpdateBuffer(_bspFacesIndexBuffer, 0, indices);
+                }
             }
-            _bspPortalsVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
-            GraphicsDevice.UpdateBuffer(_bspPortalsVertexBuffer, 0, vertices);
-
-            _bspPortalsIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)indices.Length, BufferUsage.IndexBuffer));
-            GraphicsDevice.UpdateBuffer(_bspPortalsIndexBuffer, 0, indices);
-            _bspPortalsIndexCount = (uint)indices.Length;
-
-
-            //_bspFacesVertexBuffer
         }
         void OnBSPNodeUpdated()
         {
@@ -536,7 +594,7 @@ namespace partmake
             List<Vtx> vlist = new List<Vtx>();
             foreach (var face in selectedBSPNode.Portal.Faces)
             {
-                List<List<System.DoubleNumerics.Vector3>> tris = face.GetTriangles();
+                var tris = Topology.Face.GetTriangles(face.points);
                 foreach (var tri in tris)
                 {
                     vlist.AddRange(
@@ -555,7 +613,7 @@ namespace partmake
 
             _bspIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)indices.Length, BufferUsage.IndexBuffer));
             GraphicsDevice.UpdateBuffer(_bspIndexBuffer, 0, indices);
-            _bspIndexCount = (uint)indices.Length;                    
+            _bspIndexCount = (uint)indices.Length;
         }
         void UpdatePrimForTest()
         {
@@ -838,6 +896,7 @@ namespace partmake
                 DrawMesh(ref mat);
 
                 DrawBSPPortals(ref mat);
+                DrawBSPFaces(ref mat);
 
                 DrawEdges(ref mat, ref viewmat, ref projMat);
 
@@ -971,11 +1030,11 @@ namespace partmake
                     int b = (pidx >> 16) & 0xFF;
                     Vector4 meshColor = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
                     var offsets = _bspPortalsIndexCounts[i];
-                    
+
                     _cl.UpdateBuffer(_materialBuffer, 0, ref meshColor);
                     _cl.DrawIndexed(offsets.Item2, 1, offsets.Item1, 0, 0);
                 }
-               
+
                 _cl.CopyTexture(this._pickTexture, this._pickStgTexture);
                 pickReady = 1;
             }
@@ -1126,7 +1185,7 @@ namespace partmake
             if (DoMesh)
             {
                 _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
-                Vector4 col = new Vector4(1, 1, 0, 1) * 0.5f;
+                Vector4 col = new Vector4(1, 1, 0, 1);
                 _cl.UpdateBuffer(_materialBuffer, 0, ref col);
 
                 _cl.SetPipeline(_pipeline);
@@ -1177,6 +1236,28 @@ namespace partmake
 
                 int portalIdx = 0;
                 foreach (var offsets in _bspPortalsIndexCounts)
+                {
+                    Vector4 col = new Vector4(_bspPortals[portalIdx].color, 1);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+                    _cl.DrawIndexed(offsets.Item2, 1, offsets.Item1, 0, 0);
+                    portalIdx++;
+                }
+            }
+        }
+
+        void DrawBSPFaces(ref Matrix4x4 mat)
+        {
+            if (BSPFaces)
+            {
+                _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
+                _cl.SetPipeline(_pipeline);
+                _cl.SetVertexBuffer(0, _bspFacesVertexBuffer);
+                _cl.SetIndexBuffer(_bspFacesIndexBuffer, IndexFormat.UInt32);
+                _cl.SetGraphicsResourceSet(0, _projViewSet);
+                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+
+                int portalIdx = 0;
+                foreach (var offsets in _bspFacesIndexCounts)
                 {
                     Vector4 col = new Vector4(_bspPortals[portalIdx].color, 1);
                     _cl.UpdateBuffer(_materialBuffer, 0, ref col);

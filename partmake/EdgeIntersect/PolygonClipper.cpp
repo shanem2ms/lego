@@ -7,23 +7,25 @@
 
 static int64_t const hiRange = 0x3FFFFFFFFFFFFFFFLL;
 #define HORIZONTAL (-1.0E+40)
-#define TOLERANCE (1.0e-20)
+#define TOLERANCE (1.0e-6)
 #define NEAR_ZERO(val) (((val) > -TOLERANCE) && ((val) < TOLERANCE))
 #define NEAR_EQUAL(a, b) NEAR_ZERO((a) - (b))
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
+static std::string errorstr;
+
 bool SlopesEqual(const typename PolygonClipper::Edge& e1, const typename PolygonClipper::Edge& e2)
 {
-    return e1.deltaY * e2.deltaX == e1.deltaX * e2.deltaY;
+    return NEAR_EQUAL(e1.deltaY * e2.deltaX, e1.deltaX * e2.deltaY);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
- bool SlopesEqual(const Vec4& pt1, const Vec4& pt2, const Vec4& pt3)
+bool SlopesEqual(const Vec4& pt1, const Vec4& pt2, const Vec4& pt3)
 {
-    return (pt1.y - pt2.y) * (pt2.x - pt3.x) == (pt1.x - pt2.x) * (pt2.y - pt3.y);
+    return NEAR_EQUAL((pt1.y - pt2.y) * (pt2.x - pt3.x), (pt1.x - pt2.x) * (pt2.y - pt3.y));
 }
 
 
@@ -136,7 +138,7 @@ bool PolygonClipper::AddPolygons(const std::vector<std::vector<Vec4>>& pg)
 
 inline bool EqXY(const Vec4& pt1, const Vec4& pt2)
 {
-    return pt1 == pt2;//(pt1.GetX() == pt2.GetX() && pt1.GetY() == pt2.GetY());
+    return (NEAR_EQUAL(pt1.x, pt2.x) && NEAR_EQUAL(pt1.y, pt2.y));
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -496,10 +498,12 @@ typename PolygonClipper::OutPt* GetBottomPt(typename PolygonClipper::OutPt* pp)
         }
         p = p->next;
     }
+    PolygonClipper::OutPt* tmp = pp;
     if (dups)
     {
+        int maxiter = 0;
         //there appears to be at least 2 vertices at bottomPt so ...
-        while (dups != p)
+        while (dups != p && maxiter < 100)
         {
             if (!FirstIsBottomPt(p, dups))
             {
@@ -510,6 +514,14 @@ typename PolygonClipper::OutPt* GetBottomPt(typename PolygonClipper::OutPt* pp)
             {
                 dups = dups->next;
             }
+            maxiter++;
+        }
+        if (maxiter == 100)
+        {
+            std::stringstream ss;
+            ss.precision(17);
+            ss << "[error maxiter. " << tmp->pt.x << ", " << tmp->pt.y << "]\n";
+            errorstr += ss.str();
         }
     }
     return pp;
@@ -799,7 +811,7 @@ void InterpXUV(typename PolygonClipper::Edge& edge, const double currentY, doubl
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-bool IntersectPoint(typename PolygonClipper::Edge& edge1, typename PolygonClipper::Edge& edge2,
+bool IntersectPoint2(typename PolygonClipper::Edge& edge1, typename PolygonClipper::Edge& edge2,
     Vec4& ip)
 {
     double b1, b2;
@@ -807,11 +819,13 @@ bool IntersectPoint(typename PolygonClipper::Edge& edge1, typename PolygonClippe
     {
         if (edge2.bot.y > edge1.bot.y)
         {
+            ip.x = edge2.bot.x;
             ip.y = edge2.bot.y;
             ip.w = edge2.bot.v;
         }
         else
         {
+            ip.x = edge1.bot.x;
             ip.y = edge1.bot.y;
             ip.w = edge1.bot.v;
         }
@@ -894,8 +908,75 @@ bool IntersectPoint(typename PolygonClipper::Edge& edge1, typename PolygonClippe
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void IntersectPoint(PolygonClipper::Edge& edge1, PolygonClipper::Edge& edge2, Vec4& ip)
+{
+#ifdef use_xyz  
+    ip.Z = 0;
+#endif
+
+    double b1, b2;
+    if (NEAR_EQUAL(edge1.dx, edge2.dx))
+    {
+        ip.y = edge1.cur.y;
+        ip.x = InterpX(edge1, ip.y);
+        return;
+    }
+    else if (NEAR_ZERO(edge1.dx))
+    {
+        ip.x = edge1.bot.x;
+        if (NEAR_EQUAL(edge2.dx, HORIZONTAL))
+            ip.y = edge2.bot.y;
+        else
+        {
+            b2 = edge2.bot.y - (edge2.bot.x / edge2.dx);
+            ip.y = Round(ip.x / edge2.dx + b2);
+        }
+    }
+    else if (NEAR_ZERO(edge2.dx))
+    {
+        ip.x = edge2.bot.x;
+        if (NEAR_EQUAL(edge1.dx, HORIZONTAL))
+            ip.y = edge1.bot.y;
+        else
+        {
+            b1 = edge1.bot.y - (edge1.bot.x / edge1.dx);
+            ip.y = Round(ip.x / edge1.dx + b1);
+        }
+    }
+    else
+    {
+        b1 = edge1.bot.x - edge1.bot.y * edge1.dx;
+        b2 = edge2.bot.x - edge2.bot.y * edge2.dx;
+        double q = (b2 - b1) / (edge1.dx - edge2.dx);
+        ip.y = Round(q);
+        if (std::fabs(edge1.dx) < std::fabs(edge2.dx))
+            ip.x = Round(edge1.dx * q + b1);
+        else
+            ip.x = Round(edge2.dx * q + b2);
+    }
+
+    if (ip.y < edge1.top.y || ip.y < edge2.top.y)
+    {
+        if (edge1.top.y > edge2.top.y)
+            ip.y = edge1.top.y;
+        else
+            ip.y = edge2.top.y;
+        if (std::fabs(edge1.dx) < std::fabs(edge2.dx))
+            ip.x = InterpX(edge1, ip.y);
+        else
+            ip.x = InterpX(edge2, ip.y);
+    }
+    //finally, don't allow 'ip' to be BELOW curr.y (ie bottom of scanbeam) ...
+    if (ip.y > edge1.cur.y)
+    {
+        ip.y = edge1.cur.y;
+        //use the more vertical edge to derive X ...
+        if (std::fabs(edge1.dx) > std::fabs(edge2.dx))
+            ip.x = InterpX(edge2, ip.y); else
+            ip.x = InterpX(edge1, ip.y);
+    }
+}
 
 inline bool E2InsertsBeforeE1(typename PolygonClipper::Edge& e1, typename PolygonClipper::Edge& e2)
 {
@@ -2230,10 +2311,11 @@ void PolygonClipper::BuildIntersectList(const double botY, const double topY)
             Vec4 pt;
             if (e->cur.x > eNext->cur.x)
             {
-                if (!IntersectPoint(*e, *eNext, pt) && e->cur.x > eNext->cur.x + 1)
-                {
-                    throw "Intersection error";
-                }
+                if (e->cur.x == 13.389976584991722)
+                    __debugbreak();
+                IntersectPoint(*e, *eNext, pt);
+                if (pt.x == 13.389976584991722)
+                    __debugbreak();
                 if (pt.y > botY)
                 {
                     double X, U, V;
@@ -3229,9 +3311,10 @@ void OffsetPolygons(const std::vector<std::vector<Vec4>>& inPolysC, std::vector<
 
 void TrimSmall(std::vector<std::vector<Vec4>>& polys)
 {
+    return;
     for (auto itPoly = polys.begin(); itPoly != polys.end();)
     {
-        if (abs(Area(*itPoly)) < 1e-3)
+        if (abs(Area(*itPoly)) < 1e-8)
             itPoly = polys.erase(itPoly);
         else
             ++itPoly;
@@ -3239,7 +3322,7 @@ void TrimSmall(std::vector<std::vector<Vec4>>& polys)
 }
 
 static std::string polygonLog;
-static int sLogNode = 86;
+static int sLogNode = 223;
 
 extern "C" __declspec(dllexport) void SetLogNodeIdx(int idx)
 {
@@ -3247,11 +3330,11 @@ extern "C" __declspec(dllexport) void SetLogNodeIdx(int idx)
 }
 
 extern "C" __declspec(dllexport) int GetLogLength()
-{ 
+{
     return (int)polygonLog.size();
 }
 
-extern "C" __declspec(dllexport) void GetLogBytes(char *outchr)
+extern "C" __declspec(dllexport) void GetLogBytes(char* outchr)
 {
     memcpy(outchr, polygonLog.c_str(), polygonLog.size());
 }
@@ -3267,8 +3350,17 @@ void LogPoly(std::stringstream& str,
     str << std::endl;
 }
 
-void LogPolys(std::stringstream &str,
-    const std::vector<std::vector<Vec4>> &polys)
+void LogErrors(std::stringstream& str)
+{
+    if (errorstr.size() > 0)
+    {
+        str << errorstr;
+        errorstr.clear();
+    }
+}
+
+void LogPolys(std::stringstream& str,
+    const std::vector<std::vector<Vec4>>& polys)
 {
     for (auto& poly : polys)
     {
@@ -3276,32 +3368,66 @@ void LogPolys(std::stringstream &str,
     }
     str << std::endl;
 }
-extern "C" __declspec(dllexport) int ClipPolygons(int nodeIdx, double* pointListDbls, int* polyPointCounts, int* nodefaceIdxs, int nPortalPolys, int nModelPolys,
-    int *connectedPortals)
+
+double AreaPolys(const std::vector<std::vector<Vec4>>& polys)
 {
-    bool doLog = false;// nodeIdx == sLogNode;
+    double area = 0;
+    for (auto& poly : polys)
+    {
+        area += Area(poly);
+    }
+    return area;
+}
+
+static std::vector<Vec2> sOutPolys;
+static std::vector<int> sOutPolyMapping;
+
+extern "C" __declspec(dllexport) int GetIntPolys()
+{
+    return (int)sOutPolyMapping.size();
+}
+
+extern "C" __declspec(dllexport) Vec2 * GetIntPolysPtr()
+{
+    return sOutPolys.data();
+}
+
+extern "C" __declspec(dllexport) int* GetIntPolysMapPtr()
+{
+    return sOutPolyMapping.data();
+}
+void TestClip();
+extern "C" __declspec(dllexport) int ClipPolygons(int nodeIdx, double* pointListDbls, int* polyPointCounts, int* nodefaceIdxs, int nPortalPolys, int nModelPolys,
+    int* connectedPortals)
+{
+    //TestClip();
+    bool doLog = nodeIdx == sLogNode;
     Vec2* pointList = (Vec2*)pointListDbls;
     std::vector<std::vector<Vec4>> portalPolys;
     int polyStartIdx = 0;
     std::vector<std::vector<Vec4>> modelPolys;
     std::stringstream str;
+    str.precision(17);
     if (doLog) str << "[clip1 nodeidx = " << nodeIdx << "]" << std::endl << std::endl;
     if (doLog) str << "[color=160,160,160]" << std::endl << std::endl;
     for (int polyIdx = 0; polyIdx < nPortalPolys; ++polyIdx)
     {
         int polyEndIdx = polyPointCounts[polyIdx];
         portalPolys.push_back(std::vector<Vec4>());
-        std::vector<Vec4> &clipperPoly = portalPolys.back();
-        if (doLog) str << "[nodeidx=" << nodefaceIdxs[polyIdx] << "]" << std::endl;
+        std::vector<Vec4>& clipperPoly = portalPolys.back();
         for (int pointIdx = polyStartIdx; pointIdx < polyEndIdx; ++pointIdx)
         {
-            const Vec2 &p = pointList[pointIdx];
+            const Vec2& p = pointList[pointIdx];
             clipperPoly.push_back(Vec4(p.x, p.y, polyIdx, polyIdx));
-            if (doLog) str << p.x << "," << p.y << std::endl;
         }
-        if (doLog) str << std::endl;
         if (!PolygonClipper::Orientation(clipperPoly))
             std::reverse(clipperPoly.begin(), clipperPoly.end());
+        if (doLog)
+        {
+            str << "[nodeidx=" << nodefaceIdxs[polyIdx] << "]" << std::endl;
+            LogPoly(str, clipperPoly);
+            str << std::endl;
+        }
         polyStartIdx = polyEndIdx;
     }
 
@@ -3309,7 +3435,6 @@ extern "C" __declspec(dllexport) int ClipPolygons(int nodeIdx, double* pointList
     if (doLog) str << "[models]" << std::endl;
     for (int polyIdx = nPortalPolys; polyIdx < (nPortalPolys + nModelPolys); ++polyIdx)
     {
-        if (doLog) str << "[faceidx=" << nodefaceIdxs[polyIdx] << "]" << std::endl;
         int polyEndIdx = polyPointCounts[polyIdx];
         modelPolys.push_back(std::vector<Vec4>());
         std::vector<Vec4>& clipperPoly = modelPolys.back();
@@ -3317,11 +3442,15 @@ extern "C" __declspec(dllexport) int ClipPolygons(int nodeIdx, double* pointList
         {
             const Vec2& p = pointList[pointIdx];
             clipperPoly.push_back(Vec4(p.x, p.y, polyIdx, polyIdx));
-            if (doLog) str << p.x << "," << p.y << std::endl;
         }
         if (doLog) str << std::endl;
         if (!PolygonClipper::Orientation(clipperPoly))
             std::reverse(clipperPoly.begin(), clipperPoly.end());
+        if (doLog)
+        {
+            str << "[faceidx=" << nodefaceIdxs[polyIdx] << "]" << std::endl;
+            LogPoly(str, clipperPoly);
+        }
         polyStartIdx = polyEndIdx;
     }
 
@@ -3331,43 +3460,62 @@ extern "C" __declspec(dllexport) int ClipPolygons(int nodeIdx, double* pointList
     modelClipper.AddPolygons(modelPolys);
     std::vector<std::vector<Vec4>> unionModelPolys;
     modelClipper.Execute(unionModelPolys);
+    LogErrors(str);
     if (doLog) str << "[color=160,200,160]" << std::endl << std::endl;
     if (doLog) str << "[union]" << std::endl;
     if (doLog) LogPolys(str, unionModelPolys);
 
-    for (auto& poly : unionModelPolys)
-    {
-        std::reverse(poly.begin(), poly.end());
-    }
-
     std::vector<std::pair<int, int>> intpolys;
     int* connectedPortalsCur = connectedPortals;
+    sOutPolys.clear();
+    sOutPolyMapping.clear();
     for (int i = 0; i < portalPolys.size(); ++i)
     {
         for (int j = i + 1; j < portalPolys.size(); ++j)
-        {           
+        {
             PolygonClipper clipper;
             clipper.AddPolygon(portalPolys[i]);
             clipper.AddPolygon(portalPolys[j]);
-            std::vector<std::vector<Vec4>> outPolys;
-            clipper.Execute(outPolys, 2);
-            TrimSmall(outPolys);
-            if (outPolys.size() > 0)
+            std::vector<std::vector<Vec4>> intPortalPolys;
+            clipper.Execute(intPortalPolys, 2);
+            LogErrors(str);
+            TrimSmall(intPortalPolys);            
+            if (intPortalPolys.size() > 0 &&
+                AreaPolys(intPortalPolys) > 0.001)
             {
-                if (doLog) str << "[intersect=" << nodefaceIdxs[i] << ", " << nodefaceIdxs[j] << "]" << std::endl;
-                if (doLog) LogPolys(str, outPolys);
+                if (doLog) str << "[color=0,255,0]" << std::endl;
+                if (doLog) str << "[intersection=" << nodefaceIdxs[i] << ", " << nodefaceIdxs[j] << "]" << std::endl;
+                if (doLog) LogPolys(str, intPortalPolys);
 
                 PolygonClipper finalClipper;
-                finalClipper.AddPolygons(outPolys);
+                finalClipper.AddPolygons(intPortalPolys);
                 finalClipper.AddPolygons(unionModelPolys);
-                std::vector<std::vector<Vec4>> outOpenPolys;
-                finalClipper.Execute(outOpenPolys);
-                TrimSmall(outOpenPolys);
-                if (outOpenPolys.size() > 0)
+                std::vector<std::vector<Vec4>> intModelPolys;
+                finalClipper.Execute(intModelPolys, 2);
+                LogErrors(str);
+                TrimSmall(intModelPolys);
+                bool isBlocked = false;
+                if (intModelPolys.size() > 0)
                 {
-                    if (doLog) str << "[openportal=" << nodefaceIdxs[i] << ", " << nodefaceIdxs[j] << "]" << std::endl;
-                    if (doLog) LogPolys(str, outOpenPolys);
-
+                    double areaIAM = AreaPolys(intModelPolys);
+                    double areaIPM = AreaPolys(intPortalPolys);
+                    if (areaIAM / areaIPM > 0.95)
+                    {
+                        for (auto& poly : intModelPolys)
+                        {
+                            sOutPolyMapping.push_back(i);
+                            sOutPolyMapping.push_back(j);
+                            sOutPolyMapping.push_back((int)poly.size());
+                            sOutPolys.insert(sOutPolys.end(), poly.begin(), poly.end());
+                        }
+                        isBlocked = true;
+                    }
+                    if (doLog) str << "[color=255,0,0]" << std::endl;
+                    if (doLog) str << "[intmodel=" << nodefaceIdxs[i] << ", " << nodefaceIdxs[j] << "]" << std::endl;
+                    if (doLog) LogPolys(str, intModelPolys);
+                }
+                if (!isBlocked)
+                {
                     *connectedPortalsCur = i;
                     connectedPortalsCur++;
                     *connectedPortalsCur = j;
@@ -3385,14 +3533,14 @@ extern "C" __declspec(dllexport) int ClipPolygons(int nodeIdx, double* pointList
 extern "C" __declspec(dllexport) int ClipPolygons2(int nodeIdx, double* pointListDbls, int* polyPointCounts, int* nodefaceIdxs, int nPortalPolys, int nModelPolys,
     int* coveredPortals)
 {
-    bool doLog = nodeIdx == sLogNode;
+    bool doLog = false;// nodeIdx == sLogNode;
 
     Vec2* pointList = (Vec2*)pointListDbls;
     int polyStartIdx = 0;
     std::vector<std::vector<Vec4>> portalPolys;
     std::vector<std::vector<Vec4>> modelPolys;
     std::stringstream str;
-
+    str.precision(17);
     for (int polyIdx = 0; polyIdx < nPortalPolys; ++polyIdx)
     {
         int polyEndIdx = polyPointCounts[polyIdx];
@@ -3430,6 +3578,7 @@ extern "C" __declspec(dllexport) int ClipPolygons2(int nodeIdx, double* pointLis
     modelClipper.AddPolygons(offsetModelPolys);
     std::vector<std::vector<Vec4>> unionModelPolys;
     modelClipper.Execute(unionModelPolys);
+    LogErrors(str);
 
     for (auto& poly : unionModelPolys)
     {
@@ -3445,6 +3594,7 @@ extern "C" __declspec(dllexport) int ClipPolygons2(int nodeIdx, double* pointLis
         finalClipper.AddPolygons(unionModelPolys);
         std::vector<std::vector<Vec4>> outOpenPolys;
         finalClipper.Execute(outOpenPolys);
+        LogErrors(str);
         TrimSmall(outOpenPolys);
         if (outOpenPolys.size() == 0)
         {
@@ -3455,7 +3605,7 @@ extern "C" __declspec(dllexport) int ClipPolygons2(int nodeIdx, double* pointLis
         else
         {
             if (doLog)
-            {                
+            {
                 str << "[nodeidx=" << nodefaceIdxs[i] << "]" << std::endl;
                 str << "[color=255,0,0]" << std::endl << std::endl;
                 LogPoly(str, portalPolys[i]);
@@ -3463,7 +3613,7 @@ extern "C" __declspec(dllexport) int ClipPolygons2(int nodeIdx, double* pointLis
                 str << "[union]" << std::endl;
                 str << "[color=0,255,0]" << std::endl << std::endl;
                 LogPolys(str, unionModelPolys);
-                
+
                 str << "[result]" << std::endl;
                 str << "[color=0,0,255]" << std::endl << std::endl;
                 LogPolys(str, outOpenPolys);
@@ -3473,4 +3623,31 @@ extern "C" __declspec(dllexport) int ClipPolygons2(int nodeIdx, double* pointLis
     if (doLog) str << '\0';
     if (doLog) polygonLog = str.str();
     return (int)intpolys.size();
+}
+
+
+void TestClip()
+{
+    {
+
+
+        std::vector<Vec4> poly1{
+            Vec4(3.5494850443612584,-14.7058160058094,0,0),
+            Vec4(10.057819644627822,-16,0,0),
+            Vec4(11,-16,0,0),
+            Vec4(11,-11.812647196179263,0,0),
+            Vec4(6.5564081862487784,-12.69625656098323,0,0) };
+
+        std::vector<Vec4> poly2{
+        Vec4(10,-15.988502548927947,0,0),
+        Vec4(10,-12.011497451072058,0,0),
+        Vec4(4.3422056074228348e-15,-14.000000000000002,0,0) };
+
+        PolygonClipper clipper;
+        clipper.AddPolygon(poly2);
+        clipper.AddPolygon(poly1);
+
+        std::vector<std::vector<Vec4>> outpolys;
+        clipper.Execute(outpolys, 2);
+    }
 }

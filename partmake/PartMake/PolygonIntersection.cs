@@ -20,15 +20,7 @@ namespace partmake
         }
 
 
-        public Vector2[] GetVertices()
-        {
-            return vertices;
-        }
-
-        public Vector2 GetVertex(int index)
-        {
-            return vertices[index];
-        }
+        public Vector2[] Vertices => vertices;
 
         public Vector2 GetEdge(int index)
         {

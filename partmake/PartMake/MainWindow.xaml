@@ -133,10 +133,12 @@
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
                                             <RowDefinition Height="*" />
                                         </Grid.RowDefinitions>
                                         <TextBlock Text="{Binding nodeIdx}" />
-                                        <ItemsControl Grid.Row="1" ItemsSource="{Binding Path=Portal.Faces}" >
+                                        <TextBlock Grid.Row="1" Text="{Binding Portal.TraceIdx}" />
+                                        <ItemsControl Grid.Row="2" ItemsSource="{Binding Path=Portal.Faces}" >
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="x:Type topo:PortalFace">
                                                     <Border BorderThickness="5" BorderBrush="Blue" Padding="5">
@@ -186,17 +188,18 @@
             <TabItem Header="Parts">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="81*"/>
-                        <ColumnDefinition Width="16*"/>
+                        <ColumnDefinition Width="51*"/>
+                        <ColumnDefinition Width="111*"/>
+                        <ColumnDefinition Width="32*"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="30" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <TextBlock Height="30" Text="{Binding Path=SelectedItemDesc}" Grid.ColumnSpan="2" />
+                    <TextBlock Height="30" Text="{Binding Path=SelectedItemDesc}" Grid.ColumnSpan="3" />
                     <TreeView Grid.Row="1" Background="AliceBlue" ItemsSource="{Binding Path=CurrentPart}" 
-                      SelectedItemChanged="TreeView_SelectedItemChanged" Grid.ColumnSpan="2">
+                      SelectedItemChanged="TreeView_SelectedItemChanged" Grid.ColumnSpan="3">
                         <TreeView.Resources>
                             <HierarchicalDataTemplate DataType="{x:Type local:LDrawDatNode}"
                                    ItemsSource="{Binding Path=File.Children}">
@@ -213,7 +216,7 @@
                             </HierarchicalDataTemplate>
                         </TreeView.Resources>
                     </TreeView>
-                    <TreeView Grid.Row="1" ItemsSource="{Binding Path=SelectedNode.TopoFaces}" SelectedItemChanged="TreeView_SelectedINodeChanged" Grid.ColumnSpan="2" Margin="0,488,0,0" Grid.RowSpan="2">
+                    <TreeView Grid.Row="1" ItemsSource="{Binding Path=SelectedNode.TopoFaces}" SelectedItemChanged="TreeView_SelectedINodeChanged" Grid.ColumnSpan="3" Margin="0,488,0,0" Grid.RowSpan="2">
                         <TreeView.Resources>
                             <HierarchicalDataTemplate DataType="{x:Type topo:Face}"
                                    ItemsSource="{Binding Path=Children}">
@@ -265,6 +268,7 @@
                     <CheckBox Content="Edges" IsChecked="{Binding ShowEdges, ElementName=_RenderControl}"/>
                     <CheckBox Content="Raycast" IsChecked="{Binding Path=DoRaycast, ElementName=_RenderControl}"/>
                     <CheckBox Content="BSP Portals" IsChecked="{Binding Path=BSPPortals, ElementName=_RenderControl}"/>
+                    <CheckBox Content="BSP Faces" IsChecked="{Binding Path=BSPFaces, ElementName=_RenderControl}"/>
                     <CheckBox Content="Show Connectors" IsChecked="{Binding ShowConnectors, ElementName=_RenderControl}"/>
                 </ComboBox>
                 <TextBox x:Name="Eps" Width="200" TextChanged="Eps_TextChanged" LostFocus="Eps_LostFocus" />

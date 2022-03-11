@@ -225,23 +225,6 @@ namespace partmake
 
                 return true;
             }
-
-            public List<List<Vector3>> GetTriangles()
-            {
-                List<List<Vector3>> tris = new List<List<Vector3>>();
-                if (points.Count == 3)
-                {
-                    tris.Add(points);
-                }
-                else if (points.Count > 3)
-                {
-                    for (int i = 0; i < points.Count - 2; ++i)
-                    {
-                        tris.Add(new List<Vector3>() { points[0], points[i + 1], points[i + 2] });
-                    }
-                }
-                return tris;
-            }
         }
 
         public class PortalFace : BSPFace
@@ -253,6 +236,8 @@ namespace partmake
             public bool IsExteriorWall => isExteriorWall;
             public List<PortalFace> connectedPortalFaces { get; set; }
             public List<BSPFace> connectedModelFaces { get; set; }
+
+            public List<List<Vector3>> modelFaces;
             public List<BSPNode> ConnectedNodes
             {
                 get
@@ -351,7 +336,7 @@ namespace partmake
                     {
                         sb.Append($"{pt.X}, {pt.Y}\n");
                     }
-                    
+
                 }
 
 
@@ -370,7 +355,9 @@ namespace partmake
             List<PortalFace> faces;
             public BSPNode parentNode;
             public System.Numerics.Vector3 color = GenColor();
+            public int minhopcount = -1;
             public bool Visible { get; set; } = true;
+            public int TraceIdx { get; set; } = -1;
 
             bool isExterior = false;
             public bool IsExterior => isExterior;
@@ -480,7 +467,8 @@ namespace partmake
                 posportal = new BSPPortal(posFaces);
             }
 
-            IEnumerable<BSPPortal> ConnectedPortals {
+            IEnumerable<BSPPortal> ConnectedPortals
+            {
                 get
                 {
                     HashSet<BSPPortal> connectedPortals = new HashSet<BSPPortal>();
@@ -506,6 +494,37 @@ namespace partmake
                 {
                     portal.SetExterior();
                 }
+            }
+
+            public int TraceToPortal(BSPPortal findPortal, int hopcount)
+            {
+                int found = -1;
+                if (minhopcount < 0 || minhopcount > hopcount)
+                {
+                    minhopcount = hopcount;
+                    if (this == findPortal)
+                    {
+                        found = hopcount;
+                    }
+                    else
+                    {
+                        foreach (var portal in ConnectedPortals)
+                        {
+                            found = portal.TraceToPortal(findPortal, hopcount + 1);
+                            if (found >= 0) break;
+                        }
+                    }
+
+                }
+                if (found >= 0)
+                {
+                    Visible = true;
+                    TraceIdx = found - hopcount;
+                    color = new System.Numerics.Vector3((float)hopcount / (float)found,
+                        (float)hopcount / (float)found,
+                        (float)hopcount / (float)found);
+                }
+                return found;
             }
 
             public void SetConnectedInvisible()
@@ -587,7 +606,7 @@ namespace partmake
                 {
                     neg = new BSPNode(this, nodeCount++);
                     negPortal.parentNode = neg;
-                    neg.Portal = negPortal;                    
+                    neg.Portal = negPortal;
                 }
                 if (pos == null && posPortal.Faces.Count >= 4)
                 {
@@ -598,7 +617,7 @@ namespace partmake
 
             }
             public void AddFace(BSPFace inface, ref int nodeIdx)
-            {     
+            {
                 if (inface.PlaneDef == Plane)
                 {
                     if (inface.f.bspNodes == null)
@@ -719,8 +738,21 @@ namespace partmake
                             modelFaces.Add(face);
                     }
 
-                    Tuple<int,int> []connecedPolys = clipper.Process(nodeIdx);
-                    int [] coveredPortalFaces = clipper.Process2(nodeIdx);
+                    Tuple<int, int>[] connecedPolys = clipper.Process(nodeIdx);
+                    List<PolygonClip.GetIntersectedPolyResult> results =
+                        clipper.GetIntersectedPolys();
+                    foreach (var result in results)
+                    {
+                        if (portalFaces[result.p1].modelFaces == null)
+                            portalFaces[result.p1].modelFaces = new List<List<Vector3>>();
+                        if (portalFaces[result.p2].modelFaces == null)
+                            portalFaces[result.p2].modelFaces = new List<List<Vector3>>();
+                        var modelFace = Plane.ToMeshPts(result.poly.Vertices).ToList();
+                        portalFaces[result.p1].modelFaces.Add(modelFace);
+                        portalFaces[result.p2].modelFaces.Add(modelFace);
+                    }
+
+                    int[] coveredPortalFaces = clipper.Process2(nodeIdx);
                     foreach (var tuple in connecedPolys)
                     {
                         int i = tuple.Item1;
@@ -733,6 +765,7 @@ namespace partmake
                         portalFaces[i].connectedPortalFaces.Add(portalFaces[j]);
                         portalFaces[j].connectedPortalFaces.Add(portalFaces[i]);
                     }
+
 
                     foreach (int i in coveredPortalFaces)
                     {
@@ -763,9 +796,9 @@ namespace partmake
                 if (neg != null) neg.GetFaces(outfaces);
                 outfaces.AddRange(faces);
                 if (pos != null) pos.GetFaces(outfaces);
-            }           
+            }
         }
-    
+
         public class PointMgr
         {
             static double Epsilon = Mesh.Epsilon;
@@ -851,7 +884,7 @@ namespace partmake
             BSPNode top;
             AABB aabb;
             public BSPNode Top { get => top; }
-
+            BSPPortal startPortal;
             public void BuildTree(List<Face> faces)
             {
                 PlaneMgr mgr = new PlaneMgr();
@@ -898,7 +931,6 @@ namespace partmake
                 {
                     List<BSPPortal> bSPPortals = new List<BSPPortal>();
                     top.GetLeafPortals(bSPPortals);
-                    BSPPortal startPortal = null;
                     foreach (BSPPortal portal in bSPPortals)
                     {
                         foreach (PortalFace face in portal.Faces)
@@ -912,9 +944,21 @@ namespace partmake
                         if (startPortal != null)
                             break;
                     }
+
+                    startPortal.SetExterior();
                 }
             }
 
+            public void TraceToPortal(BSPPortal p)
+            {
+                List<BSPPortal> bSPPortals = new List<BSPPortal>();
+                top.GetLeafPortals(bSPPortals);
+                foreach (BSPPortal portal in bSPPortals)
+                {
+                    portal.minhopcount = -1;
+                }
+                startPortal.TraceToPortal(p, 0);
+            }
             public List<BSPPortal> GetLeafPortals()
             {
                 List<BSPPortal> portals = new List<BSPPortal>();

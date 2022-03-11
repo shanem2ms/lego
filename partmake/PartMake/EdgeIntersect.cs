@@ -97,6 +97,15 @@ namespace partmake
             [DllImport("EdgeIntersect.dll")]
             static extern void SetLogNodeIdx(int idx);
 
+            [DllImport("EdgeIntersect.dll")]
+            static extern int GetIntPolys();
+
+            [DllImport("EdgeIntersect.dll")]
+            static extern IntPtr GetIntPolysPtr();
+
+            [DllImport("EdgeIntersect.dll")]
+            static extern IntPtr GetIntPolysMapPtr();
+
             List<Polygon> portalPolys = new List<Polygon>();
             List<Polygon> modelPolys = new List<Polygon>();
             List<int> nodeIdxs = new List<int>();
@@ -127,7 +136,6 @@ namespace partmake
                 Marshal.FreeHGlobal(ptr);
                 return ret;
             }
-
             public Tuple<int,int> []Process(int nodeIdx)
             {
                 List<Vector2> points = new List<Vector2>();
@@ -135,12 +143,12 @@ namespace partmake
                 int pointCout = 0;
                 foreach (Polygon p in portalPolys)
                 {
-                    pointCout += p.GetVertices().Length;
+                    pointCout += p.Vertices.Length;
                     polyOffsets.Add(pointCout);                    
                 }
                 foreach (Polygon p in modelPolys)
                 {
-                    pointCout += p.GetVertices().Length;
+                    pointCout += p.Vertices.Length;
                     polyOffsets.Add(pointCout);
                 }
 
@@ -157,7 +165,7 @@ namespace partmake
                 IntPtr curptr = ptr;
                 foreach (Polygon p in portalPolys)
                 {
-                    var vertices = p.GetVertices();
+                    var vertices = p.Vertices;
                     foreach (var v in vertices)
                     {
                         Marshal.StructureToPtr<Vector2>(v, curptr, false);
@@ -166,7 +174,7 @@ namespace partmake
                 }
                 foreach (Polygon p in modelPolys)
                 {
-                    var vertices = p.GetVertices();
+                    var vertices = p.Vertices;
                     foreach (var v in vertices)
                     {
                         Marshal.StructureToPtr<Vector2>(v, curptr, false);
@@ -189,7 +197,49 @@ namespace partmake
                     tuples[i] = new Tuple<int, int>(connectedPortals[i * 2],
                         connectedPortals[i * 2 + 1]);
                 }
+
                 return tuples;
+            }
+
+            public class GetIntersectedPolyResult
+            {
+                public int p1;
+                public int p2;
+                public Polygon poly;
+            }
+            public List<GetIntersectedPolyResult> GetIntersectedPolys()
+            {
+                List<GetIntersectedPolyResult> results = new List<GetIntersectedPolyResult>();
+                int numPolys = GetIntPolys();
+                IntPtr polyMaps = GetIntPolysMapPtr();
+                int[] polyMapArray = new int[numPolys];
+                Marshal.Copy(polyMaps, polyMapArray, 0, polyMapArray.Length);
+                int numpts = 0;
+                for (int i = 0; i < polyMapArray.Length; i += 3)
+                {
+                    numpts += polyMapArray[i + 2];
+                }
+                IntPtr ptsPtr = GetIntPolysPtr();
+                double[] pts = new double[numpts * 2];
+                Marshal.Copy(ptsPtr, pts, 0, pts.Length);
+
+                int offset = 0;
+                for (int i = 0; i < polyMapArray.Length; i += 3)
+                {
+                    GetIntersectedPolyResult res = new GetIntersectedPolyResult();
+                    res.p1 = polyMapArray[i];
+                    res.p2 = polyMapArray[i+1];
+                    int numpolypts = polyMapArray[i + 2];
+                    List<Vector2> pts2 = new List<Vector2>();
+                    for (int j = offset; j < offset + numpolypts; j++)
+                    {
+                        pts2.Add(new Vector2(pts[j * 2], pts[j * 2 + 1]));
+                    }
+                    res.poly = new Polygon(pts2);
+                    offset += numpolypts;
+                    results.Add(res);
+                }
+                return results;
             }
             public int[] Process2(int nodeIdx)
             {
@@ -197,12 +247,12 @@ namespace partmake
                 int pointCout = 0;
                 foreach (Polygon p in portalPolys)
                 {
-                    pointCout += p.GetVertices().Length;
+                    pointCout += p.Vertices.Length;
                     polyOffsets.Add(pointCout);
                 }
                 foreach (Polygon p in modelPolys)
                 {
-                    pointCout += p.GetVertices().Length;
+                    pointCout += p.Vertices.Length;
                     polyOffsets.Add(pointCout);
                 }
 
@@ -219,7 +269,7 @@ namespace partmake
                 IntPtr curptr = ptr;
                 foreach (Polygon p in portalPolys)
                 {
-                    var vertices = p.GetVertices();
+                    var vertices = p.Vertices;
                     foreach (var v in vertices)
                     {
                         Marshal.StructureToPtr<Vector2>(v, curptr, false);
@@ -228,7 +278,7 @@ namespace partmake
                 }
                 foreach (Polygon p in modelPolys)
                 {
-                    var vertices = p.GetVertices();
+                    var vertices = p.Vertices;
                     foreach (var v in vertices)
                     {
                         Marshal.StructureToPtr<Vector2>(v, curptr, false);

@@ -33,6 +33,9 @@ struct Vec2
 {
     Vec2(double _x, double _y) :
         x(_x), y(_y) {}
+    Vec2(const Vec4& v) :
+        x(v.x),
+        y(v.y) {}
     Vec2() :
         x(0), y(0) {}
     double x;
