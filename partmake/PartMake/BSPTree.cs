@@ -80,6 +80,7 @@ namespace partmake
             public BSPNode PlaneNode { get; set; }
             public BSPPortal portal;
             bool isExteriorWall = false;
+            public bool isFinal = false;
             public bool IsCovered { get; set; } = false;
             public bool IsExteriorWall => isExteriorWall;
             public List<PortalFace> connectedPortalFaces { get; set; }
@@ -635,7 +636,6 @@ namespace partmake
                         portalFaces[result.p2].modelFaces.Add(modelFace);
                     }
 
-                    int[] coveredPortalFaces = clipper.Process2(nodeIdx);
                     foreach (var tuple in connecedPolys)
                     {
                         int i = tuple.Item1;
@@ -649,12 +649,14 @@ namespace partmake
                         portalFaces[j].connectedPortalFaces.Add(portalFaces[i]);
                     }
 
+                    /*
+                    int[] coveredPortalFaces = clipper.Process2(nodeIdx);
 
                     foreach (int i in coveredPortalFaces)
                     {
                         portalFaces[i].IsCovered = true;
                     }
-
+                    */
                     if (modelFaces.Count > 0)
                     {
                         foreach (var face in portalFaces)
@@ -776,6 +778,7 @@ namespace partmake
                 {
                     List<BSPPortal> bSPPortals = new List<BSPPortal>();
                     top.GetLeafPortals(bSPPortals);
+
                     foreach (BSPPortal portal in bSPPortals)
                     {
                         foreach (PortalFace face in portal.Faces)
@@ -791,12 +794,27 @@ namespace partmake
                     }
 
                     startPortal.SetExterior();
+                }
+                {
+                    List<BSPPortal> bSPPortals = new List<BSPPortal>();
+                    top.GetLeafPortals(bSPPortals);
 
                     foreach (BSPPortal portal in bSPPortals)
                     {
+                        if (portal.parentNode.nodeIdx == 244)
+                            Debugger.Break();
                         foreach (PortalFace face in portal.Faces)
                         {
-                            //face.
+                            bool ext = face.portal.IsExterior;
+                            bool isFinal = true;
+                            if (face.connectedPortalFaces == null)
+                                continue;
+                            foreach (var connected in face.connectedPortalFaces)
+                            {
+                                if (connected.portal.IsExterior == ext)
+                                { isFinal = false; break; }
+                            }
+                            face.isFinal = isFinal;
                         }
                     }
                 }

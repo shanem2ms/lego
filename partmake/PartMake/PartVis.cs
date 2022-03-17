@@ -569,18 +569,14 @@ namespace partmake
                     uint startIdx = (uint)vlist.Count;
                     foreach (var face in portal.Faces)
                     {
-                        if (face.modelFaces != null &&
-                             showInwardOrOutwardFaces == face.PointsInward)
+                        if (face.isFinal)
                         {                            
-                            foreach (var pts in face.modelFaces)
+                            var triangles = Topology.Face.GetTriangles(face.points);
+                            foreach (var tri in triangles)
                             {
-                                var triangles = Topology.Face.GetTriangles(pts);
-                                foreach (var tri in triangles)
-                                {
-                                    vlist.AddRange(
-                                    tri.Select(v =>
-                                        new Vtx(v, face.Normal, new System.DoubleNumerics.Vector2(0, 0))));
-                                }
+                                vlist.AddRange(
+                                tri.Select(v =>
+                                    new Vtx(v, face.Normal, new System.DoubleNumerics.Vector2(0, 0))));
                             }
                         }
                     }
