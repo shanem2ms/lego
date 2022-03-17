@@ -29,9 +29,9 @@ namespace partmake
         private DeviceBuffer _cubeIndexBuffer;
         private DeviceBuffer _planeVertexBuffer;
         private DeviceBuffer _planeIndexBuffer;
-        private DeviceBuffer _bspVertexBuffer;
-        private DeviceBuffer _bspIndexBuffer;
-        uint _bspIndexCount;
+        private DeviceBuffer _bspSelVertexBuffer;
+        private DeviceBuffer _bspSelIndexBuffer;
+        uint _bspSelIndexCount;
         List<int> faceIndices;
 
         private DeviceBuffer _bspPortalsVertexBuffer;
@@ -96,6 +96,8 @@ namespace partmake
         public bool ShowExteriorPortals { get; set; } = false;
         Vector4[] edgePalette;
         uint numPrimitives;
+
+        bool showInwardOrOutwardFaces = true;
 
         class ConnectorVis
         {
@@ -198,7 +200,17 @@ namespace partmake
                             selectedBSPNode.Portal.Visible = !selectedBSPNode.Portal.Visible;
                         LoadPortalsMesh();
                         break;
-                    case System.Windows.Input.Key.Home:
+                    case System.Windows.Input.Key.PageDown:
+                        {
+                            var portals = _part.GetTopoMesh().bSPTree.GetLeafPortals();
+                            foreach (var portal in portals)
+                            {
+                                portal.Visible = false;
+                            }
+                            LoadPortalsMesh();
+                        }
+                        break;
+                    case System.Windows.Input.Key.PageUp:
                         {
                             var portals = _part.GetTopoMesh().bSPTree.GetLeafPortals();
                             foreach (var portal in portals)
@@ -224,6 +236,10 @@ namespace partmake
                         break;
                     case System.Windows.Input.Key.P:
                         onlyShowCoveredPortalFaces = !onlyShowCoveredPortalFaces;
+                        LoadPortalsMesh();
+                        break;
+                    case System.Windows.Input.Key.I:
+                        showInwardOrOutwardFaces = !showInwardOrOutwardFaces;
                         LoadPortalsMesh();
                         break;
                     case System.Windows.Input.Key.M:
@@ -530,17 +546,20 @@ namespace partmake
                         (uint)vlist.Count - startIdx));
                 }
 
-                Vtx[] vertices = vlist.ToArray();
-                uint[] indices = new uint[vlist.Count];
-                for (uint i = 0; i < indices.Length; i++)
+                if (vlist.Count > 0)
                 {
-                    indices[i] = i;
-                }
-                _bspPortalsVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
-                GraphicsDevice.UpdateBuffer(_bspPortalsVertexBuffer, 0, vertices);
+                    Vtx[] vertices = vlist.ToArray();
+                    uint[] indices = new uint[vlist.Count];
+                    for (uint i = 0; i < indices.Length; i++)
+                    {
+                        indices[i] = i;
+                    }
+                    _bspPortalsVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
+                    GraphicsDevice.UpdateBuffer(_bspPortalsVertexBuffer, 0, vertices);
 
-                _bspPortalsIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)indices.Length, BufferUsage.IndexBuffer));
-                GraphicsDevice.UpdateBuffer(_bspPortalsIndexBuffer, 0, indices);
+                    _bspPortalsIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)indices.Length, BufferUsage.IndexBuffer));
+                    GraphicsDevice.UpdateBuffer(_bspPortalsIndexBuffer, 0, indices);
+                }
             }
             {
                 _bspFacesIndexCounts = new List<Tuple<uint, uint>>();
@@ -550,8 +569,9 @@ namespace partmake
                     uint startIdx = (uint)vlist.Count;
                     foreach (var face in portal.Faces)
                     {
-                        if (face.modelFaces != null)
-                        {
+                        if (face.modelFaces != null &&
+                             showInwardOrOutwardFaces == face.PointsInward)
+                        {                            
                             foreach (var pts in face.modelFaces)
                             {
                                 var triangles = Topology.Face.GetTriangles(pts);
@@ -586,9 +606,9 @@ namespace partmake
         }
         void OnBSPNodeUpdated()
         {
-            _bspVertexBuffer = null;
-            _bspIndexBuffer = null;
-            _bspIndexCount = 0;
+            _bspSelVertexBuffer = null;
+            _bspSelIndexBuffer = null;
+            _bspSelIndexCount = 0;
             if (selectedBSPNode == null)
                 return;
             List<Vtx> vlist = new List<Vtx>();
@@ -608,12 +628,12 @@ namespace partmake
             {
                 indices[i] = i;
             }
-            _bspVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
-            GraphicsDevice.UpdateBuffer(_bspVertexBuffer, 0, vertices);
+            _bspSelVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
+            GraphicsDevice.UpdateBuffer(_bspSelVertexBuffer, 0, vertices);
 
-            _bspIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)indices.Length, BufferUsage.IndexBuffer));
-            GraphicsDevice.UpdateBuffer(_bspIndexBuffer, 0, indices);
-            _bspIndexCount = (uint)indices.Length;
+            _bspSelIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)indices.Length, BufferUsage.IndexBuffer));
+            GraphicsDevice.UpdateBuffer(_bspSelIndexBuffer, 0, indices);
+            _bspSelIndexCount = (uint)indices.Length;
         }
         void UpdatePrimForTest()
         {
@@ -864,7 +884,33 @@ namespace partmake
         {
             base.OnDeviceDestroyed();
         }
+        static Matrix4x4 MatrixForLine(Vector3 pt0, Vector3 pt1, ref Matrix4x4 mat, ref Matrix4x4 viewPrj)
+        {
+            float len = (pt1 - pt0).Length();
+            Vector3 dir = Vector3.Normalize(pt1 - pt0);
+            Vector3 a = Vector3.Cross(Vector3.UnitZ, dir);
+            float w = 1 + Vector3.Dot(Vector3.UnitZ, dir);
+            Quaternion q = a.LengthSquared() != 0 ? new Quaternion(a, w) : Quaternion.Identity;
+            q = Quaternion.Normalize(q);
+            Vector3 offset = (pt0 + pt1) * 0.5f;
+            Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(1, 1, len)) *
+                Matrix4x4.CreateFromQuaternion(q) *
+                Matrix4x4.CreateTranslation(offset);
+            Matrix4x4 cm = m * mat;
+            Matrix4x4 matViewProj = cm * viewPrj;
+            Vector4 tp1 = Vector4.Transform(new Vector4(-0.5f, -0.5f, 0, 1), matViewProj);
+            Vector4 tp2 = Vector4.Transform(new Vector4(0.5f, 0.5f, 0, 1), matViewProj);
+            tp1 /= tp1.W;
+            tp2 /= tp2.W;
+            float lineLen = (tp1 - tp2).Length();
 
+            float s = 0.002f;
+            m = Matrix4x4.CreateScale(new Vector3(s / lineLen, s / lineLen, len)) *
+                Matrix4x4.CreateFromQuaternion(q) *
+                Matrix4x4.CreateTranslation(offset);
+            cm = m * mat;
+            return cm;
+        }
         protected override void Draw(float deltaSeconds)
         {
             if (_vertexBuffer == null)
@@ -874,8 +920,8 @@ namespace partmake
             Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(
                 1.0f,
                 (float)Window.Width / Window.Height,
-                0.5f,
-                100f);
+                0.05f,
+                20f);
             _cl.UpdateBuffer(_projectionBuffer, 0, ref projMat);
 
             Matrix4x4 viewmat = Matrix4x4.CreateRotationY(lookDir.X) *
@@ -903,7 +949,7 @@ namespace partmake
                 DrawNonManifold(ref mat, ref viewmat, ref projMat);
 
                 if (selectedBSPNode != null)
-                    DrawBSP(ref mat);
+                    DrawSelectedBSP(ref mat, ref viewmat, ref projMat);
 
                 DrawBisectors(ref mat);
                 Vector4 candidateColor = new Vector4(0f, 0.5f, 1.0f, 1.0f);
@@ -1040,6 +1086,12 @@ namespace partmake
             }
 
         }
+
+        public void SelectFace(Topology.Face f)
+        {
+            int fIdx = _part.GetTopoMesh().faces.IndexOf(f);
+            meshSelectedOffset = faceIndices.IndexOf(fIdx);
+        }
         void HandlePick()
         {
             if (pickReady == 1)
@@ -1117,7 +1169,7 @@ namespace partmake
                 }
             }
 
-        }
+        }        
         void DrawEdges(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
             if (this.ShowEdges)
@@ -1150,31 +1202,9 @@ namespace partmake
                     Vector3 pt0 = DTF(edge.v0.pt);
                     Vector3 pt1 = DTF(edge.v1.pt);
 
-                    float len = (pt1 - pt0).Length();
-                    Vector3 dir = Vector3.Normalize(pt1 - pt0);
-                    Vector3 a = Vector3.Cross(Vector3.UnitZ, dir);
-                    float w = 1 + Vector3.Dot(Vector3.UnitZ, dir);
-                    Quaternion q = a.LengthSquared() != 0 ? new Quaternion(a, w) : Quaternion.Identity;
-                    q = Quaternion.Normalize(q);
-                    Vector3 offset = (pt0 + pt1) * 0.5f;
-                    Matrix4x4 m = Matrix4x4.CreateScale(new Vector3(1, 1, len)) *
-                        Matrix4x4.CreateFromQuaternion(q) *
-                        Matrix4x4.CreateTranslation(offset);
-                    Matrix4x4 cm = m * mat;
-                    Matrix4x4 matViewProj = cm * viewPrj;
-                    Vector4 tp1 = Vector4.Transform(new Vector4(-0.5f, -0.5f, 0, 1), matViewProj);
-                    Vector4 tp2 = Vector4.Transform(new Vector4(0.5f, 0.5f, 0, 1), matViewProj);
-                    tp1 /= tp1.W;
-                    tp2 /= tp2.W;
-                    float lineLen = (tp1 - tp2).Length();
+                    Matrix4x4 wm = MatrixForLine(pt0, pt1, ref mat, ref viewPrj);
 
-                    float s = 0.002f;
-                    m = Matrix4x4.CreateScale(new Vector3(s / lineLen, s / lineLen, len)) *
-                        Matrix4x4.CreateFromQuaternion(q) *
-                        Matrix4x4.CreateTranslation(offset);
-                    cm = m * mat;
-
-                    _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref wm);
                     _cl.DrawIndexed((uint)_cubeIndexCount);
                 }
             }
@@ -1237,7 +1267,7 @@ namespace partmake
                 int portalIdx = 0;
                 foreach (var offsets in _bspPortalsIndexCounts)
                 {
-                    Vector4 col = new Vector4(_bspPortals[portalIdx].color, 1);
+                    Vector4 col = new Vector4(_bspPortals[portalIdx].color, 0.5f);
                     _cl.UpdateBuffer(_materialBuffer, 0, ref col);
                     _cl.DrawIndexed(offsets.Item2, 1, offsets.Item1, 0, 0);
                     portalIdx++;
@@ -1247,7 +1277,7 @@ namespace partmake
 
         void DrawBSPFaces(ref Matrix4x4 mat)
         {
-            if (BSPFaces)
+            if (BSPFaces && _bspFacesVertexBuffer != null)
             {
                 _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
                 _cl.SetPipeline(_pipeline);
@@ -1267,19 +1297,43 @@ namespace partmake
             }
         }
 
-        void DrawBSP(ref Matrix4x4 mat)
+        void DrawSelectedBSP(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
-            _cl.ClearDepthStencil(1f);
+            //_cl.ClearDepthStencil(1f);
             _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
-            Vector4 col = new Vector4(0, 1, 0, 1) * 0.5f;
+            Vector4 col = new Vector4(selectedBSPNode.Portal.color, 1);
             _cl.UpdateBuffer(_materialBuffer, 0, ref col);
 
             _cl.SetPipeline(_pipeline);
-            _cl.SetVertexBuffer(0, _bspVertexBuffer);
-            _cl.SetIndexBuffer(_bspIndexBuffer, IndexFormat.UInt32);
+            _cl.SetVertexBuffer(0, _bspSelVertexBuffer);
+            _cl.SetIndexBuffer(_bspSelIndexBuffer, IndexFormat.UInt32);
             _cl.SetGraphicsResourceSet(0, _projViewSet);
             _cl.SetGraphicsResourceSet(1, _worldTextureSet);
-            _cl.DrawIndexed((uint)_bspIndexCount);
+            _cl.DrawIndexed((uint)_bspSelIndexCount);
+
+            _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+            _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+
+            Matrix4x4 viewPrj = viewmat * projMat;
+            Vector4 edgeColor = new Vector4(1, 1, 1, 1);
+            foreach (var face in selectedBSPNode.Portal.Faces)
+            {
+                if (this.selectedPortalFace == face)
+                {
+                    var pts = face.points;
+                    for (int i = 0; i < pts.Count; i++)
+                    {
+                        _cl.UpdateBuffer(_materialBuffer, 0, ref edgeColor);
+                        Vector3 pt0 = DTF(pts[i]);
+                        Vector3 pt1 = DTF(pts[(i + 1) % pts.Count]);
+
+                        Matrix4x4 wm = MatrixForLine(pt0, pt1, ref mat, ref viewPrj);
+
+                        _cl.UpdateBuffer(_worldBuffer, 0, ref wm);
+                        _cl.DrawIndexed((uint)_cubeIndexCount);
+                    }
+                }
+            }
         }
         void DrawRaycast(ref Matrix4x4 viewmat)
         {

@@ -237,16 +237,18 @@ namespace partmake
             
         }
 
-        public static Entry GetEntry(string name)
+        public static Entry GetEntry(string _name)
         {
+            string name = _name.ToLower();
             Entry e;
             if (!partPaths.TryGetValue(Path.Combine("parts", name), out e) &&
                 !partPaths.TryGetValue(Path.Combine("p", name), out e))
                 return null;
             return e;
         }
-        public static LDrawDatFile GetPart(string name)
+        public static LDrawDatFile GetPart(string _name)
         {
+            string name = _name.ToLower();
             Entry e = GetEntry(name);
             if (e == null)
                 return null;

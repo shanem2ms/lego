@@ -15,10 +15,13 @@ namespace partmake
     /// </summary>
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
-        public List<LDrawFolders.Entry> LDrawParts { get
+        public List<LDrawFolders.Entry> LDrawParts
+        {
+            get
             {
                 return LDrawFolders.LDrawParts;
-            } }
+            }
+        }
 
         public IEnumerable<string> LDrawGroups { get => LDrawFolders.LDrawGroups; }
 
@@ -39,11 +42,15 @@ namespace partmake
 
         public Topology.BSPNode SelectedBSPNode => vis?.SelectedBSPNode;
         public List<Topology.BSPNode> BSPNodes =>
-            new List<Topology.BSPNode>() {selectedPart?.GetTopoMesh().bSPTree.Top };
+            new List<Topology.BSPNode>() { selectedPart?.GetTopoMesh().bSPTree.Top };
 
         public Topology.Settings TopoSettings { get; } = new Topology.Settings();
-        public string SelectedType { get => LDrawFolders.SelectedType; 
-            set { LDrawFolders.SelectedType = value;
+        public string SelectedType
+        {
+            get => LDrawFolders.SelectedType;
+            set
+            {
+                LDrawFolders.SelectedType = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("LDrawParts"));
             }
         }
@@ -53,10 +60,10 @@ namespace partmake
             get { return selectedItem; }
             set
             {
-                selectedItem = value; 
+                selectedItem = value;
                 OnSelectedItem(selectedItem);
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItem"));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItemDesc"));                
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItemDesc"));
             }
         }
 
@@ -101,24 +108,30 @@ namespace partmake
 
         private void Vis_OnINodeSelected(object sender, Topology.INode e)
         {
+            SelectINode(e);
+        }
+
+        void SelectINode(Topology.INode e)
+        {
             if (SelectedINode != null)
                 SelectedINode.IsSelected = false;
             SelectedINode = e;
             if (SelectedINode != null)
                 SelectedINode.IsSelected = true;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedINode"));
+
         }
 
         void OnSelectedItem(LDrawFolders.Entry item)
         {
             if (item == null)
                 return;
-            selectedPart = LDrawFolders.GetPart(item);            
+            selectedPart = LDrawFolders.GetPart(item);
             if (vis != null)
                 vis.Part = selectedPart;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentPart"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Log"));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("BSPNodes"));            
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("BSPNodes"));
             File.WriteAllLines("PartMake.ini", new string[] { item.name });
         }
 
@@ -184,9 +197,16 @@ namespace partmake
         {
             Button btn = (sender as Button);
             object dc = btn.DataContext;
-            if (dc is Topology.EdgePtr)
-                dc = (dc as Topology.EdgePtr).e;
-            Vis_OnINodeSelected(sender, (dc as Topology.INode));
+            if (dc is Topology.BSPNode)
+            {
+                SelectBSPNode(dc as Topology.BSPNode);
+            }
+            else
+            {
+                if (dc is Topology.EdgePtr)
+                    dc = (dc as Topology.EdgePtr).e;
+                Vis_OnINodeSelected(sender, (dc as Topology.INode));
+            }
         }
 
         private void BSPTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -206,12 +226,7 @@ namespace partmake
             if (node != null)
             {
                 node.IsSelected = true;
-
-                while (node != null)
-                {
-                    node.IsExpanded = true;
-                    node = node.parent;
-                }
+                node.IsExpanded = true;
             }
 
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedBSPNode"));
@@ -219,21 +234,30 @@ namespace partmake
         private void Goto_BSPNode_BtnClick(object sender, RoutedEventArgs e)
         {
             Topology.BSPNode node = (sender as Button).Content as Topology.BSPNode;
-            
+
             vis.SelectedBSPNode = node;
-            SelectBSPNode(node);           
+            vis.SelectedBSPNode.IsExpanded = true;
+            SelectBSPNode(node);
         }
 
         private void BSPFace_BtnClick(object sender, RoutedEventArgs e)
         {
             int faceidx = (int)(sender as Button).Content;
         }
-        
+
         private void ShowPlaneNode_Click(object sender, RoutedEventArgs e)
         {
-            Topology.PortalFace portalFace = (sender as Button).DataContext as Topology.PortalFace;
-            vis.SelectedPortalFace = portalFace;
-            Topology.PolygonClip.SetLogIdx(portalFace.PlaneNode.nodeIdx);
+            if ((sender as Button).DataContext is Topology.PortalFace)
+            {
+                Topology.PortalFace portalFace = (sender as Button).DataContext as Topology.PortalFace;
+                vis.SelectedPortalFace = portalFace;
+                Topology.PolygonClip.SetLogIdx(portalFace.PlaneNode.nodeIdx, true);
+            }
+            else if ((sender as Button).DataContext is Topology.BSPNode)
+            {
+                Topology.BSPNode node = (sender as Button).DataContext as Topology.BSPNode;
+                Topology.PolygonClip.SetLogIdx(node.nodeIdx, true);
+            }
             OnSelectedItem(this.selectedItem);
         }
 
@@ -241,6 +265,76 @@ namespace partmake
         {
             Topology.PortalFace portalFace = (sender as Button).DataContext as Topology.PortalFace;
             polyLog.LogText = portalFace.GenPolyLog();
+            vis.SelectedPortalFace = portalFace;
+        }
+
+        private void BSPNodeTextBtn_Click(object sender, RoutedEventArgs e)
+        {
+            int nodeIdx;
+            if (int.TryParse(BspNodeTB.Text, out nodeIdx))
+            {
+                Topology.BSPNode node =
+                    selectedPart.GetTopoMesh().bSPTree.Top.FromIdx(nodeIdx);
+                selectedPart.GetTopoMesh().bSPTree.Top.IsExpanded = false;
+                vis.SelectedBSPNode = node;
+                vis.SelectedBSPNode.IsExpanded = true;
+                SelectBSPNode(node);
+            }
+        }
+
+        private void EdgeAddBSPPlane_Click(object sender, RoutedEventArgs e)
+        {
+            Topology.Edge edge = (sender as Button).DataContext as Topology.Edge;
+            //selectedPart.GetTopoMesh().
+        }
+
+        private void FaceIdxTextBtn_Click(object sender, RoutedEventArgs e)
+        {
+            int faceIdx;
+            if (int.TryParse(FaceIdxTB.Text, out faceIdx))
+            {
+                Topology.Face f = selectedPart.GetTopoMesh().faces.FirstOrDefault(f => f.idx == faceIdx);
+                if (f != null)
+                {
+                    SelectINode(f);
+                    vis.SelectFace(f);
+                }
+            }
+        }
+        private void ShowAllBSPBtn_Click(object sender, RoutedEventArgs e)
+        {
+        }
+
+        private void HideAllBSPBtn_Click(object sender, RoutedEventArgs e)
+        {
+        }
+
+        private void Button_Click_1(object sender, RoutedEventArgs e)
+        {
+            Topology.BSPNode node =
+                (sender as Button).DataContext as Topology.BSPNode;
+            int traceNdext = node.Portal.TraceIdx + 1;
+            var portals = selectedPart?.GetTopoMesh().bSPTree.GetLeafPortals();
+            var nextPortal = portals.FirstOrDefault(p => p.TraceIdx == traceNdext);
+            if (nextPortal != null)
+            {
+                vis.SelectedBSPNode = nextPortal.parentNode;
+                SelectBSPNode(nextPortal.parentNode);
+            }
+        }
+
+        private void Button_Click_2(object sender, RoutedEventArgs e)
+        {
+            Topology.BSPNode node =
+                (sender as Button).DataContext as Topology.BSPNode;
+            int traceNdext = node.Portal.TraceIdx - 1;
+            var portals = selectedPart?.GetTopoMesh().bSPTree.GetLeafPortals();
+            var nextPortal = portals.FirstOrDefault(p => p.TraceIdx == traceNdext);
+            if (nextPortal != null)
+            {
+                vis.SelectedBSPNode = nextPortal.parentNode;
+                SelectBSPNode(nextPortal.parentNode);
+            }
         }
     }
 

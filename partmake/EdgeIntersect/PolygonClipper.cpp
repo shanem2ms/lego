@@ -3322,7 +3322,7 @@ void TrimSmall(std::vector<std::vector<Vec4>>& polys)
 }
 
 static std::string polygonLog;
-static int sLogNode = 223;
+static int sLogNode = 285;
 
 extern "C" __declspec(dllexport) void SetLogNodeIdx(int idx)
 {
@@ -3401,7 +3401,7 @@ extern "C" __declspec(dllexport) int ClipPolygons(int nodeIdx, double* pointList
     int* connectedPortals)
 {
     //TestClip();
-    bool doLog = nodeIdx == sLogNode;
+    bool doLog = nodeIdx == (sLogNode & 0xFFFF);
     Vec2* pointList = (Vec2*)pointListDbls;
     std::vector<std::vector<Vec4>> portalPolys;
     int polyStartIdx = 0;
@@ -3481,7 +3481,7 @@ extern "C" __declspec(dllexport) int ClipPolygons(int nodeIdx, double* pointList
             LogErrors(str);
             TrimSmall(intPortalPolys);            
             if (intPortalPolys.size() > 0 &&
-                AreaPolys(intPortalPolys) > 0.001)
+                AreaPolys(intPortalPolys) > 0.1)
             {
                 if (doLog) str << "[color=0,255,0]" << std::endl;
                 if (doLog) str << "[intersection=" << nodefaceIdxs[i] << ", " << nodefaceIdxs[j] << "]" << std::endl;
@@ -3499,7 +3499,7 @@ extern "C" __declspec(dllexport) int ClipPolygons(int nodeIdx, double* pointList
                 {
                     double areaIAM = AreaPolys(intModelPolys);
                     double areaIPM = AreaPolys(intPortalPolys);
-                    if (areaIAM / areaIPM > 0.95)
+                    if (areaIAM / areaIPM > 0.85)
                     {
                         for (auto& poly : intModelPolys)
                         {
@@ -3533,7 +3533,7 @@ extern "C" __declspec(dllexport) int ClipPolygons(int nodeIdx, double* pointList
 extern "C" __declspec(dllexport) int ClipPolygons2(int nodeIdx, double* pointListDbls, int* polyPointCounts, int* nodefaceIdxs, int nPortalPolys, int nModelPolys,
     int* coveredPortals)
 {
-    bool doLog = false;// nodeIdx == sLogNode;
+    bool doLog = nodeIdx == (sLogNode >> 16);
 
     Vec2* pointList = (Vec2*)pointListDbls;
     int polyStartIdx = 0;
@@ -3541,6 +3541,9 @@ extern "C" __declspec(dllexport) int ClipPolygons2(int nodeIdx, double* pointLis
     std::vector<std::vector<Vec4>> modelPolys;
     std::stringstream str;
     str.precision(17);
+    if (doLog) str << "[clip2 nodeidx = " << nodeIdx << "]" << std::endl << std::endl;
+    if (doLog) str << "[color=160,160,160]" << std::endl << std::endl;
+
     for (int polyIdx = 0; polyIdx < nPortalPolys; ++polyIdx)
     {
         int polyEndIdx = polyPointCounts[polyIdx];
@@ -3553,10 +3556,17 @@ extern "C" __declspec(dllexport) int ClipPolygons2(int nodeIdx, double* pointLis
         }
         if (!PolygonClipper::Orientation(clipperPoly))
             std::reverse(clipperPoly.begin(), clipperPoly.end());
+        if (doLog)
+        {
+            str << "[nodeidx=" << nodefaceIdxs[polyIdx] << "]" << std::endl;
+            LogPoly(str, clipperPoly);
+            str << std::endl;
+        }
         polyStartIdx = polyEndIdx;
     }
 
 
+    if (doLog) str << "[color=200,160,160]" << std::endl << std::endl;
     for (int polyIdx = nPortalPolys; polyIdx < (nPortalPolys + nModelPolys); ++polyIdx)
     {
         int polyEndIdx = polyPointCounts[polyIdx];
@@ -3569,20 +3579,25 @@ extern "C" __declspec(dllexport) int ClipPolygons2(int nodeIdx, double* pointLis
         }
         if (!PolygonClipper::Orientation(clipperPoly))
             std::reverse(clipperPoly.begin(), clipperPoly.end());
+        if (doLog)
+        {
+            str << "[faceidx=" << nodefaceIdxs[polyIdx] << "]" << std::endl;
+            LogPoly(str, clipperPoly);
+        }
         polyStartIdx = polyEndIdx;
     }
 
-    std::vector<std::vector<Vec4>> offsetModelPolys;
-    OffsetPolygons(modelPolys, offsetModelPolys, 0.01, JoinType::jtSquare, 0.01, 0, false);
     PolygonClipper modelClipper;
-    modelClipper.AddPolygons(offsetModelPolys);
+    modelClipper.AddPolygons(modelPolys);
     std::vector<std::vector<Vec4>> unionModelPolys;
     modelClipper.Execute(unionModelPolys);
     LogErrors(str);
 
-    for (auto& poly : unionModelPolys)
+    if (doLog)
     {
-        std::reverse(poly.begin(), poly.end());
+        str << "[union faces]" << std::endl;
+        str << "[color=0,255,0]" << std::endl << std::endl;
+        LogPolys(str, unionModelPolys);
     }
 
     std::vector<int> intpolys;
@@ -3592,32 +3607,22 @@ extern "C" __declspec(dllexport) int ClipPolygons2(int nodeIdx, double* pointLis
         PolygonClipper finalClipper;
         finalClipper.AddPolygon(portalPolys[i]);
         finalClipper.AddPolygons(unionModelPolys);
-        std::vector<std::vector<Vec4>> outOpenPolys;
-        finalClipper.Execute(outOpenPolys);
+        std::vector<std::vector<Vec4>> intModelPolys;
+        finalClipper.Execute(intModelPolys, 2);
         LogErrors(str);
-        TrimSmall(outOpenPolys);
-        if (outOpenPolys.size() == 0)
+        if (intModelPolys.size() == 0)
         {
-            *coveredPortalsCur = i;
-            coveredPortalsCur++;
-            intpolys.push_back(i);
+            double areaIAM = AreaPolys(intModelPolys);
+            double areaIPM = Area(portalPolys[i]);
+            if (areaIAM / areaIPM > 0.85)
+            {
+                *coveredPortalsCur = i;
+                coveredPortalsCur++;
+                intpolys.push_back(i);
+            }
         }
         else
         {
-            if (doLog)
-            {
-                str << "[nodeidx=" << nodefaceIdxs[i] << "]" << std::endl;
-                str << "[color=255,0,0]" << std::endl << std::endl;
-                LogPoly(str, portalPolys[i]);
-
-                str << "[union]" << std::endl;
-                str << "[color=0,255,0]" << std::endl << std::endl;
-                LogPolys(str, unionModelPolys);
-
-                str << "[result]" << std::endl;
-                str << "[color=0,0,255]" << std::endl << std::endl;
-                LogPolys(str, outOpenPolys);
-            }
         }
     }
     if (doLog) str << '\0';
