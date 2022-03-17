@@ -121,9 +121,9 @@ namespace partmake
                 faceIdxs.Add(faceIdx);
             }
 
-            public static void SetLogIdx(int idx)
+            public static void SetLogIdx(int idx, bool planes)
             {
-                SetLogNodeIdx(idx);
+                SetLogNodeIdx(planes ? idx << 16 : idx);
             }
             public static string GetLog()
             {
