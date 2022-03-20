@@ -83,17 +83,19 @@ namespace partmake
             public bool isFinal = false;
             public bool IsCovered { get; set; } = false;
             public bool IsExteriorWall => isExteriorWall;
-            public List<PortalFace> connectedPortalFaces { get; set; }
+            public List<Tuple<PortalFace, int>> connectedPortalFaces { get; set; }
             public List<BSPFace> connectedModelFaces { get; set; }
 
             public List<List<Vector3>> modelFaces;
+
+            public System.Numerics.Vector3 color;
 
             public bool PointsInward => portal.IsExterior;
             public List<BSPNode> ConnectedNodes
             {
                 get
                 {
-                    return connectedPortalFaces?.Select(p => p.portal.parentNode).ToList();
+                    return connectedPortalFaces?.Select(p => p.Item1.portal.parentNode).ToList();
                 }
             }
 
@@ -228,7 +230,7 @@ namespace partmake
             bool isExterior = false;
             public bool IsExterior => isExterior;
             static Random rColor = new Random();
-            static System.Numerics.Vector3 GenColor()
+            public static System.Numerics.Vector3 GenColor()
             {
                 return new System.Numerics.Vector3(
                     (float)rColor.NextDouble(), (float)rColor.NextDouble(), (float)rColor.NextDouble());
@@ -344,8 +346,8 @@ namespace partmake
                             continue;
                         foreach (var cf in face.connectedPortalFaces)
                         {
-                            if (cf.portal != this)
-                                connectedPortals.Add(cf.portal);
+                            if (cf.Item1.portal != this && cf.Item2 == 0)
+                                connectedPortals.Add(cf.Item1.portal);
                         }
                     }
                     return connectedPortals;
@@ -448,7 +450,7 @@ namespace partmake
                 if (idx == nodeIdx)
                     return this;
                 else
-                {                    
+                {
                     BSPNode node = this.pos?.FromIdx(idx);
                     if (node != null) return node;
                     node = this.neg?.FromIdx(idx);
@@ -622,7 +624,7 @@ namespace partmake
                             modelFaces.Add(face);
                     }
 
-                    Tuple<int, int>[] connecedPolys = clipper.Process(nodeIdx);
+                    PolygonClip.ConnectedFace[] connecedPolys = clipper.Process(nodeIdx);
                     List<PolygonClip.GetIntersectedPolyResult> results =
                         clipper.GetIntersectedPolys();
                     foreach (var result in results)
@@ -636,27 +638,19 @@ namespace partmake
                         portalFaces[result.p2].modelFaces.Add(modelFace);
                     }
 
-                    foreach (var tuple in connecedPolys)
+                    foreach (var cf in connecedPolys)
                     {
-                        int i = tuple.Item1;
-                        int j = tuple.Item2;
+                        int i = cf.face0;
+                        int j = cf.face1;
                         if (portalFaces[i].connectedPortalFaces == null)
-                            portalFaces[i].connectedPortalFaces = new List<PortalFace>();
+                            portalFaces[i].connectedPortalFaces = new List<Tuple<PortalFace, int>>();
                         if (portalFaces[j].connectedPortalFaces == null)
-                            portalFaces[j].connectedPortalFaces = new List<PortalFace>();
+                            portalFaces[j].connectedPortalFaces = new List<Tuple<PortalFace, int>>();
 
-                        portalFaces[i].connectedPortalFaces.Add(portalFaces[j]);
-                        portalFaces[j].connectedPortalFaces.Add(portalFaces[i]);
+                        portalFaces[i].connectedPortalFaces.Add(new Tuple<PortalFace, int>(portalFaces[j], cf.blocked));
+                        portalFaces[j].connectedPortalFaces.Add(new Tuple<PortalFace, int>(portalFaces[i], cf.blocked));
                     }
 
-                    /*
-                    int[] coveredPortalFaces = clipper.Process2(nodeIdx);
-
-                    foreach (int i in coveredPortalFaces)
-                    {
-                        portalFaces[i].IsCovered = true;
-                    }
-                    */
                     if (modelFaces.Count > 0)
                     {
                         foreach (var face in portalFaces)
@@ -775,50 +769,135 @@ namespace partmake
                     }
                 }
                 top.ConnectPortals();
-                {
-                    List<BSPPortal> bSPPortals = new List<BSPPortal>();
-                    top.GetLeafPortals(bSPPortals);
+                SetExteriorPortals();
+                //FindInternalFaces();
+            }
 
-                    foreach (BSPPortal portal in bSPPortals)
+            void SetExteriorPortals()
+            {
+                List<BSPPortal> bSPPortals = new List<BSPPortal>();
+                top.GetLeafPortals(bSPPortals);
+
+                foreach (BSPPortal portal in bSPPortals)
+                {
+                    foreach (PortalFace face in portal.Faces)
                     {
-                        foreach (PortalFace face in portal.Faces)
+                        if (face.IsExteriorWall && face.ConnectedModelFaces == null)
                         {
-                            if (face.IsExteriorWall && face.ConnectedModelFaces == null)
-                            {
-                                startPortal = portal;
-                                break;
-                            }
-                        }
-                        if (startPortal != null)
+                            startPortal = portal;
                             break;
+                        }
                     }
-
-                    startPortal.SetExterior();
+                    if (startPortal != null)
+                        break;
                 }
-                {
-                    List<BSPPortal> bSPPortals = new List<BSPPortal>();
-                    top.GetLeafPortals(bSPPortals);
 
-                    foreach (BSPPortal portal in bSPPortals)
+                startPortal.SetExterior();
+            }
+            public List<List<Vector3>> FindFinalFaces()
+            {
+                List<BSPPortal> bSPPortals = new List<BSPPortal>();
+                top.GetLeafPortals(bSPPortals);
+
+                List<PortalFace> finalFaces = new List<PortalFace>();
+                foreach (BSPPortal portal in bSPPortals)
+                {
+                    foreach (PortalFace face in portal.Faces)
                     {
-                        if (portal.parentNode.nodeIdx == 244)
-                            Debugger.Break();
-                        foreach (PortalFace face in portal.Faces)
+                        if (face.portal.IsExterior)
+                            continue;
+                        if (face.connectedPortalFaces == null)
+                            continue;
+                        foreach (var connected in face.connectedPortalFaces)
                         {
-                            bool ext = face.portal.IsExterior;
-                            bool isFinal = true;
-                            if (face.connectedPortalFaces == null)
-                                continue;
-                            foreach (var connected in face.connectedPortalFaces)
-                            {
-                                if (connected.portal.IsExterior == ext)
-                                { isFinal = false; break; }
-                            }
-                            face.isFinal = isFinal;
+                            if (connected.Item1.portal.IsExterior == true)
+                            { face.isFinal = true; finalFaces.Add(face); break; }
+                        }
+                    }
+                }
+
+                Dictionary<int, List<PortalFace>> facesByPlane = new Dictionary<int, List<PortalFace>>();
+                foreach (PortalFace face in finalFaces)
+                {
+                    List<PortalFace> portalFaces;
+                    if (!facesByPlane.TryGetValue(face.PlaneDef.idx, out portalFaces))
+                    {
+                        portalFaces = new List<PortalFace>();
+                        facesByPlane.Add(face.PlaneDef.idx, portalFaces);
+                    }
+                    portalFaces.Add(face);
+                }
+
+                List<List<Vector3>> newfaces = new List<List<Vector3>>();
+                foreach (var kv in facesByPlane)
+                {
+                    var c = BSPPortal.GenColor();
+                    foreach (var face in kv.Value)
+                    {
+                        face.color = c;
+                        newfaces.Add(face.points);
+                    }
+                    /*
+                    if (kv.Value.Count < 2)
+                    {
+                        newfaces.Add(kv.Value[0].points);
+                    }
+                    else 
+                    {
+                        List<List<Vector3>> faces = CombineFaces(kv.Value);
+                        newfaces.AddRange(faces);
+                    } */                   
+                }
+
+                return newfaces;
+            }
+
+            List<List<Vector3>> CombineFaces(List<PortalFace> portalFaces)
+            {
+                Plane planeDef = portalFaces[0].PlaneDef;
+                PointMgr mgr = new PointMgr();
+                PolygonClip clipper = new PolygonClip();
+                List<Polygon> portalPolys = new List<Polygon>();
+                foreach (var face in portalFaces)
+                {
+                    List<Vector2> planepts = planeDef.ToPlanePts(face.points).Select(p => new Vector2(
+                        mgr.AddPoint(p.X), mgr.AddPoint(p.Y))).ToList();                    
+                    var poly = new Polygon(planepts);
+                    portalPolys.Add(poly);
+                    clipper.AddPortalPolygon(poly, face.portal.parentNode.nodeIdx);
+                }
+                List<Polygon> polys = clipper.CombinePolys();
+                List<List<Vector3>> outFaces = new List<List<Vector3>>();
+                foreach (var poly in polys)
+                {
+                    outFaces.Add(
+                        planeDef.ToMeshPts(poly.Vertices));
+                }
+                return outFaces;
+            }
+            void FindInternalFaces()
+            {
+                List<BSPPortal> bSPPortals = new List<BSPPortal>();
+                top.GetLeafPortals(bSPPortals);
+
+                foreach (BSPPortal portal in bSPPortals)
+                {
+                    foreach (PortalFace face in portal.Faces)
+                    {
+                        if (face.portal.IsExterior)
+                            continue;
+                        if (face.connectedPortalFaces == null)
+                            continue;
+                        foreach (var connected in face.connectedPortalFaces)
+                        {
+                            if (connected.Item2 > 0 &&
+                                connected.Item1.portal.IsExterior == false)
+                            { face.isFinal = true; break; }
                         }
                     }
                 }
             }
+
             public BSPNode FromIdx(int idx)
             {
                 return this.top.FromIdx(idx);

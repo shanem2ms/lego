@@ -861,7 +861,6 @@ namespace partmake
                 {
                     Vertex v0 = verlist[idx];
                     Vertex v1 = verlist[(idx + 1) % verlist.Count];
-
                     EdgePtr eptr = MakeEdge(v0, v1, null);
                     elist.Add(eptr);
                 }
@@ -886,6 +885,8 @@ namespace partmake
                 {
                     Vertex v0 = verlist[idx];
                     Vertex v1 = verlist[(idx + 1) % verlist.Count];
+                    if (v0.idx == v1.idx)
+                        continue;
 
                     EdgePtr eptr = MakeEdge(v0, v1, null);
                     elist.Add(eptr);
@@ -961,6 +962,13 @@ namespace partmake
 
                
                 bSPTree.BuildTree(bspFaces, planeMgr);
+                var finalFaces = bSPTree.FindFinalFaces();
+                /*
+                this.faces.Clear();
+                foreach (var face in finalFaces)
+                {
+                    this.faces.Add(MakeFace("", face));
+                }*/
             }
 
             public void Fix()
@@ -1834,6 +1842,7 @@ namespace partmake
                 return outPts;
             }
 
+           
             bool FollowCoplanarEdges(List<Edge> edges, Vector3 nrm)
             {
                 Edge cur = edges.Last();

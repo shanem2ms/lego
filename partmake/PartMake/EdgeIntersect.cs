@@ -84,9 +84,10 @@ namespace partmake
             [DllImport("EdgeIntersect.dll")]
             static extern int ClipPolygons(int nodeIdx, IntPtr pointList, IntPtr polyPointCounts, IntPtr idxs, int nPortalPolys, int nModelPolys,
                 IntPtr outConnectedPortals);
+
             [DllImport("EdgeIntersect.dll")]
-            static extern int ClipPolygons2(int nodeIdx, IntPtr pointList, IntPtr polyPointCounts, IntPtr idxs, int nPortalPolys, int nModelPolys,
-                IntPtr outConnectedPortals);
+            static extern int UnionPolygons(IntPtr pointListDbls, IntPtr polyPointCounts, int nPortalPolys, IntPtr outPointList,
+                IntPtr outPolyPointCounts);
 
             [DllImport("EdgeIntersect.dll")]
             static extern int GetLogLength();
@@ -136,7 +137,14 @@ namespace partmake
                 Marshal.FreeHGlobal(ptr);
                 return ret;
             }
-            public Tuple<int,int> []Process(int nodeIdx)
+
+            public struct ConnectedFace
+            {
+                public int face0;
+                public int face1;
+                public int blocked;
+            }
+            public ConnectedFace[]Process(int nodeIdx)
             {
                 List<Vector2> points = new List<Vector2>();
                 List<int> polyOffsets = new List<int>();
@@ -155,7 +163,7 @@ namespace partmake
                 int v2size = Marshal.SizeOf<Vector2>();
                 IntPtr ptr = Marshal.AllocHGlobal(pointCout * v2size);
                 IntPtr ptrSizes = Marshal.AllocHGlobal(polyOffsets.Count * sizeof(int));
-                IntPtr outConnectedPortals = Marshal.AllocHGlobal(portalPolys.Count * portalPolys.Count * sizeof(int) * 2);
+                IntPtr outConnectedPortals = Marshal.AllocHGlobal(portalPolys.Count * portalPolys.Count * sizeof(int) * 3);
                 Marshal.Copy(polyOffsets.ToArray(), 0, ptrSizes, polyOffsets.Count);
                 List<int> indices = new List<int>();
                 indices.AddRange(this.nodeIdxs);
@@ -184,21 +192,80 @@ namespace partmake
 
                 int connectedPortalCount =
                     ClipPolygons(nodeIdx, ptr, ptrSizes, idxs, portalPolys.Count, modelPolys.Count, outConnectedPortals);
-                int []connectedPortals = new int [connectedPortalCount * 2];
-                Marshal.Copy(outConnectedPortals, connectedPortals, 0, connectedPortalCount * 2);
+                int []connectedPortals = new int [connectedPortalCount * 3];
+                Marshal.Copy(outConnectedPortals, connectedPortals, 0, connectedPortalCount * 3);
                 Marshal.FreeHGlobal(ptr);
                 Marshal.FreeHGlobal(ptrSizes);
                 Marshal.FreeHGlobal(idxs);                
                 Marshal.FreeHGlobal(outConnectedPortals);
 
-                Tuple<int, int>[] tuples = new Tuple<int, int>[connectedPortalCount];
-                for (int i = 0; i < tuples.Length; i++)
+                ConnectedFace[] cfaces = new ConnectedFace[connectedPortalCount];
+                for (int i = 0; i < connectedPortalCount; i++)
                 {
-                    tuples[i] = new Tuple<int, int>(connectedPortals[i * 2],
-                        connectedPortals[i * 2 + 1]);
+                    cfaces[i] = new ConnectedFace()
+                    {
+                        face0 = connectedPortals[i * 3],
+                        face1 = connectedPortals[i * 3 + 1],
+                        blocked = connectedPortals[i * 3 + 2]
+                    };
                 }
 
-                return tuples;
+                return cfaces;
+            }
+
+            public List<Polygon> CombinePolys()
+            {
+                List<int> polyOffsets = new List<int>();
+                int pointCout = 0;
+                foreach (Polygon p in portalPolys)
+                {
+                    pointCout += p.Vertices.Length;
+                    polyOffsets.Add(pointCout);
+                }
+
+                int v2size = Marshal.SizeOf<Vector2>();
+                IntPtr ptr = Marshal.AllocHGlobal(pointCout * v2size);
+                IntPtr ptrSizes = Marshal.AllocHGlobal(polyOffsets.Count * sizeof(int));
+                IntPtr outPolyPoints = Marshal.AllocHGlobal(pointCout * v2size);
+                IntPtr outptrSizes = Marshal.AllocHGlobal(polyOffsets.Count * sizeof(int));
+                Marshal.Copy(polyOffsets.ToArray(), 0, ptrSizes, polyOffsets.Count);
+                List<int> indices = new List<int>();
+                IntPtr curptr = ptr;
+                foreach (Polygon p in portalPolys)
+                {
+                    var vertices = p.Vertices;
+                    foreach (var v in vertices)
+                    {
+                        Marshal.StructureToPtr<Vector2>(v, curptr, false);
+                        curptr = IntPtr.Add(curptr, v2size);
+                    }
+                }
+
+                int outPolyCount =
+                    UnionPolygons(ptr, ptrSizes, portalPolys.Count, outPolyPoints, outptrSizes);
+                int[] outPtrSizeArray = new int[outPolyCount];
+                Marshal.Copy(outptrSizes, outPtrSizeArray, 0, outPolyCount);
+                IntPtr curoutptr = outPolyPoints;
+                List<Polygon> polygons = new List<Polygon>();
+                int curPtCnt = 0;
+                foreach (int ptcnt in outPtrSizeArray)
+                {
+                    List<Vector2> pts = new List<Vector2>();
+                    for (int i = curPtCnt; i < ptcnt; i++)
+                    {
+                        pts.Add(Marshal.PtrToStructure<Vector2>(curoutptr));
+                        curoutptr = IntPtr.Add(curoutptr, v2size);
+                    }
+                    polygons.Add(new Polygon(pts));
+                    curPtCnt = ptcnt;
+                }
+
+                Marshal.FreeHGlobal(ptr);
+                Marshal.FreeHGlobal(ptrSizes);
+                Marshal.FreeHGlobal(outPolyPoints);
+                Marshal.FreeHGlobal(outptrSizes);
+
+                return polygons;
             }
 
             public class GetIntersectedPolyResult
@@ -240,62 +307,6 @@ namespace partmake
                     results.Add(res);
                 }
                 return results;
-            }
-            public int[] Process2(int nodeIdx)
-            {
-                List<int> polyOffsets = new List<int>();
-                int pointCout = 0;
-                foreach (Polygon p in portalPolys)
-                {
-                    pointCout += p.Vertices.Length;
-                    polyOffsets.Add(pointCout);
-                }
-                foreach (Polygon p in modelPolys)
-                {
-                    pointCout += p.Vertices.Length;
-                    polyOffsets.Add(pointCout);
-                }
-
-                int v2size = Marshal.SizeOf<Vector2>();
-                IntPtr ptr = Marshal.AllocHGlobal(pointCout * v2size);
-                IntPtr ptrSizes = Marshal.AllocHGlobal(polyOffsets.Count * sizeof(int));
-                IntPtr outConnectedPortals = Marshal.AllocHGlobal(portalPolys.Count * portalPolys.Count * sizeof(int) * 2);
-                Marshal.Copy(polyOffsets.ToArray(), 0, ptrSizes, polyOffsets.Count);
-                List<int> indices = new List<int>();
-                indices.AddRange(this.nodeIdxs);
-                indices.AddRange(this.faceIdxs);
-                IntPtr idxs = Marshal.AllocHGlobal(polyOffsets.Count * sizeof(int));
-                Marshal.Copy(indices.ToArray(), 0, idxs, indices.Count);
-                IntPtr curptr = ptr;
-                foreach (Polygon p in portalPolys)
-                {
-                    var vertices = p.Vertices;
-                    foreach (var v in vertices)
-                    {
-                        Marshal.StructureToPtr<Vector2>(v, curptr, false);
-                        curptr = IntPtr.Add(curptr, v2size);
-                    }
-                }
-                foreach (Polygon p in modelPolys)
-                {
-                    var vertices = p.Vertices;
-                    foreach (var v in vertices)
-                    {
-                        Marshal.StructureToPtr<Vector2>(v, curptr, false);
-                        curptr = IntPtr.Add(curptr, v2size);
-                    }
-                }
-
-                int connectedPortalCount =
-                    ClipPolygons2(nodeIdx, ptr, ptrSizes, idxs, portalPolys.Count, modelPolys.Count, outConnectedPortals);
-                int[] coveredPortalFaces = new int[connectedPortalCount];
-                Marshal.Copy(outConnectedPortals, coveredPortalFaces, 0, connectedPortalCount);
-                Marshal.FreeHGlobal(ptr);
-                Marshal.FreeHGlobal(ptrSizes);
-                Marshal.FreeHGlobal(idxs);
-                Marshal.FreeHGlobal(outConnectedPortals);
-
-                return coveredPortalFaces;
             }
         }
     }
