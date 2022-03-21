@@ -53,7 +53,6 @@
       <CopyLocalSatelliteAssemblies>False</CopyLocalSatelliteAssemblies>
     </ProjectReference>
     <ProjectReference Include="..\SampleBase\SampleBase.csproj" />
-    <ProjectReference Include="..\VHacdSharp\VHacdSharp.csproj" />
   </ItemGroup>
 
   <ItemGroup>

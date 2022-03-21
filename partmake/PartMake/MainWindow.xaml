@@ -339,6 +339,7 @@
         <GridSplitter Grid.Column="5" Width="5" HorizontalAlignment="Stretch" />
         <StackPanel Grid.Column="6" >
             <CheckBox Content="Mesh" IsChecked="{Binding Path=DoMesh, ElementName=_RenderControl}"/>
+            <CheckBox Content="Decomp" IsChecked="{Binding Path=DoDecomp, ElementName=_RenderControl}"/>
             <CheckBox Content="NonManifold" IsChecked="{Binding Path=NonManifold, ElementName=_RenderControl}"/>
             <CheckBox Content="Edges" IsChecked="{Binding ShowEdges, ElementName=_RenderControl}"/>
             <CheckBox Content="Raycast" IsChecked="{Binding Path=DoRaycast, ElementName=_RenderControl}"/>

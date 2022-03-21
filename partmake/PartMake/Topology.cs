@@ -766,6 +766,7 @@ namespace partmake
             public KdTree<double, Vertex> kdTree = new KdTree<double, Vertex>(3, new KdTree.Math.DoubleMath());
             List<Vertex> vertices = new List<Vertex>();
             public List<Face> faces = new List<Face>();
+            public List<ConvexMesh> convexDecomp = new List<ConvexMesh>();
             int nextVtxIdx = 0;
             public Dictionary<ulong, Edge> edgeDict = new Dictionary<ulong, Edge>();
             static double vertexMinDist = 0.0005;
@@ -971,15 +972,19 @@ namespace partmake
                 }*/
             }
 
+            public static bool DoBSP = false;
             public void Fix()
             {
-                AddBisectorFaces();
-                int idx = 0;
-                foreach (Face f in faces)
+                if (DoBSP)
                 {
-                    f.idx = idx++;
+                    AddBisectorFaces();
+                    int idx = 0;
+                    foreach (Face f in faces)
+                    {
+                        f.idx = idx++;
+                    }
+                    DoBsp(settings.ReverseBSPFaces);
                 }
-                DoBsp(settings.ReverseBSPFaces);
                 this.logLines.Clear();
                 Log("Fix");
                 try
@@ -1014,7 +1019,15 @@ namespace partmake
                     new Dictionary<ulong, Edge>(
                         edgeDict.Where(kv => !kv.Value.split));
                 edgeDict = newDict;
-               
+
+                List<Vector3> vlist = new List<Vector3>();
+                GetTrianglePts(vlist);
+                Convex c = new Convex();
+                this.convexDecomp = c.Decomp(vlist);
+                foreach (var dcmp in this.convexDecomp)
+                {
+                    dcmp.color = BSPPortal.GenColor();
+                }
                 //faces = faces.Where(f => f.visited).ToList();
             }
 
@@ -1939,6 +1952,25 @@ namespace partmake
                     }
                     faceIdx++;
                 }
+            }
+
+            void GetTrianglePts(List<Vector3> vlist)
+            {
+                foreach (var f in faces)
+                {
+                    var vl = f.Vtx;
+                    Vector3[] vtxs = vl.Select(v => v.pt).ToArray();
+                    vlist.Add(vtxs[0]);
+                    vlist.Add(vtxs[1]);
+                    vlist.Add(vtxs[2]);
+                    if (vtxs.Length == 4)
+                    {
+                        vlist.Add(vtxs[0]);
+                        vlist.Add(vtxs[2]);
+                        vlist.Add(vtxs[3]);
+                    }
+                }
+
             }
             void RemoveDuplicateFaces()
             {

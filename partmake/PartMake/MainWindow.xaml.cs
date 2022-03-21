@@ -42,7 +42,7 @@ namespace partmake
 
         public Topology.BSPNode SelectedBSPNode => vis?.SelectedBSPNode;
         public List<Topology.BSPNode> BSPNodes =>
-            new List<Topology.BSPNode>() { selectedPart?.GetTopoMesh().bSPTree.Top };
+            new List<Topology.BSPNode>() { selectedPart?.GetTopoMesh().bSPTree?.Top };
 
         public Topology.Settings TopoSettings { get; } = new Topology.Settings();
         public string SelectedType

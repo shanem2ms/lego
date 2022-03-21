@@ -10,7 +10,6 @@ using System.Linq;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Reflection;
-using VHacdSharp;
 
 namespace partmake
 {
@@ -39,6 +38,11 @@ namespace partmake
         List<Tuple<uint, uint>> _bspPortalsIndexCounts;
         List<Topology.BSPPortal> _bspPortals;
         List<Topology.PortalFace> _bspPortalFaces;
+
+        private DeviceBuffer _decompVertexBuffer;
+        private DeviceBuffer _decompIndexBuffer;
+        List<Tuple<uint, uint>> _decompIndexCounts;
+        List<Topology.ConvexMesh> _decompMeshes;
 
         private DeviceBuffer _bspFacesVertexBuffer;
         private DeviceBuffer _bspFacesIndexBuffer;
@@ -84,6 +88,7 @@ namespace partmake
         private bool onlyShowCoveredPortalFaces = false;
 
         public bool DoMesh { get; set; } = false;
+        public bool DoDecomp { get; set; } = false;
         public bool BSPPortals { get; set; } = true;
         public bool BSPFaces { get; set; } = false;
 
@@ -439,6 +444,28 @@ namespace partmake
             _triangleCount = _indexCount / 3;
 
 
+            List<Vtx> dcmpPts = new List<Vtx>();
+            _decompMeshes = _part.GetTopoMesh().convexDecomp;
+            _decompIndexCounts = new List<Tuple<uint, uint>>();
+            foreach (var conv in _decompMeshes)
+            {
+                uint startIdx = (uint)dcmpPts.Count;
+                dcmpPts.AddRange(conv.points.Select(v => new Vtx(v, new System.DoubleNumerics.Vector2(0, 0))));
+                _decompIndexCounts.Add(new Tuple<uint, uint>(startIdx,
+                    (uint)dcmpPts.Count - startIdx));
+            }
+            _decompVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * dcmpPts.Count), BufferUsage.VertexBuffer));
+            GraphicsDevice.UpdateBuffer(_decompVertexBuffer, 0, dcmpPts.ToArray());
+
+            uint []decompIndices = new uint[dcmpPts.Count];
+            for (uint i = 0; i < decompIndices.Length; i++)
+            {
+                decompIndices[i] = i;
+            }
+            _decompIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)decompIndices.Length, BufferUsage.IndexBuffer));
+            GraphicsDevice.UpdateBuffer(_decompIndexBuffer, 0, decompIndices);
+
+
             List<Vtx> vlistSel = new List<Vtx>();
 
             _part.GetVertices(vlistSel, true);
@@ -517,10 +544,13 @@ namespace partmake
 
             string logstr = Topology.PolygonClip.GetLog();
             OnLogUpdated?.Invoke(this, logstr);
+
         }
 
         void LoadPortalsMesh()
         {
+            if (_part.GetTopoMesh().bSPTree == null)
+                return;
             {
                 _bspPortals =
                      _part.GetTopoMesh().bSPTree.GetLeafPortals();
@@ -937,6 +967,7 @@ namespace partmake
             else
             {
                 DrawMesh(ref mat);
+                DrawDecomp(ref mat);
 
                 DrawBSPPortals(ref mat);
                 DrawBSPFaces(ref mat);
@@ -1254,9 +1285,28 @@ namespace partmake
             }
         }
 
+        void DrawDecomp(ref Matrix4x4 mat)
+        {
+            if (DoDecomp)
+            {
+                _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
+                _cl.SetPipeline(_pipeline);
+                _cl.SetVertexBuffer(0, _decompVertexBuffer);
+                _cl.SetIndexBuffer(_decompIndexBuffer, IndexFormat.UInt32);
+                _cl.SetGraphicsResourceSet(0, _projViewSet);
+                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+                for (int idx = 0; idx < _decompIndexCounts.Count; idx++)
+                {
+                    Vector4 col = new Vector4(_decompMeshes[idx].color, 1);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+                    _cl.DrawIndexed((uint)_decompIndexCounts[idx].Item2, 1, (uint)_decompIndexCounts[idx].Item1, 0, 0);
+                }
+            }
+        }
+
         void DrawBSPPortals(ref Matrix4x4 mat)
         {
-            if (BSPPortals)
+            if (BSPPortals && _bspPortalsVertexBuffer != null)
             {
                 _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
                 _cl.SetPipeline(_pipeline);

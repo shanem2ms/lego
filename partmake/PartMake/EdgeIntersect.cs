@@ -309,5 +309,55 @@ namespace partmake
                 return results;
             }
         }
+
+        public class ConvexMesh
+        {
+            public System.Numerics.Vector3 color;
+            public List<Vector3> points;
+        }
+        public class Convex
+        {
+            [DllImport("EdgeIntersect.dll")]
+            static extern int ConvexDecomp(IntPtr pointListDbls, int numTriangles,
+                IntPtr outPts, IntPtr outTris);
+
+            public List<ConvexMesh> Decomp(List<Vector3> points)
+            {
+                int v3size = Marshal.SizeOf<Vector3>();
+                IntPtr ptr = Marshal.AllocHGlobal(points.Count * v3size);
+                IntPtr curptr = ptr;
+                IntPtr outptr = Marshal.AllocHGlobal(points.Count * v3size * 10);
+                IntPtr outtris = Marshal.AllocHGlobal(points.Count * sizeof(int));
+                foreach (var v in points)
+                {
+                    Marshal.StructureToPtr<Vector3>(v, curptr, false);
+                    curptr = IntPtr.Add(curptr, v3size);
+                }
+                int partCount = ConvexDecomp(ptr, points.Count / 3, outptr,
+                    outtris);
+                int []tris = new int[partCount];
+                Marshal.Copy(outtris, tris, 0, partCount);
+                int ptCount = tris[tris.Length - 1];
+
+                int curPtCnt = 0;
+                IntPtr outPtsCur = outptr;
+                List<ConvexMesh> meshes = new List<ConvexMesh>();
+                for (int i = 0; i < partCount; i++)
+                {
+                    List<Vector3> pts = new List<Vector3>();
+                    for (int j = curPtCnt; j < tris[i]; j++)
+                    {
+                        pts.Add(Marshal.PtrToStructure<Vector3>(outPtsCur));
+                        outPtsCur = IntPtr.Add(outPtsCur, v3size);
+                    }
+                    curPtCnt = tris[i];
+                    meshes.Add(new ConvexMesh() {  points = pts });
+                }
+                Marshal.FreeHGlobal(ptr);
+                Marshal.FreeHGlobal(outptr);
+                Marshal.FreeHGlobal(outtris);                
+                return meshes;
+            }
+        }
     }
 }

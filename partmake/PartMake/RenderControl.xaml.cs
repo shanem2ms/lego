@@ -18,6 +18,8 @@ namespace partmake
         private readonly VeldridControl _veldridControl;
        
         public bool DoMesh { get => Vis.DoMesh; set => Vis.DoMesh = value; }
+
+        public bool DoDecomp { get => Vis.DoDecomp; set => Vis.DoDecomp = value; }
         public bool ShowBisector { get => Vis.ShowBisector; set => Vis.ShowBisector = value; }
         public bool NonManifold { get => Vis.NonManifold; set => Vis.NonManifold = value; }        
         public bool ShowConnectors { get => Vis.ShowConnectors; set => Vis.ShowConnectors = value; }
