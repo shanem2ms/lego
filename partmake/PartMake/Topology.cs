@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using System.DoubleNumerics;
 using KdTree;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Runtime.Serialization;
 
 namespace partmake
 {
@@ -973,6 +975,15 @@ namespace partmake
             }
 
             public static bool DoBSP = false;
+
+            public void WriteCollision(string filename)
+            {
+                List<Vector3> vlist = new List<Vector3>();
+                GetTrianglePts(vlist);
+                Convex c = new Convex();
+                c.writeToFile = filename;
+                this.convexDecomp = c.Decomp(vlist);
+            }
             public void Fix()
             {
                 if (DoBSP)
@@ -1028,6 +1039,8 @@ namespace partmake
                 {
                     dcmp.color = BSPPortal.GenColor();
                 }
+                Log($"decomp {this.convexDecomp.Count} parts");
+                Log($"decomp {this.convexDecomp.Select(c => c.points.Count).Sum()} total points");
                 //faces = faces.Where(f => f.visited).ToList();
             }
 

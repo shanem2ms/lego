@@ -88,12 +88,12 @@ namespace partmake
         private bool onlyShowCoveredPortalFaces = false;
 
         public bool DoMesh { get; set; } = false;
-        public bool DoDecomp { get; set; } = false;
-        public bool BSPPortals { get; set; } = true;
+        public bool DoDecomp { get; set; } = true;
+        public bool BSPPortals { get; set; } = false;
         public bool BSPFaces { get; set; } = false;
 
         public bool DoRaycast { get; set; } = false;
-        public bool ShowEdges { get; set; } = true;
+        public bool ShowEdges { get; set; } = false;
 
         public bool ShowBisector { get; set; }
         public bool NonManifold { get; set; } = false;
@@ -457,7 +457,7 @@ namespace partmake
             _decompVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * dcmpPts.Count), BufferUsage.VertexBuffer));
             GraphicsDevice.UpdateBuffer(_decompVertexBuffer, 0, dcmpPts.ToArray());
 
-            uint []decompIndices = new uint[dcmpPts.Count];
+            uint[] decompIndices = new uint[dcmpPts.Count];
             for (uint i = 0; i < decompIndices.Length; i++)
             {
                 decompIndices[i] = i;
@@ -595,7 +595,7 @@ namespace partmake
                 _bspFacesIndexCounts = new List<Tuple<uint, uint>>();
                 List<Vtx> vlist = new List<Vtx>();
                 foreach (var portal in _bspPortals)
-                {                    
+                {
                     foreach (var face in portal.Faces)
                     {
                         if (face.isFinal)
@@ -967,7 +967,7 @@ namespace partmake
             else
             {
                 DrawMesh(ref mat);
-                DrawDecomp(ref mat);
+                DrawDecomp(ref mat, ref viewmat, ref projMat);
 
                 DrawBSPPortals(ref mat);
                 DrawBSPFaces(ref mat);
@@ -1201,7 +1201,7 @@ namespace partmake
                 }
             }
 
-        }        
+        }
         void DrawEdges(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
             if (this.ShowEdges)
@@ -1285,7 +1285,7 @@ namespace partmake
             }
         }
 
-        void DrawDecomp(ref Matrix4x4 mat)
+        void DrawDecomp(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
             if (DoDecomp)
             {
@@ -1300,6 +1300,36 @@ namespace partmake
                     Vector4 col = new Vector4(_decompMeshes[idx].color, 1);
                     _cl.UpdateBuffer(_materialBuffer, 0, ref col);
                     _cl.DrawIndexed((uint)_decompIndexCounts[idx].Item2, 1, (uint)_decompIndexCounts[idx].Item1, 0, 0);
+                }
+
+                _cl.SetPipeline(_pipeline);
+                _cl.SetGraphicsResourceSet(0, _projViewSet);
+                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+
+                _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+                _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+
+                Matrix4x4 viewPrj = viewmat * projMat;
+
+                Vector4 edgeColor = new Vector4(1, 1, 1, 1);
+                foreach (var mesh in this._decompMeshes)
+                {
+                    for (int i = 0; i < mesh.points.Count; i += 3)
+                    {
+                        for (int t = 0; t < 3; t++)
+                        {
+                            _cl.UpdateBuffer(_materialBuffer, 0, ref edgeColor);
+                            var v0 = mesh.points[i + t];
+                            var v1 = mesh.points[i + ((t + 1) % 3)];
+                            Vector3 pt0 = new Vector3((float)v0.X, (float)v0.Y, (float)v0.Z);
+                            Vector3 pt1 = new Vector3((float)v1.X, (float)v1.Y, (float)v1.Z);
+
+                            Matrix4x4 wm = MatrixForLine(pt0, pt1, ref mat, ref viewPrj);
+
+                            _cl.UpdateBuffer(_worldBuffer, 0, ref wm);
+                            _cl.DrawIndexed((uint)_cubeIndexCount);
+                        }
+                    }
                 }
             }
         }
@@ -1419,6 +1449,10 @@ namespace partmake
 
             if (ShowConnectors)
             {
+                _cl.SetPipeline(_pipeline);
+                _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+                _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+
                 foreach (var c in connectorVizs)
                 {
                     Vector4 ccol = colors[c.type];

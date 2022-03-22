@@ -226,6 +226,11 @@ namespace partmake
 
         public static void WriteAll()
         {
+            WriteCollision();
+        }
+
+        static void WriteConnectors()
+        {
             string path = @"C:\homep4\lego\connectors";
             for (int i = 0; i < ldrawParts.Count; i++)
             {
@@ -234,7 +239,18 @@ namespace partmake
                 LDrawDatFile df = GetPart(ldrawParts[i]);
                 df.WriteConnectorFile(path);
             }
-            
+        }
+        static void WriteCollision()
+        {
+            string path = @"C:\homep4\lego\collision";
+            for (int i = 0; i < ldrawParts.Count; i++)
+            {
+                if (i % 100 == 0)
+                    Debug.WriteLine(i);
+                LDrawDatFile df = GetPart(ldrawParts[i]);
+                df.WriteCollisionFile(path);
+            }
+
         }
 
         public static Entry GetEntry(string _name)

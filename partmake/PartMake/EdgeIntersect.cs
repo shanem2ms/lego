@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using System.IO;
 
 namespace partmake
 {
@@ -315,43 +316,72 @@ namespace partmake
             public System.Numerics.Vector3 color;
             public List<Vector3> points;
         }
+
         public class Convex
         {
             [DllImport("EdgeIntersect.dll")]
             static extern int ConvexDecomp(IntPtr pointListDbls, int numTriangles,
-                IntPtr outPts, IntPtr outTris);
+                IntPtr outPts, int maxPoints, IntPtr outTris, int maxTris);
+
+            [DllImport("kernel32.dll")]
+            private static extern bool WriteFile(IntPtr hFile, IntPtr lpBuffer, int NumberOfBytesToWrite, out int lpNumberOfBytesWritten, IntPtr lpOverlapped);
+
+            public string writeToFile;
 
             public List<ConvexMesh> Decomp(List<Vector3> points)
             {
                 int v3size = Marshal.SizeOf<Vector3>();
                 IntPtr ptr = Marshal.AllocHGlobal(points.Count * v3size);
                 IntPtr curptr = ptr;
-                IntPtr outptr = Marshal.AllocHGlobal(points.Count * v3size * 10);
+                int maxPoints = points.Count * 10;
+                IntPtr outptr = Marshal.AllocHGlobal(maxPoints * v3size);
                 IntPtr outtris = Marshal.AllocHGlobal(points.Count * sizeof(int));
                 foreach (var v in points)
                 {
                     Marshal.StructureToPtr<Vector3>(v, curptr, false);
                     curptr = IntPtr.Add(curptr, v3size);
                 }
-                int partCount = ConvexDecomp(ptr, points.Count / 3, outptr,
-                    outtris);
-                int []tris = new int[partCount];
-                Marshal.Copy(outtris, tris, 0, partCount);
-                int ptCount = tris[tris.Length - 1];
+                int partCount = ConvexDecomp(ptr, points.Count / 3, outptr, maxPoints,
+                    outtris, points.Count);
 
-                int curPtCnt = 0;
-                IntPtr outPtsCur = outptr;
                 List<ConvexMesh> meshes = new List<ConvexMesh>();
-                for (int i = 0; i < partCount; i++)
+                if (partCount > 0)
                 {
-                    List<Vector3> pts = new List<Vector3>();
-                    for (int j = curPtCnt; j < tris[i]; j++)
+                    int[] tris = new int[partCount];
+                    Marshal.Copy(outtris, tris, 0, partCount);
+                    int ptCount = tris[tris.Length - 1];
+
+                    int curPtCnt = 0;
+                    IntPtr outPtsCur = outptr;
+                    List<byte> outBytes = new List<byte>();
+                    outBytes.AddRange(BitConverter.GetBytes(partCount));
+                    foreach (var tri in tris)
                     {
-                        pts.Add(Marshal.PtrToStructure<Vector3>(outPtsCur));
-                        outPtsCur = IntPtr.Add(outPtsCur, v3size);
+                        outBytes.AddRange(BitConverter.GetBytes(tri));
                     }
-                    curPtCnt = tris[i];
-                    meshes.Add(new ConvexMesh() {  points = pts });
+
+                    for (int i = 0; i < partCount; i++)
+                    {
+                        List<Vector3> pts = new List<Vector3>();
+                        for (int j = curPtCnt; j < tris[i]; j++)
+                        {
+                            pts.Add(Marshal.PtrToStructure<Vector3>(outPtsCur));
+                            byte[] bytes = new byte[Marshal.SizeOf<Vector3>()];
+                            Marshal.Copy(outPtsCur, bytes, 0, bytes.Length);
+                            ///outPtsCur
+                            outBytes.AddRange(bytes);
+                            outPtsCur = IntPtr.Add(outPtsCur, v3size);
+                        }
+                        curPtCnt = tris[i];
+                        meshes.Add(new ConvexMesh() { points = pts });
+                    }
+
+                    if (writeToFile != null)
+                    {
+                        FileStream file = new FileStream(writeToFile, FileMode.Create, FileAccess.Write);
+                        file.Write(outBytes.ToArray(), 0, outBytes.Count);
+                        file.Close();
+                    }
                 }
                 Marshal.FreeHGlobal(ptr);
                 Marshal.FreeHGlobal(outptr);

@@ -410,5 +410,20 @@ namespace partmake
             File.WriteAllText(Path.Combine(folder, outfile), jsonstr);
         }
 
+        public void WriteCollisionFile(string folder)
+        {
+            try
+            {
+                Debug.WriteLine(name);
+                Topology.Mesh tm = new Topology.Mesh();
+                GetTopoRecursive(false, Matrix4x4.Identity, tm, "0");
+                string outfile = Path.GetFileNameWithoutExtension(name) + ".col";
+                tm.WriteCollision(Path.Combine(folder, outfile));
+            }
+            catch (Exception ex)
+            {
+
+            }
+        }
     }
 }
