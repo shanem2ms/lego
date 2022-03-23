@@ -443,28 +443,32 @@ namespace partmake
             _indexCount = indices.Length;
             _triangleCount = _indexCount / 3;
 
-
-            List<Vtx> dcmpPts = new List<Vtx>();
             _decompMeshes = _part.GetTopoMesh().convexDecomp;
-            _decompIndexCounts = new List<Tuple<uint, uint>>();
-            foreach (var conv in _decompMeshes)
+            _decompIndexCounts = null;
+            _decompVertexBuffer = null;
+            _decompIndexBuffer = null;
+            if (_decompMeshes.Count > 0)
             {
-                uint startIdx = (uint)dcmpPts.Count;
-                dcmpPts.AddRange(conv.points.Select(v => new Vtx(v, new System.DoubleNumerics.Vector2(0, 0))));
-                _decompIndexCounts.Add(new Tuple<uint, uint>(startIdx,
-                    (uint)dcmpPts.Count - startIdx));
-            }
-            _decompVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * dcmpPts.Count), BufferUsage.VertexBuffer));
-            GraphicsDevice.UpdateBuffer(_decompVertexBuffer, 0, dcmpPts.ToArray());
+                List<Vtx> dcmpPts = new List<Vtx>();
+                _decompIndexCounts = new List<Tuple<uint, uint>>();
+                foreach (var conv in _decompMeshes)
+                {
+                    uint startIdx = (uint)dcmpPts.Count;
+                    dcmpPts.AddRange(conv.points.Select(v => new Vtx(v, new System.DoubleNumerics.Vector2(0, 0))));
+                    _decompIndexCounts.Add(new Tuple<uint, uint>(startIdx,
+                        (uint)dcmpPts.Count - startIdx));
+                }
+                _decompVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * dcmpPts.Count), BufferUsage.VertexBuffer));
+                GraphicsDevice.UpdateBuffer(_decompVertexBuffer, 0, dcmpPts.ToArray());
 
-            uint[] decompIndices = new uint[dcmpPts.Count];
-            for (uint i = 0; i < decompIndices.Length; i++)
-            {
-                decompIndices[i] = i;
+                uint[] decompIndices = new uint[dcmpPts.Count];
+                for (uint i = 0; i < decompIndices.Length; i++)
+                {
+                    decompIndices[i] = i;
+                }
+                _decompIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)decompIndices.Length, BufferUsage.IndexBuffer));
+                GraphicsDevice.UpdateBuffer(_decompIndexBuffer, 0, decompIndices);
             }
-            _decompIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)decompIndices.Length, BufferUsage.IndexBuffer));
-            GraphicsDevice.UpdateBuffer(_decompIndexBuffer, 0, decompIndices);
-
 
             List<Vtx> vlistSel = new List<Vtx>();
 
@@ -1287,7 +1291,7 @@ namespace partmake
 
         void DrawDecomp(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
-            if (DoDecomp)
+            if (DoDecomp && _decompMeshes.Count > 0)
             {
                 _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
                 _cl.SetPipeline(_pipeline);

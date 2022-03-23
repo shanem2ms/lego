@@ -13,7 +13,7 @@
 struct CubeList;
 struct LdrRenderModel;
 typedef const LdrRenderModel* LdrRenderModelHDL;
-class btBvhTriangleMeshShape;
+class btCompoundShape;
 namespace ldr
 {
     struct Loader;
@@ -241,15 +241,15 @@ namespace sam
         bool m_connectorsLoaded;
         std::vector<Connector> m_connectors;
         std::shared_ptr<CubeList> m_connectorCL;
-        std::shared_ptr<btBvhTriangleMeshShape> m_collisionShape;
+        std::shared_ptr<btCompoundShape> m_collisionShape;
 
-        void LoadCollisionMesh();
 
     private:
         void LoadLores(ldr::Loader* pLoader,
             const std::string& name, std::filesystem::path& cachePath);
         void LoadHires(const std::string& name, std::filesystem::path& cachePath);
         void LoadConnectors(const std::filesystem::path &connectorPath);
+        void LoadCollisionMesh(const std::filesystem::path& collisionPath);
         void LoadPrimitives(ldr::Loader* pLoader);
         void GenerateCacheItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
             const std::string& name, std::filesystem::path& cachePath, 
@@ -295,6 +295,7 @@ namespace sam
         void Draw(DrawContext& ctx) override;
         void MruUpdate(Brick* pBrick);        
         void LoadConnectors(Brick* pBrick);
+        void LoadCollision(Brick* pBrick);
         void LoadPrimitives(Brick* pBrick);
         const std::vector<PartId>& PartsForType(
             const std::string typestr)
@@ -330,6 +331,7 @@ namespace sam
         index_map<std::string, std::vector<PartId>> m_typesMap;
         std::filesystem::path m_cachePath;
         std::filesystem::path m_connectorPath;
+        std::filesystem::path m_collisionPath;
         std::unique_ptr<BrickThreadPool> m_threadPool;
         std::vector<Brick*> m_brickRenderQueue;
         bgfxh<bgfx::TextureHandle> m_iconDepth;

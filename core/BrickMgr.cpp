@@ -342,28 +342,38 @@ namespace sam
 
     }
 
-    void Brick::LoadCollisionMesh()
+    void Brick::LoadCollisionMesh(const std::filesystem::path& collisionPath)
     {
         if (m_collisionShape != nullptr)
             return;
 
-        const uint32_t* pI = (const uint32_t*)m_indicesLR.data();
-        const PosTexcoordNrmVertex* pV = m_verticesLR.data();
-        btTriangleMesh* pMesh = new btTriangleMesh();
-        constexpr float s = 1.0f;// BrickManager::Scale;
-        for (uint32_t i = 0; i < m_indicesLR.size(); i += 3) {
-            if (pI[i] == (uint32_t)(-1) ||
-                pI[i + 1] == (uint32_t)(-1) ||
-                pI[i + 2] == (uint32_t)(-1))
-                continue;
-            auto& v0 = pV[pI[i]];
-            auto& v1 = pV[pI[i + 1]];
-            auto& v2 = pV[pI[i + 2]];
-            pMesh->addTriangle(btVector3(v0.m_x * s, v0.m_y * s, v0.m_z * s),
-                btVector3(v1.m_x * s, v1.m_y * s, v1.m_z * s),
-                btVector3(v2.m_x * s, v2.m_y * s, v2.m_z * s));
+        std::vector<std::vector<Vec3d>> meshes;
+        if (std::filesystem::exists(collisionPath))
+        {
+            std::ifstream ifs(collisionPath, std::ios_base::binary);
+            uint32_t nummeshes = 0;
+            ifs.read((char*)&nummeshes, sizeof(nummeshes));
+            std::vector<uint32_t> triCount(nummeshes);
+            ifs.read((char*)triCount.data(), sizeof(triCount[0]) * triCount.size());
+            for (int idx = 0; idx < nummeshes; ++idx)
+            {
+                meshes.push_back(std::vector<Vec3d>());
+                std::vector<Vec3d>& pts = meshes.back();
+                pts.resize(triCount[idx]);
+                ifs.read((char*)pts.data(), sizeof(pts[0]) * pts.size());
+            }
         }
-        m_collisionShape = std::make_shared<btBvhTriangleMeshShape>(pMesh, true, true);
+        m_collisionShape = std::make_shared<btCompoundShape>();
+        for (auto &mesh : meshes)
+        {
+            btConvexHullShape* pCvxShape = new btConvexHullShape();            
+            for (auto& pt : mesh)
+            {
+                pCvxShape->addPoint(btVector3(pt[0], pt[1], pt[2]) * m_scale, false);
+            }
+            pCvxShape->recalcLocalAabb();
+            m_collisionShape->addChildShape(btTransform::getIdentity(), pCvxShape);
+        }
     }
 
 #define tricount (hires ? rpart.num_trianglesC : rpart.num_triangles)
@@ -618,6 +628,7 @@ namespace sam
         spMgr = this;
         m_cachePath = Application::Inst().Documents() + "/ldrcache";
         m_connectorPath = Application::Inst().Documents() + "/connectors";
+        m_collisionPath = Application::Inst().Documents() + "/collision";
         std::filesystem::create_directory(m_cachePath);
         LoadColors(ldrpath);
         LoadAllParts(ldrpath);
@@ -637,6 +648,14 @@ namespace sam
             pBrick->LoadConnectors(connectorPath);
     }
 
+    void BrickManager::LoadCollision(Brick* pBrick)
+    {
+        std::filesystem::path collisionPath = m_collisionPath / pBrick->m_name;
+        collisionPath.replace_extension("col");
+
+        if (std::filesystem::exists(collisionPath))
+            pBrick->LoadCollisionMesh(collisionPath);
+    }
     void BrickManager::LoadPrimitives(Brick* pBrick)
     {
         pBrick->LoadPrimitives(m_ldrLoaderLR.get());
@@ -980,8 +999,7 @@ namespace sam
         {
             std::filesystem::path meshfilepath = m_cachePath / name.GetFilename();
             meshfilepath.replace_extension("hr_mesh");
-            if (!std::filesystem::exists(meshfilepath) || 
-                name == "3003")
+            if (!std::filesystem::exists(meshfilepath))
             {
                 cachemtx.lock();
                 b.GenerateCacheItem(m_ldrLoaderHR.get(), nullptr, name.GetFilename(),

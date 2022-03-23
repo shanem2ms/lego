@@ -95,10 +95,14 @@ namespace partmake
             polyLog.LogText = e;
         }
 
-        private void Settings_SettingsChanged(object sender, EventArgs e)
+        void Rebuild()
         {
             selectedPart.ClearTopoMesh();
             vis.Part = selectedPart;
+        }
+        private void Settings_SettingsChanged(object sender, EventArgs e)
+        {
+            Rebuild();
         }
 
         private void Vis_OnBSPNodeSelected(object sender, Topology.BSPNode e)
@@ -156,7 +160,7 @@ namespace partmake
 
         private void CheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            vis.Part = selectedPart;
+            Rebuild();
         }
 
         private void Button_Click(object sender, RoutedEventArgs e)

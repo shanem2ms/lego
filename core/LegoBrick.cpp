@@ -63,9 +63,9 @@ namespace sam
             }
         }
 
-        if (false && m_physicsType != Physics::None)
+        if (m_physicsType != Physics::None)
         {
-            m_pBrick->LoadCollisionMesh();
+            BrickManager::Inst().LoadCollision(m_pBrick);
             Matrix44f m = dc.m_mat *
                 makeTrans<Matrix44f>(m_offset) *
                 makeRot<Matrix44f>(m_rotate) *

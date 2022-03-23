@@ -24,8 +24,13 @@ namespace partmake
             bool splitinterioredges = false;
             bool removesplitedgesfromfaces = false;
             bool reverseBSPFaces = false;
+            bool convexDecomp = false;
+            bool bsp = false;
 
             public bool Triangulate { get => triangulate; set { triangulate = value; SettingsChanged?.Invoke(this, new EventArgs()); } }
+            public bool ConvexDecomp { get => convexDecomp; set { convexDecomp = value; SettingsChanged?.Invoke(this, new EventArgs()); } }
+            public bool BSP { get => bsp; set { bsp = value; SettingsChanged?.Invoke(this, new EventArgs()); } }
+
             public bool AddInteriorEdges { get => addinterioredges; set { addinterioredges = value; SettingsChanged?.Invoke(this, new EventArgs()); } }
             public bool SplitXJunctions { get => splitxjunctions; set { splitxjunctions = value; SettingsChanged?.Invoke(this, new EventArgs()); } }
             public bool SplitTJunctions { get => splittjunctions; set { splittjunctions = value; SettingsChanged?.Invoke(this, new EventArgs()); } }
@@ -164,7 +169,9 @@ namespace partmake
 
             public int FaceCount => edgePtrs.Count();
 
-            public double DotAngle { get
+            public double DotAngle
+            {
+                get
                 {
                     if (edgePtrs.Count < 2)
                         return -1;
@@ -173,7 +180,8 @@ namespace partmake
                         return 1;
                     return Math.Abs(Vector3.Dot(edgePtrs[0].parentFace.Normal,
                         edgePtrs[1].parentFace.Normal));
-                } }
+                }
+            }
 
             public List<Vector3> GetBisectorFace(double size)
             {
@@ -191,7 +199,7 @@ namespace partmake
                     v1.pt - bisectV * size,
                     v0.pt - bisectV * size
                 };
-                
+
             }
             public bool IsConnected(Edge other)
             {
@@ -963,7 +971,7 @@ namespace partmake
                     bspFaces = randomList.Select(r => r.Item2).ToList();
                 }
 
-               
+
                 bSPTree.BuildTree(bspFaces, planeMgr);
                 var finalFaces = bSPTree.FindFinalFaces();
                 /*
@@ -974,7 +982,6 @@ namespace partmake
                 }*/
             }
 
-            public static bool DoBSP = false;
 
             public void WriteCollision(string filename)
             {
@@ -986,20 +993,20 @@ namespace partmake
             }
             public void Fix()
             {
-                if (DoBSP)
-                {
-                    AddBisectorFaces();
-                    int idx = 0;
-                    foreach (Face f in faces)
-                    {
-                        f.idx = idx++;
-                    }
-                    DoBsp(settings.ReverseBSPFaces);
-                }
-                this.logLines.Clear();
-                Log("Fix");
                 try
                 {
+                    Log("Fix");
+                    this.logLines.Clear();
+                    if (settings.BSP)
+                    {
+                        AddBisectorFaces();
+                        int idx = 0;
+                        foreach (Face f in faces)
+                        {
+                            f.idx = idx++;
+                        }
+                        DoBsp(settings.ReverseBSPFaces);
+                    }
                     //RemoveDuplicateFaces();
                     vertexMinDist *= 0.01;
                     if (settings.AddInteriorEdges)
@@ -1030,17 +1037,19 @@ namespace partmake
                     new Dictionary<ulong, Edge>(
                         edgeDict.Where(kv => !kv.Value.split));
                 edgeDict = newDict;
-
-                List<Vector3> vlist = new List<Vector3>();
-                GetTrianglePts(vlist);
-                Convex c = new Convex();
-                this.convexDecomp = c.Decomp(vlist);
-                foreach (var dcmp in this.convexDecomp)
+                if (settings.ConvexDecomp)
                 {
-                    dcmp.color = BSPPortal.GenColor();
+                    List<Vector3> vlist = new List<Vector3>();
+                    GetTrianglePts(vlist);
+                    Convex c = new Convex();
+                    this.convexDecomp = c.Decomp(vlist);
+                    foreach (var dcmp in this.convexDecomp)
+                    {
+                        dcmp.color = BSPPortal.GenColor();
+                    }
+                    Log($"decomp {this.convexDecomp.Count} parts");
+                    Log($"decomp {this.convexDecomp.Select(c => c.points.Count).Sum()} total points");
                 }
-                Log($"decomp {this.convexDecomp.Count} parts");
-                Log($"decomp {this.convexDecomp.Select(c => c.points.Count).Sum()} total points");
                 //faces = faces.Where(f => f.visited).ToList();
             }
 
@@ -1053,11 +1062,11 @@ namespace partmake
                     if (da > 0.999 && da < 1)
                         bisectEdges.Add(kv.Value);
                 }
-                foreach (var edge in bisectEdges)  
+                foreach (var edge in bisectEdges)
                 {
                     int f0idx = faces.IndexOf(edge.edgePtrs[0].parentFace);
                     int f1idx = faces.IndexOf(edge.edgePtrs[1].parentFace);
-                    
+
                     AddFace("b", edge.GetBisectorFace(0.5), Math.Min(f0idx, f1idx));
                 }
             }
@@ -1868,7 +1877,7 @@ namespace partmake
                 return outPts;
             }
 
-           
+
             bool FollowCoplanarEdges(List<Edge> edges, Vector3 nrm)
             {
                 Edge cur = edges.Last();

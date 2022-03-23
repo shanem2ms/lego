@@ -307,6 +307,8 @@
             </TabItem>
             <TabItem Header="Steps" >
                 <StackPanel Orientation="Vertical">
+                    <CheckBox Content="BSP" IsChecked="{Binding Path=TopoSettings.BSP}"/>
+                    <CheckBox Content="CovexDecomp" IsChecked="{Binding Path=TopoSettings.ConvexDecomp}"/>
                     <CheckBox Content="AddInteriorEdges" IsChecked="{Binding Path=TopoSettings.AddInteriorEdges}"/>
                     <CheckBox Content="Triangulate" IsChecked="{Binding Path=TopoSettings.Triangulate}"/>
                     <CheckBox Content="SplitXJunctions" IsChecked="{Binding Path=TopoSettings.SplitXJunctions}"/>
