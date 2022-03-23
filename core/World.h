@@ -30,8 +30,6 @@ namespace sam
         int m_height;
         gmtl::Point3f m_camVel;
         float m_tiltVel;
-        bool m_flymode;
-        bool m_inspectmode;
         int m_debugDraw;
         bool m_disableCollisionCheck;
 
@@ -45,7 +43,6 @@ namespace sam
         std::shared_ptr<LegoBrick> m_pPickedBrick;
         std::shared_ptr<Physics> m_physics;
         std::shared_ptr<Player> m_player;
-        SlotPart m_slots[16];
     public:
 
         const std::shared_ptr<Player> &GetPlayer()

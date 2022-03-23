@@ -4,7 +4,9 @@
 namespace sam
 {     
 
-    Player::Player()
+    Player::Player() :
+        m_flymode(true),
+        m_inspectmode(false)
     {
         m_playerGroup = std::make_shared<SceneGroup>();
     }
@@ -33,8 +35,32 @@ namespace sam
 
     }
 
-    void Player::Initialize()
+    void Player::Initialize(Level& level)
     {
+        Level::PlayerData playerdata;
+        PartInst righthandpart;
+        if (level.GetPlayerData(playerdata))
+        {
+            fly.pos = playerdata.pos;
+            fly.dir = playerdata.dir;
+            m_flymode = playerdata.flymode;
+            m_inspectmode = playerdata.inspect;
+            Engine::Inst().SetDbgCam(m_inspectmode);
+            dfly.pos = playerdata.inspectpos;
+            dfly.dir = playerdata.inspectdir;
+            righthandpart = playerdata.rightHandPart;
+            memcpy(m_slots, playerdata.slots, sizeof(m_slots));
+        }
+        else
+        {
+            fly.pos = Point3f(0.0f, 0.0f, -0.5f);
+            fly.dir = Vec2f(1.24564195f, -0.455399066f);
+        }
+        for (int i = 0; i < 16; ++i)
+        {
+            m_slots[i].id = PartId("3001");
+        }
+
         m_rightHand = std::make_shared<SceneGroup>();
         m_rightHand->SetOffset(Vec3f(1.3f, -0.65f, 1.005f));
         m_rightHand->SetRotate(make<Quatf>(AxisAnglef(gmtl::Math::PI, 0.0f, 1.0f, 0.0f)) *

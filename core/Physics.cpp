@@ -72,7 +72,7 @@ namespace sam
         PhysicsDebugDraw(float iws) :
             m_invWorldScale(iws),
             m_lineIdx(0),
-            m_debugMode(btIDebugDraw::DBG_DrawAabb) {}
+            m_debugMode(btIDebugDraw::DBG_DrawWireframe) {}
 
         void BeginDraw()
         {
@@ -101,7 +101,7 @@ namespace sam
             int* indices = new int[indexCnt];
             size_t vtxIdx = 0, indexIdx = 0;
             Vec3f spread(1, 0, 0);
-            spread *= 0.001f;
+            spread *= 0.01f;
             for (const Line& line : lines)
             {
                 indices[indexIdx++] = vtxIdx;
@@ -246,7 +246,7 @@ namespace sam
         if (!m_isInit)
             Init();
         m_discreteDynamicsWorld->stepSimulation(1.0f / 60.0f, 10);        
-//#define PHYSICSDEBUG 1
+#define PHYSICSDEBUG 0
 #ifdef PHYSICSDEBUG
         m_dbgPhysics->BeginDraw();
         m_discreteDynamicsWorld->debugDrawWorld();

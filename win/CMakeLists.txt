@@ -27,7 +27,6 @@ set (PLATFORMLIBS
 "Shcore;")
 
 find_package(Bullet CONFIG REQUIRED)
-find_package(v-hacd CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -46,7 +45,6 @@ target_link_libraries(${PROJECT_NAME} LINK_PUBLIC
     ${VCPKG_INSTALL_PATH}/${LIBDBG}lib/BulletDynamics${CMAKE_DEBUG_POSTFIX}.lib
     ${VCPKG_INSTALL_PATH}/${LIBDBG}lib/BulletInverseDynamics${CMAKE_DEBUG_POSTFIX}.lib
     ${VCPKG_INSTALL_PATH}/${LIBDBG}lib/LinearMath${CMAKE_DEBUG_POSTFIX}.lib
-    vhacd::vhacd
     fmt::fmt-header-only
     core 
     ${PLATFORMLIBS}

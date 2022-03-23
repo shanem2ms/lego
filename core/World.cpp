@@ -28,8 +28,6 @@ namespace sam
         m_height(-1),
         m_currentTool(0),
         m_gravityVel(0),        
-        m_flymode(true),
-        m_inspectmode(false),
         m_pPickedBrick(nullptr),
         m_debugDraw(0),
         m_disableCollisionCheck(false)
@@ -255,29 +253,7 @@ namespace sam
             e.Root()->AddItem(m_player->GetPlayerGroup());
             Camera::Fly fly;
             Camera::Fly dfly;
-            Level::PlayerData playerdata;
-            PartInst righthandpart;
-            if (m_level.GetPlayerData(playerdata))
-            {
-                fly.pos = playerdata.pos;
-                fly.dir = playerdata.dir;
-                m_flymode = playerdata.flymode;
-                m_inspectmode = playerdata.inspect;
-                Engine::Inst().SetDbgCam(m_inspectmode);
-                dfly.pos = playerdata.inspectpos;
-                dfly.dir = playerdata.inspectdir;
-                righthandpart = playerdata.rightHandPart;
-                memcpy(m_slots, playerdata.slots, sizeof(m_slots));
-            }
-            else
-            {
-                fly.pos = Point3f(0.0f, 0.0f, -0.5f);
-                fly.dir = Vec2f(1.24564195f, -0.455399066f);
-            }            
-            for (int i = 0; i < 16; ++i)
-            {
-                m_slots[i].id = PartId("3001");
-            }
+            
             e.DrawCam().SetFly(dfly);
             e.ViewCam().SetFly(fly);
             m_player->Initialize();
@@ -310,6 +286,7 @@ namespace sam
 
         m_frustum->SetEnabled(m_inspectmode);
        
+        m_player->Update(ctx);
         auto &cam = e.ViewCam();
         Camera::Fly fly = cam.GetFly();        
         const float playerHeadHeight = 0.01f;

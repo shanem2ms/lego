@@ -15,6 +15,9 @@ namespace sam
         std::shared_ptr<SceneGroup> m_rightHand;
         PartInst m_rightHandPartInst;
         std::shared_ptr<SceneItem> m_rightHandPart;
+        bool m_flymode;
+        bool m_inspectmode;
+        SlotPart m_slots[16];
 
     public:
         
@@ -25,7 +28,7 @@ namespace sam
         { return m_playerGroup; }
         void Update(DrawContext& ctx);
         Player();
-        void Initialize();
+        void Initialize(Level& level);
     };
 }
 

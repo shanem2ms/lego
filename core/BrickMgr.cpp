@@ -15,7 +15,6 @@
 #include <regex>
 #define FMT_HEADER_ONLY 1
 #include <fmt/format.h>
-#include <VHACD.h>
 #include "Simplify.h"
 #include "bullet/btBulletCollisionCommon.h"
 #include "bullet/btBulletDynamicsCommon.h"
@@ -355,25 +354,32 @@ namespace sam
             ifs.read((char*)&nummeshes, sizeof(nummeshes));
             std::vector<uint32_t> triCount(nummeshes);
             ifs.read((char*)triCount.data(), sizeof(triCount[0]) * triCount.size());
+            size_t tricntPrev = 0;
             for (int idx = 0; idx < nummeshes; ++idx)
             {
                 meshes.push_back(std::vector<Vec3d>());
                 std::vector<Vec3d>& pts = meshes.back();
-                pts.resize(triCount[idx]);
+                pts.resize(triCount[idx] - tricntPrev);
                 ifs.read((char*)pts.data(), sizeof(pts[0]) * pts.size());
+                tricntPrev = triCount[idx];
             }
         }
         m_collisionShape = std::make_shared<btCompoundShape>();
+        float invScale = BrickManager::Scale;
         for (auto &mesh : meshes)
         {
             btConvexHullShape* pCvxShape = new btConvexHullShape();            
             for (auto& pt : mesh)
             {
-                pCvxShape->addPoint(btVector3(pt[0], pt[1], pt[2]) * m_scale, false);
+                pCvxShape->addPoint(btVector3(pt[0], -pt[1], pt[2]) * invScale, false);
             }
             pCvxShape->recalcLocalAabb();
             m_collisionShape->addChildShape(btTransform::getIdentity(), pCvxShape);
         }
+
+        
+        btVector3 min, max;
+        m_collisionShape->getAabb(btTransform::getIdentity(), min, max);
     }
 
 #define tricount (hires ? rpart.num_trianglesC : rpart.num_triangles)
