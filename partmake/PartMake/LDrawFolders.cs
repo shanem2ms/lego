@@ -226,12 +226,14 @@ namespace partmake
 
         public static void WriteAll()
         {
-            WriteCollision();
+            WriteConnectors();
+            //WriteCollision();
         }
 
         static void WriteConnectors()
         {
             string path = @"C:\homep4\lego\connectors";
+            Directory.CreateDirectory(path);
             for (int i = 0; i < ldrawParts.Count; i++)
             {
                 if (i % 100 == 0)
@@ -243,6 +245,7 @@ namespace partmake
         static void WriteCollision()
         {
             string path = @"C:\homep4\lego\collision";
+            Directory.CreateDirectory(path);
             for (int i = 0; i < ldrawParts.Count; i++)
             {
                 if (i % 100 == 0)
