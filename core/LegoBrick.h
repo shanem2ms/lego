@@ -21,7 +21,7 @@ namespace sam
             Static,
             Dynamic
         };
-        LegoBrick(const PartId& partstr, int paletteIdx, Physics physics = Physics::None, bool showConnectors = false);
+        LegoBrick(const PartInst& pi, int paletteIdx, Physics physics = Physics::None, bool showConnectors = false);
         virtual ~LegoBrick();
         void Decomission(DrawContext& ctx) override;
         void Initialize(DrawContext& nvg) override;
@@ -31,11 +31,11 @@ namespace sam
         void CreateBulletMesh();
         int GetHighlightedConnector() const
         { return m_connectorPickIdx; }
-        const PartId &GetPartId() const
-        { return m_partid; }
+        const PartInst &GetPartInst() const
+        { return m_partinst; }
     private:
         Matrix44f CalcMat() const override;
-        PartId m_partid;
+        PartInst m_partinst;
         Brick* m_pBrick;
         int m_paletteIdx;
         bool m_showConnectors;

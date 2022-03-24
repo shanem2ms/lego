@@ -127,6 +127,7 @@ namespace sam
                 pi.pos = Vec3f(0, -0.5f, 0);
                 pi.rot = Quatf();
                 pi.connected = true;
+                pi.canBeDestroyed = false;
                 m_parts.push_back(pi);
                 m_bricks.push_back(BrickManager::Inst().GetBrick(pi.id));
                 m_needsPersist = true;
@@ -175,7 +176,7 @@ namespace sam
             Clear();
             for (auto& part : m_parts)
             {
-                auto brick = std::make_shared<LegoBrick>(part.id, part.paletteIdx, 
+                auto brick = std::make_shared<LegoBrick>(part, part.paletteIdx, 
                     part.connected ? LegoBrick::Physics::Static : LegoBrick::Physics::Dynamic, false);
                 brick->SetOffset(part.pos);
                 brick->SetRotate(part.rot);

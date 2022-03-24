@@ -27,7 +27,6 @@ namespace sam
         m_width(-1),
         m_height(-1),
         m_currentTool(0),
-        m_gravityVel(0),        
         m_pPickedBrick(nullptr),
         m_debugDraw(0),
         m_disableCollisionCheck(false),
@@ -90,26 +89,24 @@ namespace sam
         }
         else if (buttonId == 0 && m_pPickedBrick != nullptr)
         {
-            PartInst pi;
-            pi.id = m_pPickedBrick->GetPartId();
-            Matrix44f wm = m_pPickedBrick->GetWorldMatrix();
-            Vec4f offset;
-            xform(offset, wm, Vec4f(0, 0, 0, 1));
-            pi.pos = Vec3f(offset);
-            Application::Inst().GetAudio().PlayOnce("break.mp3");
-            m_octTileSelection.RemovePart(pi);
+            const PartInst &pi = m_pPickedBrick->GetPartInst();
+            if (pi.canBeDestroyed)
+            {
+                Matrix44f wm = m_pPickedBrick->GetWorldMatrix();
+                Vec4f offset;
+                xform(offset, wm, Vec4f(0, 0, 0, 1));                
+                Application::Inst().GetAudio().PlayOnce("break.mp3");
+                PartInst piAdj = pi;
+                piAdj.pos = Vec3f(offset);
+                m_octTileSelection.RemovePart(piAdj);
+            }
         }
     }
 
     constexpr float pi_over_two = 3.14159265358979323846f * 0.5f;
     void World::RawMove(float dx, float dy)
     {
-        Engine& e = Engine::Inst();
-        Camera::Fly la = e.DrawCam().GetFly();
-        la.dir[0] += dx;
-        la.dir[1] -= dy;
-        la.dir[1] = std::max(la.dir[1], -pi_over_two);
-        e.DrawCam().SetFly(la);
+        m_player->RawMove(dx, dy);
     }
 
     void World::MouseDrag(float x, float y, int buttonId)
@@ -144,32 +141,12 @@ namespace sam
     int g_maxTileLod = 8;
     void World::KeyDown(int k)
     {
-        float speed = 0.01f;
         switch (k)
         {
         case 'P':
             BrickManager::Inst().LoadPrimitives(
                 BrickManager::Inst().GetBrick(m_player->GetRightHandPart().id));
             break;
-        case LeftShift:
-            m_camVel[1] -= speed;
-            break;
-        case SpaceBar:
-            m_camVel[1] += speed;
-            break;
-        case AButton:
-            m_camVel[0] -= speed;
-            break;
-        case DButton:
-            m_camVel[0] += speed;
-            break;
-        case WButton:
-            m_camVel[2] += speed;
-            break;
-        case SButton:
-            m_camVel[2] -= speed;
-            break;
-
         case 'B':
             m_debugDraw = (m_debugDraw + 1) % 3;
             break;
@@ -203,32 +180,22 @@ namespace sam
         {
             g_maxTileLod = k - '0';
         }
+        m_player->KeyDown(k);
     }
 
     void World::KeyUp(int k)
     {
         switch (k)
         {
-        case LeftShift:
-        case SpaceBar:
-            m_camVel[1] = 0;
-            break;
         case LeftCtrl:
             m_disableCollisionCheck = false;
-            break;
-        case AButton:
-        case DButton:
-            m_camVel[0] = 0;
-            break;
-        case WButton:
-        case SButton:
-            m_camVel[2] = 0;
             break;
         case 'N':
         case 'L':
             partChange = 0;
             break;
         }
+        m_player->KeyUp(k);
     }
 
     std::string g_partName;
@@ -248,9 +215,11 @@ namespace sam
             Camera::Fly fly;
             Camera::Fly dfly;
             
+            m_player->Initialize(m_level);
+            fly.pos = dfly.pos = m_player->Pos();
+            fly.dir = dfly.dir = m_player->Dir();
             e.DrawCam().SetFly(dfly);
             e.ViewCam().SetFly(fly);
-            m_player->Initialize(m_level);
             m_octTiles->BeforeDraw([this](DrawContext& ctx) { ctx.m_pgm = BGFX_INVALID_HANDLE; return true; });
             m_physics = std::make_shared<Physics>();
             Engine::Inst().AddExternalDraw(&m_connectionLogic);
@@ -279,7 +248,7 @@ namespace sam
 
         m_frustum->SetEnabled(m_player->InspectMode());
        
-        m_player->Update(ctx);
+        m_player->Update(ctx, m_level);
         auto &cam = e.ViewCam();
         Camera::Fly fly = cam.GetFly();        
         const float playerHeadHeight = 0.01f;
@@ -335,70 +304,21 @@ namespace sam
             }
         }
 
-        auto& dcam = e.DrawCam();
-        Vec3f right, up, forward;
-        Vec3f upworld(0, 1, 0);
-        auto dfly = dcam.GetFly();
-        dfly.GetDirs(right, up, forward);
-        Vec3f fwWorld;
-        cross(fwWorld, right, upworld);
-
-        float flyspeedup = 1;
-        if (m_player->FlyMode()) flyspeedup *= 10;
-        if (m_player->InspectMode()) flyspeedup *= 50;
-
-        Point3f newPos = dfly.pos + m_camVel[0] * right * flyspeedup +
-            (m_camVel[1] + m_gravityVel) * upworld * flyspeedup +
-            m_camVel[2] * fwWorld * flyspeedup;
 
         if (!m_player->InspectMode())
         {
             std::shared_ptr<OctTile> tile = m_octTileSelection.TileFromPos(fly.pos);
             if (tile == nullptr || tile->GetReadyState() < 3)
             {
-                m_gravityVel = 0;
             }
             else
-            {                
-                AABoxf playerbox(Point3f(-playerBodyWidth, -playerHeadHeight * 2, -playerBodyWidth),
-                    Point3f(playerBodyWidth, 0, playerBodyWidth));
-                Vec3f normal;
-                bool collision = tile->IsCollided(dfly.pos, newPos, playerbox, normal);
-                if (!collision && !m_player->FlyMode())
-                {
-                    m_gravityVel -= 0.0005f;
-                }
-                else
-                {
-                    //fly.pos[1] = grnd + headheight;
-                    m_gravityVel = 0;
-                }
+            {                               
             }
         }
         else
         {
-            m_gravityVel = 0;
         }
 
-        auto playerGrp = m_player->GetPlayerGroup();
-        playerGrp->SetOffset(newPos);
-        playerGrp->SetRotate(fly.Quat());
-        dfly.pos = newPos;
-        dcam.SetFly(dfly);
-
-        if ((ctx.m_frameIdx % 60) == 0)
-        {
-            Level::PlayerData playerdata;
-            playerdata.pos = fly.pos;
-            playerdata.dir = fly.dir;
-            playerdata.flymode = m_player->FlyMode();
-            playerdata.inspect = m_player->InspectMode();
-            playerdata.inspectpos = dfly.pos;
-            playerdata.inspectdir = dfly.dir;
-            playerdata.rightHandPart = m_player->GetRightHandPart();
-            
-            m_level.WritePlayerData(playerdata);
-        }
     }
    
 

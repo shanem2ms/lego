@@ -37,6 +37,7 @@ namespace sam
         Vec3f pos;
         Quatf rot;
         bool connected;
+        bool canBeDestroyed;
     };
 
     inline bool operator < (const PartId& lhs, const PartId& rhs)

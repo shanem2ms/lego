@@ -28,12 +28,8 @@ namespace sam
 
         int m_width;
         int m_height;
-        gmtl::Point3f m_camVel;
-        float m_tiltVel;
         int m_debugDraw;
         bool m_disableCollisionCheck;
-
-        float m_gravityVel;
 
         std::shared_ptr<SceneGroup> m_octTiles;
         int m_currentTool;
@@ -41,8 +37,8 @@ namespace sam
         std::shared_ptr<SceneItem> m_frustum;
         Level m_level;
         std::shared_ptr<LegoBrick> m_pPickedBrick;
-        std::shared_ptr<Physics> m_physics;
         std::shared_ptr<Player> m_player;
+        std::shared_ptr<Physics> m_physics;
     public:
 
         const std::shared_ptr<Player> &GetPlayer()

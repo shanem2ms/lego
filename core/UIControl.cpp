@@ -10,6 +10,10 @@
 namespace sam
 {
 
+    // Iphone 11pro max size as 1.0.
+    static float unitWidth = 2778.0f;
+    static float unitHeight = 1284.0f;
+
     UIControl::UIControl(float x, float y, float w, float h) :
         m_x(x),
         m_y(y),
@@ -57,13 +61,6 @@ namespace sam
 
         g_buttonDown = m_buttonDown = 1;
 
-        UIControl* pCtrl = m_topctrl->IsHit(x, y, buttonId);
-        if (pCtrl != nullptr)
-        {
-            m_capturedCtrl = pCtrl;
-            return true;
-        }
-
         return false;
     }
 
@@ -71,10 +68,6 @@ namespace sam
     {
         m_touchPos = gmtl::Vec2f(x, y);
 
-        if (m_capturedCtrl != nullptr)
-        {
-            return true;
-        }
         return true;
     }   
 
@@ -86,9 +79,9 @@ namespace sam
 
     void UIManager::Update(Engine& engine, int w, int h, DrawContext& ctx)
     {
-        if (w != m_width || h != m_height)
+        if (m_topctrl == nullptr)
         {
-            m_topctrl = Build(ctx, w, h);
+            m_topctrl = Build(ctx, unitWidth, unitHeight);
             m_width = w;
             m_height = h;
         }
@@ -100,12 +93,12 @@ namespace sam
             , (uint16_t)h
         );
 
-        //m_wheelDelta = 0;
-        const int btnSize = 150;
-        const int btnSpace = 10;
         UIContext uictx;
         uictx.width = w;
         uictx.height = h;
+        // Iphone 11pro max size as 1.0.
+        uictx.scaleW = (float)w / unitWidth;
+        uictx.scaleH = (float)h / unitHeight;        
         m_topctrl->DrawUI(uictx);
 
         imguiEndFrame();
@@ -114,12 +107,6 @@ namespace sam
     bool UIManager::MouseUp(int buttonId)
     {
         g_buttonDown = m_buttonDown = 0;
-        if (m_capturedCtrl != nullptr)
-        {
-            m_capturedCtrl = nullptr;
-            return true;
-        }
-
         return true;
     }    
 
@@ -133,11 +120,12 @@ namespace sam
     {
 
     }
-
+    inline ImVec2 ToIM(const UIContext &ctx, const float &x, const float &y)
+    { return ImVec2(x * ctx.scaleW, y * ctx.scaleH); }
     void UIStateBtn::DrawUI(UIContext& ctx)
     {
-        ImGui::SetCursorPos(ImVec2(m_x, m_y));
-        ImGui::Button(ICON_FA_CHEVRON_UP, ImVec2(m_width, m_height));
+        ImGui::SetCursorPos(ToIM(ctx, m_x, m_y));
+        ImGui::Button(ICON_FA_CHEVRON_UP, ToIM(ctx, m_width, m_height));
         bool isDown = ImGui::IsItemActive();
         if (isDown != m_isDown)
             m_stateChanged(isDown);
@@ -209,14 +197,14 @@ namespace sam
         if (!m_isopen)
             return;
         
-        int x = m_x < 0 ? ctx.width + m_x : m_x;
-        int y = m_y < 0 ? ctx.height + m_y : m_y;
+        int x = m_x < 0 ? unitWidth + m_x : m_x;
+        int y = m_y < 0 ? unitHeight + m_y : m_y;
         ImGui::SetNextWindowPos(
-            ImVec2(x, y), m_isinvisible ? ImGuiCond_Always : ImGuiCond_Appearing);
+            ToIM(ctx, x, y), m_isinvisible ? ImGuiCond_Always : ImGuiCond_Appearing);
 
         if (m_width > 0)
         {
-            ImGui::SetNextWindowSize(ImVec2(m_width, m_height),
+            ImGui::SetNextWindowSize(ToIM(ctx, m_width, m_height),
                 m_isinvisible ? ImGuiCond_Always : ImGuiCond_Appearing
             );
         }
@@ -234,13 +222,14 @@ namespace sam
             m_isopen = false;
         }
 
+        ImGui::SetWindowFontScale(ctx.scaleW);
         ImVec2 pos = ImGui::GetWindowPos();
-        m_x = pos.x;
-        m_y = pos.y;
+        m_x = pos.x / ctx.scaleW;
+        m_y = pos.y / ctx.scaleH;
 
         ImVec2 size = ImGui::GetWindowSize();
-        m_width = size.x;
-        m_height = size.y;
+        m_width = size.x / ctx.scaleW;
+        m_height = size.y / ctx.scaleH;
 
         m_isopen = isopen;
         UIGroup::DrawUI(ctx);
@@ -263,9 +252,9 @@ namespace sam
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
         float x = ImGui::GetCursorPosX();
         float y = ImGui::GetCursorPosY();
-        ImGui::SetCursorPosX(x + (float)m_x);
-        ImGui::SetCursorPosY(y + (float)m_y);
-        ImGui::BeginChild(m_name.c_str(), ImVec2(m_width, m_height), true, window_flags);
+        ImGui::SetCursorPosX(x + (float)m_x * ctx.scaleW);
+        ImGui::SetCursorPosY(y + (float)m_y * ctx.scaleH);
+        ImGui::BeginChild(m_name.c_str(), ToIM(ctx, m_width, m_height), true, window_flags);
         
         UIGroup::DrawUI(ctx);
         ImGui::EndChild();
@@ -285,7 +274,7 @@ namespace sam
     {
         if (m_itemcount == 0)
             return;
-        ImGui::Columns(m_columns);
+        ImGui::Columns(m_columns, nullptr, false);
         ImGuiListClipper clipper;
         clipper.Begin(m_itemcount / m_columns);
         while (clipper.Step())
@@ -309,7 +298,7 @@ namespace sam
                 else if (m_selectedIdx == curIdx)
                     ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(0.6f, 0.2, 0.4, 0.75f));
                 if (bgfx::isValid(item.image))
-                    ImGui::ImageButton(item.image, ImVec2(128, 128));
+                    ImGui::ImageButton(item.image, ToIM(ctx, 80, 80));
                 else
                     ImGui::Button(item.text.c_str(), ImVec2(-1, 0));
                 if (item.colorRect != 0)
@@ -328,7 +317,7 @@ namespace sam
                 if (m_tooltipFn != nullptr && ImGui::IsItemHovered())
                 {
                     ImGui::BeginTooltip();
-                    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f * ctx.scaleW);
                     std::string tooltipstr;
                     m_tooltipFn(curIdx, tooltipstr);
                     ImGui::TextUnformatted(tooltipstr.c_str());

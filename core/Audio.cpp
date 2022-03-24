@@ -27,6 +27,6 @@ namespace sam {
 
     Audio::~Audio()
     {
-
+        ma_engine_uninit(m_engine.get());
     }
 }

@@ -15,9 +15,9 @@
 
 namespace sam
 {
-    LegoBrick::LegoBrick(const PartId& partid, int paletteIdx, Physics physics, bool showConnectors
-    ) :
-        m_partid(partid),
+    LegoBrick::LegoBrick(const PartInst& pi, int paletteIdx, Physics physics, bool showConnectors
+        ) :
+        m_partinst(pi),
         m_paletteIdx(paletteIdx),
         m_showConnectors(showConnectors),
         m_connectorPickIdx(-1),
@@ -45,7 +45,7 @@ namespace sam
             sShader3 = Engine::Inst().LoadShader("vs_connector.bin", "fs_pickbrick.bin");
             sPaletteHandle = bgfx::createUniform("s_brickPalette", bgfx::UniformType::Sampler);
         }
-        m_pBrick = BrickManager::Inst().GetBrick(m_partid, true);
+        m_pBrick = BrickManager::Inst().GetBrick(m_partinst.id, true);
         if (!sUparams.isValid())
             sUparams = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 1);
 

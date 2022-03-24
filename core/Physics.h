@@ -32,7 +32,7 @@ namespace sam
         void AddRigidBody(btRigidBody* pRigidBody);
         void RemoveRigidBody(btRigidBody* pRigidBody);
         bool TestCollision(btCollisionObject* pObj);
-
+        ~Physics();
     private:
         void Init();
 

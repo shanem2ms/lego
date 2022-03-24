@@ -152,11 +152,13 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     app = std::make_shared<sam::Application>(curdir);
     int pro12maxW = 1284;
     int pro12maxH = 2778;
+    int startW = 1280;
+    int startH = 720;
     SetProcessDpiAwareness(PROCESS_SYSTEM_DPI_AWARE);
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
 
     hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, 0, pro12maxH, pro12maxW, nullptr, nullptr, hInstance, nullptr);
+        CW_USEDEFAULT, 0, startW, startH, nullptr, nullptr, hInstance, nullptr);
 
     if (!hWnd)
     {

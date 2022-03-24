@@ -1,6 +1,10 @@
 #include "PlayerView.h"
 #include "LegoBrick.h"
 #include "Engine.h"
+#include "Physics.h"
+#include "BrickMgr.h"
+#include "bullet/btBulletCollisionCommon.h"
+#include "bullet/btBulletDynamicsCommon.h"
 
 namespace sam
 {     
@@ -10,6 +14,7 @@ namespace sam
         m_inspectmode(false)
     {
         m_playerGroup = std::make_shared<SceneGroup>();
+        m_rightHandPartInst.canBeDestroyed = true;
     }
 
     void Player::SetRightHandPart(const PartInst& part)
@@ -22,7 +27,7 @@ namespace sam
         m_rightHandPartInst = part;
         if (!part.id.IsNull())
         {
-            m_rightHandPart = std::make_shared<LegoBrick>(part.id, part.paletteIdx, LegoBrick::Physics::None, true);
+            m_rightHandPart = std::make_shared<LegoBrick>(part, part.paletteIdx, LegoBrick::Physics::None, true);
             m_rightHandPart->SetOffset(part.pos + Vec3f(0,0,-1.2f));
             m_rightHandPart->SetRotate(part.rot);
             float s = 0.25f;
@@ -31,9 +36,62 @@ namespace sam
         }
     }
 
-    void Player::Update(DrawContext& ctx)
+    void Player::Update(DrawContext& ctx, Level& level)
     {
+        if (m_rigidBody == nullptr)
+        {
+            Matrix44f m = 
+                makeTrans<Matrix44f>(m_pos);
 
+            btTransform mat4;
+            mat4.setFromOpenGLMatrix(m.getData());
+            m_initialState = std::make_shared<btDefaultMotionState>(mat4);
+            btScalar mass = 1;
+            m_btShape = std::make_shared<btCylinderShape>(btVector3(4, 25, 3) * BrickManager::Scale);
+            btRigidBody::btRigidBodyConstructionInfo constructInfo(mass, m_initialState.get(),
+                m_btShape.get());
+            m_rigidBody = std::make_shared<btRigidBody>(constructInfo);
+            ctx.m_physics->AddRigidBody(m_rigidBody.get());
+        }
+        auto& dcam = Engine::Inst().DrawCam();
+        auto& cam = Engine::Inst().ViewCam();
+        Camera::Fly fly = cam.GetFly();
+        Vec3f right, up, forward;
+        Vec3f upworld(0, 1, 0);
+        auto dfly = dcam.GetFly();
+        dfly.GetDirs(right, up, forward);
+        Vec3f fwWorld;
+        cross(fwWorld, right, upworld);
+
+        float flyspeedup = 1;
+        if (FlyMode()) flyspeedup *= 10;
+        if (InspectMode()) flyspeedup *= 50;
+
+        Point3f newPos = m_pos + m_posVel[0] * right * flyspeedup +
+            (m_posVel[1]) * upworld * flyspeedup +
+            m_posVel[2] * fwWorld * flyspeedup;
+        
+        m_rigidBody->applyCentralImpulse(btVector3(m_posVel[0], m_posVel[1], m_posVel[2]) * -100);
+        btVector3 p = m_rigidBody->getCenterOfMassPosition();
+        m_pos = Vec3f(p[0], p[1], p[2]);
+        m_playerGroup->SetOffset(m_pos);
+        m_playerGroup->SetRotate(fly.Quat());
+        dfly.pos = m_pos;
+        dcam.SetFly(dfly);
+
+        if ((ctx.m_frameIdx % 60) == 0)
+        {
+            Level::PlayerData playerdata;
+            playerdata.pos = fly.pos;
+            playerdata.dir = fly.dir;
+            playerdata.flymode = FlyMode();
+            playerdata.inspect = InspectMode();
+            playerdata.inspectpos = dfly.pos;
+            playerdata.inspectdir = dfly.dir;
+            playerdata.rightHandPart = GetRightHandPart();
+
+            level.WritePlayerData(playerdata);
+        }
     }
 
     void Player::Initialize(Level& level)
@@ -48,7 +106,9 @@ namespace sam
         m_rightHand->SetRotate(make<Quatf>(AxisAnglef(gmtl::Math::PI, 0.0f, 1.0f, 0.0f)) *
             make<Quatf>(AxisAnglef(-gmtl::Math::PI / 8.0f, 0.0f, 0.0f, 1.0f)) *
             make<Quatf>(AxisAnglef(gmtl::Math::PI / 8.0f, 1.0f, 0.0f, 0.0f)));
-        m_rightHand->AddItem(std::make_shared<LegoBrick>("3820", 14));
+        PartInst pi;
+        pi.id = "3820";
+        m_rightHand->AddItem(std::make_shared<LegoBrick>(pi, 14));
         m_playerGroup->AddItem(m_rightHand);
 
         Level::PlayerData playerdata;
@@ -63,7 +123,7 @@ namespace sam
         }
         else
         {
-            m_pos = Point3f(0.0f, 0.0f, -0.5f);
+            m_pos = Point3f(0.0f, 10.0f, 0.0f);
             m_dir = Vec2f(1.24564195f, -0.455399066f);
         }
     }
@@ -76,7 +136,12 @@ namespace sam
     constexpr float pi_over_two = 3.14159265358979323846f * 0.5f;
     void Player::RawMove(float dx, float dy)
     {
-       
+        Engine& e = Engine::Inst();
+        Camera::Fly la = e.DrawCam().GetFly();
+        la.dir[0] += dx;
+        la.dir[1] -= dy;
+        la.dir[1] = std::max(la.dir[1], -pi_over_two);
+        e.DrawCam().SetFly(la);
     }
 
     void Player::MouseDrag(float x, float y, int buttonId)
@@ -108,8 +173,27 @@ namespace sam
 
     void Player::KeyDown(int k)
     {
+        float speed = 0.01f;
         switch (k)
         {
+        case LeftShift:
+            m_posVel[1] -= speed;
+            break;
+        case SpaceBar:
+            m_posVel[1] += speed;
+            break;
+        case AButton:
+            m_posVel[0] -= speed;
+            break;
+        case DButton:
+            m_posVel[0] += speed;
+            break;
+        case WButton:
+            m_posVel[2] += speed;
+            break;
+        case SButton:
+            m_posVel[2] -= speed;
+            break;
 
         case FButton:
             m_flymode = !m_flymode;
@@ -121,6 +205,26 @@ namespace sam
     }
 
     void Player::KeyUp(int k)
-    {     
+    {
+        switch (k)
+        {
+        case LeftShift:
+        case SpaceBar:
+            m_posVel[1] = 0;
+            break;
+        case AButton:
+        case DButton:
+            m_posVel[0] = 0;
+            break;
+        case WButton:
+        case SButton:
+            m_posVel[2] = 0;
+            break;
+        }
+    }
+
+    Player::~Player()
+    {
+
     }
 }

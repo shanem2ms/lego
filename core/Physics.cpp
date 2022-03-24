@@ -189,6 +189,9 @@ namespace sam
         spInst = this;
     }
 
+    Physics::~Physics()
+    {
+    }
     Physics& Physics::Inst()
     {
         return *spInst;
@@ -202,7 +205,7 @@ namespace sam
         m_constraintSolver = std::make_shared<btSequentialImpulseConstraintSolver>();
         m_discreteDynamicsWorld = std::make_shared<btDiscreteDynamicsWorld>(
             m_collisionDispatcher.get(), m_broadPhase.get(), m_constraintSolver.get(), m_collisionConfig.get());
-        m_discreteDynamicsWorld->setGravity(btVector3(0, 10, 0));
+        m_discreteDynamicsWorld->setGravity(btVector3(0, -10, 0));
         m_dbgPhysics = std::make_shared<PhysicsDebugDraw>(1 / Physics::WorldScale);
         m_discreteDynamicsWorld->setDebugDrawer(m_dbgPhysics.get());
         m_isInit = true;

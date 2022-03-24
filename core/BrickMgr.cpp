@@ -365,13 +365,12 @@ namespace sam
             }
         }
         m_collisionShape = std::make_shared<btCompoundShape>();
-        float invScale = BrickManager::Scale;
         for (auto &mesh : meshes)
         {
             btConvexHullShape* pCvxShape = new btConvexHullShape();            
             for (auto& pt : mesh)
             {
-                pCvxShape->addPoint(btVector3(pt[0], -pt[1], pt[2]) * invScale, false);
+                pCvxShape->addPoint(btVector3(pt[0], -pt[1], pt[2]) * BrickManager::Scale, false);
             }
             pCvxShape->recalcLocalAabb();
             m_collisionShape->addChildShape(btTransform::getIdentity(), pCvxShape);
