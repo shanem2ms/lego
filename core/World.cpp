@@ -30,7 +30,8 @@ namespace sam
         m_gravityVel(0),        
         m_pPickedBrick(nullptr),
         m_debugDraw(0),
-        m_disableCollisionCheck(false)
+        m_disableCollisionCheck(false),
+        m_player(std::make_shared<Player>())
     {        
     }  
 
@@ -168,15 +169,9 @@ namespace sam
         case SButton:
             m_camVel[2] -= speed;
             break;
-        case FButton:
-            m_flymode = !m_flymode;
-            break;
+
         case 'B':
             m_debugDraw = (m_debugDraw + 1) % 3;
-            break;
-        case 'I':
-            m_inspectmode = !m_inspectmode;
-            Engine::Inst().SetDbgCam(m_inspectmode);
             break;
         case 'N':
             partChange = 1;
@@ -249,15 +244,13 @@ namespace sam
             e.Root()->AddItem(m_octTiles);
             m_frustum = std::make_shared<Frustum>();
             e.Root()->AddItem(m_frustum);
-            m_player = std::make_shared<Player>();
             e.Root()->AddItem(m_player->GetPlayerGroup());
             Camera::Fly fly;
             Camera::Fly dfly;
             
             e.DrawCam().SetFly(dfly);
             e.ViewCam().SetFly(fly);
-            m_player->Initialize();
-            m_player->SetRightHandPart(righthandpart);
+            m_player->Initialize(m_level);
             m_octTiles->BeforeDraw([this](DrawContext& ctx) { ctx.m_pgm = BGFX_INVALID_HANDLE; return true; });
             m_physics = std::make_shared<Physics>();
             Engine::Inst().AddExternalDraw(&m_connectionLogic);
@@ -284,7 +277,7 @@ namespace sam
             m_pPickedBrick = pBrick;
         }
 
-        m_frustum->SetEnabled(m_inspectmode);
+        m_frustum->SetEnabled(m_player->InspectMode());
        
         m_player->Update(ctx);
         auto &cam = e.ViewCam();
@@ -351,14 +344,14 @@ namespace sam
         cross(fwWorld, right, upworld);
 
         float flyspeedup = 1;
-        if (m_flymode) flyspeedup *= 10;
-        if (m_inspectmode) flyspeedup *= 50;
+        if (m_player->FlyMode()) flyspeedup *= 10;
+        if (m_player->InspectMode()) flyspeedup *= 50;
 
         Point3f newPos = dfly.pos + m_camVel[0] * right * flyspeedup +
             (m_camVel[1] + m_gravityVel) * upworld * flyspeedup +
             m_camVel[2] * fwWorld * flyspeedup;
 
-        if (!m_inspectmode)
+        if (!m_player->InspectMode())
         {
             std::shared_ptr<OctTile> tile = m_octTileSelection.TileFromPos(fly.pos);
             if (tile == nullptr || tile->GetReadyState() < 3)
@@ -371,7 +364,7 @@ namespace sam
                     Point3f(playerBodyWidth, 0, playerBodyWidth));
                 Vec3f normal;
                 bool collision = tile->IsCollided(dfly.pos, newPos, playerbox, normal);
-                if (!collision && !m_flymode)
+                if (!collision && !m_player->FlyMode())
                 {
                     m_gravityVel -= 0.0005f;
                 }
@@ -398,8 +391,8 @@ namespace sam
             Level::PlayerData playerdata;
             playerdata.pos = fly.pos;
             playerdata.dir = fly.dir;
-            playerdata.flymode = m_flymode;
-            playerdata.inspect = m_inspectmode;
+            playerdata.flymode = m_player->FlyMode();
+            playerdata.inspect = m_player->InspectMode();
             playerdata.inspectpos = dfly.pos;
             playerdata.inspectdir = dfly.dir;
             playerdata.rightHandPart = m_player->GetRightHandPart();

@@ -61,8 +61,6 @@ namespace sam
         void KeyUp(int k);
         void WheelScroll(float delta);
         void Open(const std::string &path);
-        const SlotPart *GetSlots() const
-        { return m_slots; }
     };
 
 }

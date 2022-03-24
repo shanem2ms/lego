@@ -18,7 +18,8 @@ namespace sam
         bool m_flymode;
         bool m_inspectmode;
         SlotPart m_slots[16];
-
+        Vec3f m_pos;
+        Vec2f m_dir;
     public:
         
         void SetRightHandPart(const PartInst& part);
@@ -29,6 +30,20 @@ namespace sam
         void Update(DrawContext& ctx);
         Player();
         void Initialize(Level& level);
+        const SlotPart* GetSlots() const
+        {
+            return m_slots;
+        }
+
+        bool FlyMode() const { return m_flymode; }
+        bool InspectMode() const { return m_inspectmode; }
+        void RawMove(float dx, float dy);
+        void MouseDown(float x, float y, int buttonId);
+        void MouseDrag(float x, float y, int buttonId);
+        void MouseUp(int buttonId);
+        void KeyDown(int k);
+        void KeyUp(int k);
+        void WheelScroll(float delta);
     };
 }
 

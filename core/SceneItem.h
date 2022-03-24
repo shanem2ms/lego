@@ -21,6 +21,7 @@ namespace sam
     class World;
     class SceneItem;
     class Physics;
+    class Player;
 
     enum DrawViewId
     {
@@ -39,6 +40,7 @@ namespace sam
         bgfx::UniformHandle m_texture;
         bgfx::UniformHandle m_gradient;
         World* m_pWorld;
+        Player* m_pPlayer;
         int m_passIdx;
         float m_nearfar[3];
         int m_frameIdx;

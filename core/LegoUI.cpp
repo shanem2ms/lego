@@ -8,6 +8,7 @@
 #include "LegoUI.h"
 #include <chrono>
 #include "BrickMgr.h"
+#include "PlayerView.h"
 
 namespace sam
 {
@@ -120,7 +121,7 @@ namespace sam
         m_hotbar = std::make_shared<UIWindow>(650, -200, 1280, 155, "hotbar", false);
         m_hotbar->SetLayout(UILayout::Horizontal);
         auto hotbarTable = std::make_shared<UITable>(8);
-        const SlotPart *pSlots = pWorld->GetSlots();
+        const SlotPart *pSlots = ctx.m_pPlayer->GetSlots();
         hotbarTable->SetItems(8, [pSlots](int start, int count, UITable::TableItem items[])
             {
                 for (int r = 0; r < count; r++)

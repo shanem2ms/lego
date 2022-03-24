@@ -217,6 +217,7 @@ namespace sam
         ctx.m_nearfar[2] = 100.0f;
         ctx.m_frameIdx = m_frameIdx;
         ctx.m_pWorld = m_world.get();
+        ctx.m_pPlayer = m_world->GetPlayer().get();
         ctx.m_numGpuCalcs = 0;
         ctx.m_pickedItem = nullptr;
         ctx.debugDraw = false;
