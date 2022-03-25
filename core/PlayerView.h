@@ -20,6 +20,7 @@ namespace sam
         PartInst m_rightHandPartInst;
         std::shared_ptr<SceneItem> m_rightHandPart;
         bool m_flymode;
+        bool m_jump;
         bool m_inspectmode;
         SlotPart m_slots[16];
         Vec3f m_pos;

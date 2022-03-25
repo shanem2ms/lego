@@ -158,7 +158,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
 
     hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, 0, startW, startH, nullptr, nullptr, hInstance, nullptr);
+        CW_USEDEFAULT, 0, pro12maxH, pro12maxW, nullptr, nullptr, hInstance, nullptr);
 
     if (!hWnd)
     {

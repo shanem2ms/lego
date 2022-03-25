@@ -11,7 +11,8 @@ namespace sam
 
     Player::Player() :
         m_flymode(true),
-        m_inspectmode(false)
+        m_inspectmode(false),
+        m_jump(false)
     {
         m_playerGroup = std::make_shared<SceneGroup>();
         m_rightHandPartInst.canBeDestroyed = true;
@@ -35,6 +36,8 @@ namespace sam
             m_rightHand->AddItem(m_rightHandPart);
         }
     }
+    inline btVector3 bt(const Vec3f &v)
+    { return btVector3(v[0], v[1], v[2]); }
 
     void Player::Update(DrawContext& ctx, Level& level)
     {
@@ -47,7 +50,7 @@ namespace sam
             mat4.setFromOpenGLMatrix(m.getData());
             m_initialState = std::make_shared<btDefaultMotionState>(mat4);
             btScalar mass = 1;
-            m_btShape = std::make_shared<btCylinderShape>(btVector3(4, 25, 3) * BrickManager::Scale);
+            m_btShape = std::make_shared<btCylinderShape>(btVector3(20, 25, 5) * BrickManager::Scale);
             btRigidBody::btRigidBodyConstructionInfo constructInfo(mass, m_initialState.get(),
                 m_btShape.get());
             m_rigidBody = std::make_shared<btRigidBody>(constructInfo);
@@ -63,20 +66,23 @@ namespace sam
         Vec3f fwWorld;
         cross(fwWorld, right, upworld);
 
-        float flyspeedup = 1;
-        if (FlyMode()) flyspeedup *= 10;
-        if (InspectMode()) flyspeedup *= 50;
-
-        Point3f newPos = m_pos + m_posVel[0] * right * flyspeedup +
-            (m_posVel[1]) * upworld * flyspeedup +
-            m_posVel[2] * fwWorld * flyspeedup;
+        Vec3f fwdVel = m_posVel[0] * right +
+            (m_posVel[1]) * upworld +
+            m_posVel[2] * fwWorld;
+       
+        btVector3 linearVel = m_rigidBody->getLinearVelocity();
+        btVector3 btimp = bt(fwdVel) - linearVel;
+        btimp[1] = m_jump ? 5 : 0;
+        m_jump = false;
+        m_rigidBody->applyCentralImpulse(btimp);
+        m_rigidBody->activate();
+        m_rigidBody->setFriction(2.0f);
         
-        m_rigidBody->applyCentralImpulse(btVector3(m_posVel[0], m_posVel[1], m_posVel[2]) * -100);
         btVector3 p = m_rigidBody->getCenterOfMassPosition();
         m_pos = Vec3f(p[0], p[1], p[2]);
         m_playerGroup->SetOffset(m_pos);
         m_playerGroup->SetRotate(fly.Quat());
-        dfly.pos = m_pos;
+        dfly.pos = m_pos + Vec3f(0,14*BrickManager::Scale,0);
         dcam.SetFly(dfly);
 
         if ((ctx.m_frameIdx % 60) == 0)
@@ -173,14 +179,18 @@ namespace sam
 
     void Player::KeyDown(int k)
     {
-        float speed = 0.01f;
+        float speed = 5.0f;
         switch (k)
         {
         case LeftShift:
-            m_posVel[1] -= speed;
+            if (m_flymode)
+                m_posVel[1] -= speed;
             break;
         case SpaceBar:
-            m_posVel[1] += speed;
+            if (m_flymode)
+                m_posVel[1] += speed;
+            else
+                m_jump = true;
             break;
         case AButton:
             m_posVel[0] -= speed;
