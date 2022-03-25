@@ -184,7 +184,8 @@ namespace sam
     static Physics* spInst = nullptr;
 
     Physics::Physics() :
-        m_isInit(false)
+        m_isInit(false),
+        m_dbgEnabled(false)
     {
         spInst = this;
     }
@@ -248,15 +249,14 @@ namespace sam
     {
         if (!m_isInit)
             Init();
-        m_discreteDynamicsWorld->stepSimulation(1.0f / 60.0f, 10);        
-//#define PHYSICSDEBUG 1
-#ifdef PHYSICSDEBUG
-        m_dbgPhysics->BeginDraw();
-        m_discreteDynamicsWorld->debugDrawWorld();
-        m_dbgPhysics->EndDraw();
-#endif        
+        m_discreteDynamicsWorld->stepSimulation(1.0f / 60.0f, 10);
+            m_dbgPhysics->BeginDraw();
+            if (m_dbgEnabled)
+            {
+                m_discreteDynamicsWorld->debugDrawWorld();
+            }
+            m_dbgPhysics->EndDraw();
     }
-
     void Physics::DebugRender(DrawContext& ctx)
     {
         m_dbgPhysics->Render(ctx);

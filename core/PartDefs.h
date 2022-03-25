@@ -53,6 +53,6 @@ namespace sam
     struct SlotPart
     {
         PartId id;
-        int paletteIdx;
+        int colorCode;
     };
 }

@@ -293,12 +293,14 @@ namespace sam
             int curIdx = startIdx;
             for (auto& item : tableItemsCache)
             {
+                ImGui::PushID(curIdx);
                 if (item.colorRect != 0)
                     ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(item.colorRect));
                 else if (m_selectedIdx == curIdx)
                     ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(0.6f, 0.2, 0.4, 0.75f));
                 if (bgfx::isValid(item.image))
-                    ImGui::ImageButton(item.image, ToIM(ctx, 80, 80));
+                    ImGui::ImageButton(item.image, ToIM(ctx, 80, 80), ImVec2(0,0), ImVec2(1,1), -1,
+                        ImVec4(0,0,0,0), (ImVec4)ImColor(item.imgTint));
                 else
                     ImGui::Button(item.text.c_str(), ImVec2(-1, 0));
                 if (item.colorRect != 0)
@@ -324,6 +326,7 @@ namespace sam
                     ImGui::PopTextWrapPos();
                     ImGui::EndTooltip();
                 }
+                ImGui::PopID();
                 ImGui::NextColumn();
                 curIdx++;
             }

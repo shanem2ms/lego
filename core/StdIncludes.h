@@ -3,6 +3,7 @@
 #include <vector>
 #include <map>
 #include <memory>
+#include <sstream>
 
 #include <bgfx/bgfx.h>
 

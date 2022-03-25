@@ -15,7 +15,8 @@ namespace sam
 {
     class Player
     {
-        std::shared_ptr<SceneGroup> m_playerGroup;
+        std::shared_ptr<SceneGroup> m_playerBody;
+        std::shared_ptr<SceneGroup> m_playerHead;
         std::shared_ptr<SceneGroup> m_rightHand;
         PartInst m_rightHandPartInst;
         std::shared_ptr<SceneItem> m_rightHandPart;
@@ -30,6 +31,7 @@ namespace sam
         std::shared_ptr<btDefaultMotionState> m_initialState;
         std::shared_ptr<btRigidBody> m_rigidBody;
         std::shared_ptr<btCylinderShape> m_btShape;
+        int m_currentSlotIdx;
 
     public:
         
@@ -43,15 +45,19 @@ namespace sam
         const PartInst& GetRightHandPart() const
         { return m_rightHandPartInst; }
         std::shared_ptr<SceneItem> GetPlayerGroup()
-        { return m_playerGroup; }
+        { return m_playerBody; }
         void Update(DrawContext& ctx, Level& level);
         Player();
         void Initialize(Level& level);
         const SlotPart* GetSlots() const
-        {
-            return m_slots;
-        }
-
+        { return m_slots; }
+        void SetSlot(int idx, const SlotPart &sp)
+        { m_slots[idx] = sp; }
+        int GetCurrentSlotIdx() const
+        { return m_currentSlotIdx; }
+        void SetCurrentSlotIdx(int slotIdx)
+        { m_currentSlotIdx = slotIdx; }
+        void GetDirs(Vec3f& right, Vec3f& up, Vec3f& forward) const;
         bool FlyMode() const { return m_flymode; }
         bool InspectMode() const { return m_inspectmode; }
         void RawMove(float dx, float dy);

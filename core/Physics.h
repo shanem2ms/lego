@@ -32,6 +32,8 @@ namespace sam
         void AddRigidBody(btRigidBody* pRigidBody);
         void RemoveRigidBody(btRigidBody* pRigidBody);
         bool TestCollision(btCollisionObject* pObj);
+        void SetPhysicsDbg(bool enabled) { m_dbgEnabled = enabled; }
+        bool GetPhysicsDbg() const { return m_dbgEnabled; };
         ~Physics();
     private:
         void Init();
@@ -43,5 +45,6 @@ namespace sam
         std::shared_ptr<btConstraintSolver> m_constraintSolver;
         std::shared_ptr<PhysicsDebugDraw> m_dbgPhysics;
         bool m_isInit;
+        bool m_dbgEnabled;
     };
 }

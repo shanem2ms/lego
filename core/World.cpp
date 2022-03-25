@@ -164,6 +164,10 @@ namespace sam
             m_player->SetRightHandPart(part);
             break;
         }
+        case 'O':
+            m_physics->SetPhysicsDbg(
+                !m_physics->GetPhysicsDbg());
+            break;
         case 'R':
         {
             PartInst part = m_player->GetRightHandPart();
@@ -175,10 +179,6 @@ namespace sam
         case LeftCtrl:
             m_disableCollisionCheck = true;
             break;
-        }
-        if (k >= '1' && k <= '9')
-        {
-            g_maxTileLod = k - '0';
         }
         m_player->KeyDown(k);
     }

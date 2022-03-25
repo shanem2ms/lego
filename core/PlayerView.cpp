@@ -12,10 +12,48 @@ namespace sam
     Player::Player() :
         m_flymode(true),
         m_inspectmode(false),
-        m_jump(false)
+        m_jump(false),
+        m_currentSlotIdx(0)
     {
-        m_playerGroup = std::make_shared<SceneGroup>();
+        m_playerBody = std::make_shared<SceneGroup>();
         m_rightHandPartInst.canBeDestroyed = true;
+    }
+
+    void Player::Initialize(Level& level)
+    {
+        for (int i = 0; i < 16; ++i)
+        {
+            m_slots[i].id = PartId("3001");
+        }
+
+        m_rightHand = std::make_shared<SceneGroup>();
+        m_rightHand->SetOffset(Vec3f(1.3f, 1.65f, 1.005f));
+        m_rightHand->SetRotate(make<Quatf>(AxisAnglef(gmtl::Math::PI, 0.0f, 1.0f, 0.0f)) *
+            make<Quatf>(AxisAnglef(-gmtl::Math::PI / 8.0f, 0.0f, 0.0f, 1.0f)) *
+            make<Quatf>(AxisAnglef(gmtl::Math::PI / 8.0f, 1.0f, 0.0f, 0.0f)));
+        PartInst pi;
+        pi.id = "3820";
+        m_rightHand->AddItem(std::make_shared<LegoBrick>(pi, 14));
+        m_playerBody->AddItem(m_rightHand);
+        m_playerHead = std::make_shared<SceneGroup>();
+        m_playerHead->SetOffset(Vec3f(0, 2.4f, 0));
+        m_playerBody->AddItem(m_playerHead);
+
+        Level::PlayerData playerdata;
+        if (level.GetPlayerData(playerdata))
+        {
+            m_pos = playerdata.pos;
+            m_dir = playerdata.dir;
+            m_flymode = playerdata.flymode;
+            m_inspectmode = playerdata.inspect;
+            SetRightHandPart(playerdata.rightHandPart);
+            memcpy(m_slots, playerdata.slots, sizeof(m_slots));
+        }
+        else
+        {
+            m_pos = Point3f(0.0f, 10.0f, 0.0f);
+            m_dir = Vec2f(1.24564195f, -0.455399066f);
+        }
     }
 
     void Player::SetRightHandPart(const PartInst& part)
@@ -39,6 +77,17 @@ namespace sam
     inline btVector3 bt(const Vec3f &v)
     { return btVector3(v[0], v[1], v[2]); }
 
+    void Player::GetDirs(Vec3f& right, Vec3f& up, Vec3f& forward) const
+    {
+        forward = make<gmtl::Quatf>(AxisAnglef(m_dir[1], 1.0f, 0.0f, 0.0f)) * Vec3f(0, 0, 1);
+        forward = make<gmtl::Quatf>(AxisAnglef(m_dir[0], 0.0f, 1.0f, 0.0f)) * forward;
+        normalize(forward);
+
+        cross(right, forward, Vec3f(0, -1, 0));
+        normalize(right);
+        cross(up, forward, right);
+        normalize(up);
+    }
     void Player::Update(DrawContext& ctx, Level& level)
     {
         if (m_rigidBody == nullptr)
@@ -61,8 +110,7 @@ namespace sam
         Camera::Fly fly = cam.GetFly();
         Vec3f right, up, forward;
         Vec3f upworld(0, 1, 0);
-        auto dfly = dcam.GetFly();
-        dfly.GetDirs(right, up, forward);
+        GetDirs(right, up, forward);
         Vec3f fwWorld;
         cross(fwWorld, right, upworld);
 
@@ -80,9 +128,12 @@ namespace sam
         
         btVector3 p = m_rigidBody->getCenterOfMassPosition();
         m_pos = Vec3f(p[0], p[1], p[2]);
-        m_playerGroup->SetOffset(m_pos);
-        m_playerGroup->SetRotate(fly.Quat());
-        dfly.pos = m_pos + Vec3f(0,14*BrickManager::Scale,0);
+        m_playerBody->SetOffset(m_pos);            
+
+        m_playerBody->SetRotate(make<gmtl::Quatf>(AxisAnglef(m_dir[0], 0.0f, 1.0f, 0.0f)));
+        auto dfly = dcam.GetFly();
+        dfly.pos = m_pos + Vec3f(0,55*BrickManager::Scale,0);
+        dfly.dir = m_dir;
         dcam.SetFly(dfly);
 
         if ((ctx.m_frameIdx % 60) == 0)
@@ -95,42 +146,9 @@ namespace sam
             playerdata.inspectpos = dfly.pos;
             playerdata.inspectdir = dfly.dir;
             playerdata.rightHandPart = GetRightHandPart();
+            memcpy(playerdata.slots, m_slots, sizeof(playerdata.slots));
 
             level.WritePlayerData(playerdata);
-        }
-    }
-
-    void Player::Initialize(Level& level)
-    {
-        for (int i = 0; i < 16; ++i)
-        {
-            m_slots[i].id = PartId("3001");
-        }
-
-        m_rightHand = std::make_shared<SceneGroup>();
-        m_rightHand->SetOffset(Vec3f(1.3f, -0.65f, 1.005f));
-        m_rightHand->SetRotate(make<Quatf>(AxisAnglef(gmtl::Math::PI, 0.0f, 1.0f, 0.0f)) *
-            make<Quatf>(AxisAnglef(-gmtl::Math::PI / 8.0f, 0.0f, 0.0f, 1.0f)) *
-            make<Quatf>(AxisAnglef(gmtl::Math::PI / 8.0f, 1.0f, 0.0f, 0.0f)));
-        PartInst pi;
-        pi.id = "3820";
-        m_rightHand->AddItem(std::make_shared<LegoBrick>(pi, 14));
-        m_playerGroup->AddItem(m_rightHand);
-
-        Level::PlayerData playerdata;
-        if (level.GetPlayerData(playerdata))
-        {
-            m_pos = playerdata.pos;
-            m_dir = playerdata.dir;
-            m_flymode = playerdata.flymode;
-            m_inspectmode = playerdata.inspect;
-            SetRightHandPart(playerdata.rightHandPart);
-            memcpy(m_slots, playerdata.slots, sizeof(m_slots));
-        }
-        else
-        {
-            m_pos = Point3f(0.0f, 10.0f, 0.0f);
-            m_dir = Vec2f(1.24564195f, -0.455399066f);
         }
     }
 
@@ -143,11 +161,9 @@ namespace sam
     void Player::RawMove(float dx, float dy)
     {
         Engine& e = Engine::Inst();
-        Camera::Fly la = e.DrawCam().GetFly();
-        la.dir[0] += dx;
-        la.dir[1] -= dy;
-        la.dir[1] = std::max(la.dir[1], -pi_over_two);
-        e.DrawCam().SetFly(la);
+        m_dir[0] += dx;
+        m_dir[1] -= dy;
+        m_dir[1] = std::max(m_dir[1], -pi_over_two);
     }
 
     void Player::MouseDrag(float x, float y, int buttonId)

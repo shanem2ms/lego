@@ -309,10 +309,19 @@ namespace sam
         size_t NumColors() const
         { return m_colors.size(); }
 
-        const BrickColor& GetColor(size_t idx) const
+        const BrickColor& GetColorFromIdx(size_t idx) const
         {
+            if (idx < 0 || idx >= m_colors.size())
+                return m_colors.find(0)->second;
             int key = m_colors.keys()[idx];
             return m_colors.find(key)->second; }
+
+        const BrickColor& GetColorFromCode(uint32_t code) const
+        {
+            auto it = m_colors.find(code);
+            if (it == m_colors.end()) return m_colors.begin()->second;
+            return it->second;
+        }
 
         bgfx::TextureHandle Palette() const
         {

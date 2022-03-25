@@ -104,12 +104,12 @@ namespace sam
             {
                 for (int r = 0; r < count; r++)
                 {
-                    items[r].colorRect = (uint32_t&)BrickManager::Inst().GetColor(r + start).fill;
-                    items[r].text = std::to_string(BrickManager::Inst().GetColor(r + start).atlasidx);
+                    items[r].colorRect = (uint32_t&)BrickManager::Inst().GetColorFromIdx(r + start).fill;
+                    items[r].text = std::to_string(BrickManager::Inst().GetColorFromIdx(r + start).atlasidx);
                 }
             });
         colorsTable->OnItemSelected([this](int idx)
-            { m_colortSelectedFn(BrickManager::Inst().GetColor(idx).atlasidx); });
+            { m_colortSelectedFn(idx); });
 
         auto colorsPanel = std::make_shared<UIPanel>(0, 0, 150, 0);
         colorsPanel->AddControl(colorsTable);
@@ -118,18 +118,28 @@ namespace sam
         top->AddControl(menu);
         m_mainMenu = menu;
 
-        m_hotbar = std::make_shared<UIWindow>(650, -200, 1280, 155, "hotbar", false);
+        m_hotbar = std::make_shared<UIWindow>(650, -200, 850, 110, "hotbar", false);
         m_hotbar->SetLayout(UILayout::Horizontal);
         auto hotbarTable = std::make_shared<UITable>(8);
-        const SlotPart *pSlots = ctx.m_pPlayer->GetSlots();
-        hotbarTable->SetItems(8, [pSlots](int start, int count, UITable::TableItem items[])
+        const SlotPart *pSlots = ctx.m_pPlayer->GetSlots();        
+        auto player = ctx.m_pPlayer;
+        hotbarTable->SetItems(8, [pSlots, player](int start, int count, UITable::TableItem items[])
             {
+                int currentSlockIdx = player->GetCurrentSlotIdx();
                 for (int r = 0; r < count; r++)
                 {
                     Brick* pBrick = BrickManager::Inst().GetBrick(pSlots[r].id);
                     items[r].image = pBrick->m_icon;
-                    items[r].colorRect = 0xFF000000 | r;
+                    items[r].imgTint =
+                        (uint32_t&)BrickManager::Inst().GetColorFromCode(pSlots[r].colorCode).fill;
+                    items[r].colorRect = ((start + r) == currentSlockIdx ? 0xFF808000 : 0xFF000000);
                 }
+            });
+        hotbarTable->OnItemSelected([player](int idx)
+            { player->SetCurrentSlotIdx(idx); 
+        std::stringstream ss;
+        ss << "i = " << idx << "\n";
+                Application::DebugMsg(ss.str().c_str());
             });
         m_hotbar->AddControl(hotbarTable);
         m_hotbar->Show();
