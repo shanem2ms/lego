@@ -271,6 +271,10 @@ namespace partmake
                 "stud4f1w", "stud4f2n","stud4f2s", "stud4f2w", "stud4f3s", "stud4f4s", "stud4f4n", "stud4f5n" };
 
 
+        public void DisableConnectors()
+        {
+            DisableConnectorsRecursive();
+        }
         public List<Connector> GetConnectors()
         {
             List<Connector> connectors = new List<Connector>();
@@ -321,6 +325,27 @@ namespace partmake
             }
         }
 
+        bool DisableConnectorsRecursive()
+        {
+            if (studs.Contains(this.name) ||
+                studclipj.Contains(this.name) ||
+                rstud.Contains(this.name) ||
+                this.name == "stud12" ||
+                this.name == "stud3" || this.name == "stud3a" ||
+                this.name == "stud4h" || this.name == "stud18a")
+            {
+                return true;
+            }
+            else
+            {
+                foreach (var child in this.children)
+                {
+                    if (child.File.DisableConnectorsRecursive())
+                        child.IsEnabled = false;
+                }
+                return false;
+            }
+        }
         void GetConnectorsRecursive(List<Connector> connectors, List<Connector> rStudCandidates, bool inverted, Matrix4x4 transform)
         {
             if (studs.Contains(this.name))
@@ -414,6 +439,7 @@ namespace partmake
         {
             try
             {
+                DisableConnectors();
                 Debug.WriteLine(name);
                 Topology.Mesh tm = new Topology.Mesh();
                 GetTopoRecursive(false, Matrix4x4.Identity, tm, "0");

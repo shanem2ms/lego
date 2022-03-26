@@ -317,6 +317,7 @@
                     <CheckBox Content="SplitInteriorEdges" IsChecked="{Binding Path=TopoSettings.SplitInteriorEdges}"/>
                     <CheckBox Content="RemoveSplitEdgesFromFaces" IsChecked="{Binding Path=TopoSettings.RemoveSplitEdgesFromFaces}"/>
                     <CheckBox Content="ReverseBSPFaces" IsChecked="{Binding Path=TopoSettings.ReverseBSPFaces}"/>
+                    <CheckBox Content="DisableConnectors" IsChecked="{Binding Path=DisableConnectors}"/>
                 </StackPanel>
             </TabItem>
         </TabControl>

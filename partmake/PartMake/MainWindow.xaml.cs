@@ -44,6 +44,9 @@ namespace partmake
         public List<Topology.BSPNode> BSPNodes =>
             new List<Topology.BSPNode>() { selectedPart?.GetTopoMesh().bSPTree?.Top };
 
+        public bool disableConnectors = false;
+        public bool DisableConnectors {get => disableConnectors; set { disableConnectors = value; Rebuild(); } }
+
         public Topology.Settings TopoSettings { get; } = new Topology.Settings();
         public string SelectedType
         {
@@ -98,6 +101,8 @@ namespace partmake
         void Rebuild()
         {
             selectedPart.ClearTopoMesh();
+            if (disableConnectors)
+                selectedPart.DisableConnectors();
             vis.Part = selectedPart;
         }
         private void Settings_SettingsChanged(object sender, EventArgs e)
@@ -127,10 +132,12 @@ namespace partmake
         }
 
         void OnSelectedItem(LDrawFolders.Entry item)
-        {
+        { 
             if (item == null)
                 return;
             selectedPart = LDrawFolders.GetPart(item);
+            if (disableConnectors)
+                selectedPart.DisableConnectors();
             if (vis != null)
                 vis.Part = selectedPart;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentPart"));

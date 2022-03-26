@@ -181,7 +181,7 @@ namespace sam
             break;
         }
         m_player->KeyDown(k);
-    }
+    } 
 
     void World::KeyUp(int k)
     {
