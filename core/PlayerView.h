@@ -9,7 +9,7 @@
 
 class btDefaultMotionState;
 class btRigidBody;
-class btCylinderShape;
+class btCollisionShape;
 
 namespace sam
 {
@@ -30,7 +30,7 @@ namespace sam
         float m_tiltVel;
         std::shared_ptr<btDefaultMotionState> m_initialState;
         std::shared_ptr<btRigidBody> m_rigidBody;
-        std::shared_ptr<btCylinderShape> m_btShape;
+        std::shared_ptr<btCollisionShape> m_btShape;
         int m_currentSlotIdx;
 
     public:

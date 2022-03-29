@@ -249,7 +249,7 @@ namespace sam
     {
         if (!m_isInit)
             Init();
-        m_discreteDynamicsWorld->stepSimulation(1.0f / 60.0f, 10);
+        m_discreteDynamicsWorld->stepSimulation(1.0f / 30.0f, 10);
             m_dbgPhysics->BeginDraw();
             if (m_dbgEnabled)
             {

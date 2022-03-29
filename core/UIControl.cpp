@@ -122,10 +122,18 @@ namespace sam
     }
     inline ImVec2 ToIM(const UIContext &ctx, const float &x, const float &y)
     { return ImVec2(x * ctx.scaleW, y * ctx.scaleH); }
+
+    inline ImVec2 ToIMPos(const UIContext& ctx, const float& x, const float& y)
+    {
+        return ImVec2(
+            (x < 0 ? x + ctx.width : x) * ctx.scaleW,
+            (y < 0 ? y + ctx.height : y) * ctx.scaleH);
+    }
+
     void UIStateBtn::DrawUI(UIContext& ctx)
     {
-        ImGui::SetCursorPos(ToIM(ctx, m_x, m_y));
-        ImGui::Button(ICON_FA_CHEVRON_UP, ToIM(ctx, m_width, m_height));
+        ImGui::SetCursorPos(ToIMPos(ctx, m_x, m_y));
+        ImGui::Button(m_text.c_str(), ToIM(ctx, m_width, m_height));
         bool isDown = ImGui::IsItemActive();
         if (isDown != m_isDown)
             m_stateChanged(isDown);

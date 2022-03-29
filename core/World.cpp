@@ -116,7 +116,7 @@ namespace sam
 
     void World::WheelScroll(float delta)
     {
-
+        m_player->WheelScroll(delta);
     }
 
 

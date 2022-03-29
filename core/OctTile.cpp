@@ -282,8 +282,11 @@ namespace sam
         for (; itPart != m_parts.end(); ++itPart, ++itBrick)
         {
             AABox cb = (*itBrick)->m_collisionBox;
-            cb.mMin = cb.mMin * BrickManager::Scale + itPart->pos;
-            cb.mMax = cb.mMax * BrickManager::Scale + itPart->pos;
+            cb.mMin = cb.mMin * BrickManager::Scale; 
+            cb.mMax = cb.mMax * BrickManager::Scale; 
+            cb = RotateAABox(cb, itPart->rot);
+            cb.mMin += itPart->pos;
+            cb.mMax += itPart->pos;
             if (intersectepsilon(bbox, cb))
                 return false;
         }

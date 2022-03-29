@@ -21,19 +21,6 @@
 
 namespace sam
 {
-    AABoxf RotateAABox(const AABoxf& in, const Quatf& q)
-    {
-        AABoxf outBox;
-        Vec3f p[2] = { in.mMin,  in.mMax };
-        for (int i = 0; i < 8; ++i)
-        {
-            Point3f op(p[i / 4][0], p[(i / 2) & 0x1][1], p[i & 0x1][2]);
-            xform(op, q, op);
-            outBox += op;
-        }
-        return outBox;
-    }
-
     float GetMaxRotDist(const AABoxf& aabb, const Vec3f& pos)
     {
         Point3f corners[8];
@@ -201,7 +188,7 @@ namespace sam
 
                     cbox.mMin = cbox.mMin * BrickManager::Scale;// +pi.pos;
                     cbox.mMax = cbox.mMax * BrickManager::Scale;// +pi.pos;
-                    cbox = RotateAABox(cbox, wsPickedConnectorDir);
+                    cbox = RotateAABox(cbox, wsPickedConnectorDir * pi.rot);
                     cbox.mMin += pi.pos;
                     cbox.mMax += pi.pos;
                     if (!doCollisionCheck || octTileSelection.CanAddPart(pi, cbox))

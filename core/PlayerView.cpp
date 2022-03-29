@@ -120,7 +120,7 @@ namespace sam
        
         btVector3 linearVel = m_rigidBody->getLinearVelocity();
         btVector3 btimp = bt(fwdVel) - linearVel;
-        btimp[1] = m_jump ? 5 : 0;
+        btimp[1] = m_jump ? 7 : 0;
         m_jump = false;
         m_rigidBody->applyCentralImpulse(btimp);
         m_rigidBody->activate();
@@ -173,7 +173,12 @@ namespace sam
 
     void Player::WheelScroll(float delta)
     {
-
+        m_currentSlotIdx -= (int)delta;
+        m_currentSlotIdx = std::max(0, std::min(7, m_currentSlotIdx));
+        PartInst pi;
+        pi.id = m_slots[m_currentSlotIdx].id;
+        pi.paletteIdx = m_slots[m_currentSlotIdx].colorCode;
+        SetRightHandPart(pi);
     }
 
 
@@ -195,7 +200,7 @@ namespace sam
 
     void Player::KeyDown(int k)
     {
-        float speed = 5.0f;
+        float speed = 3.0f;
         switch (k)
         {
         case LeftShift:

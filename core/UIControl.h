@@ -150,7 +150,7 @@ namespace sam
         virtual bool MouseDown(float x, float y, int buttonId);
         virtual bool MouseDrag(float x, float y, int buttonId);
         virtual bool MouseUp(int buttonId);
-        bool WheelScroll(float delta);
+        virtual bool WheelScroll(float delta);
         virtual std::shared_ptr<UIControl> Build(DrawContext& ctx, int w, int h) = 0;
         void Update(Engine& engine, int w, int h, DrawContext& ctx);
         void KeyDown(int keyId);

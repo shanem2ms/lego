@@ -12,7 +12,12 @@
 
 namespace sam
 {
-    std::shared_ptr<UIControl> LegoUI::Build(DrawContext &ctx, int w, int h)
+    std::shared_ptr<UIControl> LegoUI::Build(DrawContext& ctx, int w, int h)
+    {
+        m_topctrl = m_inventory.Build(this, ctx, w, h);
+        return m_topctrl;
+    }
+    std::shared_ptr<UIControl> LegoUI::Inventory::Build(LegoUI*parent, DrawContext &ctx, int w, int h)
     {
         const int btnSize = 150;
         const int btnSpace = 10;
@@ -20,7 +25,6 @@ namespace sam
         World* pWorld = ctx.m_pWorld;
 
         std::shared_ptr<UIWindow> top = std::make_shared<UIWindow>(0, 0, 0, 0, "top", true);
-        m_topctrl = top;
         std::shared_ptr<UIWindow> wnd = std::make_shared<UIWindow>(w - btnSize * 6, h - btnSize * 3, 0, 0, "controls", true);        
         top->AddControl(wnd);
         wnd->AddControl(std::make_shared<UIStateBtn>(btnSize + btnSpace * 2, 0, btnSize, btnSize, ICON_FA_CHEVRON_UP,
@@ -67,8 +71,8 @@ namespace sam
             }));
 
         std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "bricks", false);
-        menu->OnOpenChanged([this](bool isopen) {
-            if (!isopen) Deactivate(); });
+        menu->OnOpenChanged([this, parent](bool isopen) {
+            if (!isopen) parent->Deactivate(); });
         menu->SetLayout(UILayout::Horizontal);
 
         
@@ -84,7 +88,7 @@ namespace sam
                 }
             });
 
-        typesTable->OnItemSelected([this](int itemIdx)
+        typesTable->OnItemSelected([this, parent](int itemIdx)
             { BuildPartsTable(itemIdx); });
 
         auto typesPanel = std::make_shared<UIPanel>(0, 0, 150, 0);
@@ -116,9 +120,9 @@ namespace sam
         menu->AddControl(colorsPanel);
 
         top->AddControl(menu);
-        m_mainMenu = menu;
+        m_root = menu;
 
-        m_hotbar = std::make_shared<UIWindow>(650, -200, 850, 110, "hotbar", false);
+        m_hotbar = std::make_shared<UIWindow>(650, -200, 920, 130, "hotbar", false);
         m_hotbar->SetLayout(UILayout::Horizontal);
         auto hotbarTable = std::make_shared<UITable>(8);
         const SlotPart *pSlots = ctx.m_pPlayer->GetSlots();        
@@ -137,18 +141,27 @@ namespace sam
             });
         hotbarTable->OnItemSelected([player](int idx)
             { player->SetCurrentSlotIdx(idx); 
-        std::stringstream ss;
-        ss << "i = " << idx << "\n";
-                Application::DebugMsg(ss.str().c_str());
             });
-        m_hotbar->AddControl(hotbarTable);
+
+                   
+        auto hotbarPanel = std::make_shared<UIPanel>(0, 0, -100, 0);
+        hotbarPanel->AddControl(hotbarTable);
+        m_hotbar->AddControl(hotbarPanel);
+        m_hotbar->AddControl(std::make_shared<UIStateBtn>(825, 20, 85, 85, ICON_FA_ALIGN_JUSTIFY,
+            [pWorld](bool isBtnDown)
+            {
+                char key = 16;
+                if (isBtnDown) pWorld->KeyDown(key);
+                else pWorld->KeyUp(key);
+            }));
+
         m_hotbar->Show();
         top->AddControl(m_hotbar);
         
         return top;
     }
 
-    void LegoUI::BuildPartsTable(int itemIdx)
+    void LegoUI::Inventory::BuildPartsTable(int itemIdx)
     {
         int padding = 20;
         int numColumns = 1280 / (128 + padding);
@@ -181,15 +194,15 @@ namespace sam
 
     void LegoUI::OpenInventory(const std::function<void()>& deactivateFn)
     {
-        if (m_mainMenu)
-            m_mainMenu->Show();
+        if (m_inventory.m_root)
+            m_inventory.m_root->Show();
         m_isActive = true;
         m_deactivateFn = deactivateFn;        
     }
 
     void LegoUI::CloseInventory()
     {
-        m_mainMenu->Close();
+        m_inventory.m_root->Close();
         m_isActive = false;
     }
 
@@ -208,6 +221,12 @@ namespace sam
     bool LegoUI::MouseUp(int buttonId)
     {
         bool ret = UIManager::MouseUp(buttonId);
+        return m_isActive;
+    }
+    
+    bool LegoUI::WheelScroll(float delta)
+    {
+        bool ret = UIManager::WheelScroll(delta);
         return m_isActive;
     }
 }
