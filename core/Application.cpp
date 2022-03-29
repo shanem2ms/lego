@@ -82,19 +82,32 @@ namespace sam
         return *m_legoUI;
     }
 
-    void Application::ActivateUI()
+    void Application::OpenMainMenu()
     {
         if (m_hideMouseCursorFn != nullptr)
             m_hideMouseCursorFn(false);
         m_rawMouseMode = false;
-        m_legoUI->OpenInventory([this]()
+        m_legoUI->MainMenu().Open([this]()
             {
                 if (m_hideMouseCursorFn)
                     m_hideMouseCursorFn(true);
                 m_rawMouseMode = true;
             });
 
-        m_legoUI->OnPartSelected([this](const PartId& partname)
+    }
+    void Application::OpenInventory()
+    {
+        if (m_hideMouseCursorFn != nullptr)
+            m_hideMouseCursorFn(false);
+        m_rawMouseMode = false;
+        m_legoUI->Inventory().Open([this]()
+            {
+                if (m_hideMouseCursorFn)
+                    m_hideMouseCursorFn(true);
+                m_rawMouseMode = true;
+            });
+
+        m_legoUI->Inventory().OnPartSelected([this](const PartId& partname)
             {
                 auto player = m_world->GetPlayer();
                 int slotIdx = player->GetCurrentSlotIdx();
@@ -107,7 +120,7 @@ namespace sam
                 player->SetRightHandPart(pi);
             });
 
-        m_legoUI->OnColorSelected([this](int idx)
+        m_legoUI->Inventory().OnColorSelected([this](int idx)
             {
                 const BrickColor& bc = BrickManager::Inst().GetColorFromIdx(idx);
 
@@ -172,11 +185,11 @@ namespace sam
         {
             if (m_rawMouseMode)
             {
-                ActivateUI();
+                OpenMainMenu();
             }
             else
             {
-                m_legoUI->CloseInventory();
+                m_legoUI->CloseAll();
             }
         }
         else if (m_legoUI->IsActive())
@@ -216,7 +229,11 @@ namespace sam
         m_brickManager = std::make_unique<BrickManager>("c:\\ldraw");
         m_engine->AddExternalDraw(m_brickManager.get());
         m_legoUI = std::make_unique<LegoUI>();
-        ActivateUI();
+        m_world->OnShowInventory([this]()
+            {
+                OpenInventory();
+            });
+        OpenMainMenu();
     }
 
     const float Pi = 3.1415297;

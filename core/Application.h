@@ -57,7 +57,8 @@ public:
     void SetHideMouseCursorFn(const std::function<bool(bool)>& fn);
     static void SetDebugMsgFunc(void (*dbgfunc)(const char*));
     static void DebugMsg(const std::string& str);
-    void ActivateUI();
+    void OpenInventory();
+    void OpenMainMenu();
 };
 
 std::shared_ptr< bgfx::CallbackI> CreateCallback();

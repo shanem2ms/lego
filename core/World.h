@@ -39,6 +39,7 @@ namespace sam
         std::shared_ptr<LegoBrick> m_pPickedBrick;
         std::shared_ptr<Player> m_player;
         std::shared_ptr<Physics> m_physics;
+        std::function<void()> m_showInventoryFn;
     public:
 
         const std::shared_ptr<Player> &GetPlayer()
@@ -57,6 +58,9 @@ namespace sam
         void KeyUp(int k);
         void WheelScroll(float delta);
         void Open(const std::string &path);
+
+        void OnShowInventory(const std::function<void()> &fn)
+        { m_showInventoryFn = fn; }
     };
 
 }

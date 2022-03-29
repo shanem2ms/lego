@@ -349,6 +349,7 @@
             <CheckBox Content="BSP Portals" IsChecked="{Binding Path=BSPPortals, ElementName=_RenderControl}"/>
             <CheckBox Content="BSP Faces" IsChecked="{Binding Path=BSPFaces, ElementName=_RenderControl}"/>
             <CheckBox Content="Show Connectors" IsChecked="{Binding ShowConnectors, ElementName=_RenderControl}"/>
+            <CheckBox Content="Show Bisectors" IsChecked="{Binding ShowBisector, ElementName=_RenderControl}"/>
             <CheckBox Content="Exterior Portals" IsChecked="{Binding ShowExteriorPortals, ElementName=_RenderControl}"/>
             <Button Click="HideAllBSPBtn_Click">Hide All BSP</Button>
             <Button Click="ShowAllBSPBtn_Click">Show All BSP</Button>

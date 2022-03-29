@@ -14,75 +14,31 @@ namespace sam
 {
     std::shared_ptr<UIControl> LegoUI::Build(DrawContext& ctx, int w, int h)
     {
-        m_topctrl = m_inventory.Build(this, ctx, w, h);
+        auto topWnd = std::make_shared<UIWindow>(0, 0, 0, 0, "top", true);
+        m_topctrl = topWnd;
+        topWnd->AddControl(m_mainMenu.Build(this, ctx, w, h));
+        topWnd->AddControl(m_inventory.Build(this, ctx, w, h));
+        topWnd->AddControl(BuildHotbar(ctx, w, h));
         return m_topctrl;
     }
-    std::shared_ptr<UIControl> LegoUI::Inventory::Build(LegoUI*parent, DrawContext &ctx, int w, int h)
+    std::shared_ptr<UIControl> LegoUI::Inventory::Build(LegoUI* parent, DrawContext& ctx, int w, int h)
     {
         const int btnSize = 150;
-        const int btnSpace = 10;
-
-        World* pWorld = ctx.m_pWorld;
-
-        std::shared_ptr<UIWindow> top = std::make_shared<UIWindow>(0, 0, 0, 0, "top", true);
-        std::shared_ptr<UIWindow> wnd = std::make_shared<UIWindow>(w - btnSize * 6, h - btnSize * 3, 0, 0, "controls", true);        
-        top->AddControl(wnd);
-        wnd->AddControl(std::make_shared<UIStateBtn>(btnSize + btnSpace * 2, 0, btnSize, btnSize, ICON_FA_CHEVRON_UP,
-            [pWorld](bool isBtnDown)
-            {
-                char key = 'W';
-                if (isBtnDown) pWorld->KeyDown(key);
-                else pWorld->KeyUp(key);
-            }));
-        wnd->AddControl(std::make_shared<UIStateBtn>(btnSize + btnSpace * 2, btnSize + btnSpace, btnSize, btnSize, ICON_FA_CHEVRON_DOWN,
-            [pWorld](bool isBtnDown)
-            {
-                char key = 'S';
-                if (isBtnDown) pWorld->KeyDown(key);
-                else pWorld->KeyUp(key);
-            }));
-        wnd->AddControl(std::make_shared<UIStateBtn>(btnSize * 2 + btnSpace * 4, btnSize / 2, btnSize, btnSize, ICON_FA_CHEVRON_RIGHT,
-            [pWorld](bool isBtnDown)
-            {
-                char key = 'D';
-                if (isBtnDown) pWorld->KeyDown(key);
-                else pWorld->KeyUp(key);
-            }));
-        wnd->AddControl(std::make_shared<UIStateBtn>(0, btnSize / 2, btnSize, btnSize, ICON_FA_CHEVRON_RIGHT,
-            [pWorld](bool isBtnDown)
-            {
-                char key = 'A';
-                if (isBtnDown) pWorld->KeyDown(key);
-                else pWorld->KeyUp(key);
-            }));
-        wnd->AddControl(std::make_shared<UIStateBtn>(btnSize * 4 + btnSpace * 4, 0, btnSize, btnSize, ICON_FA_CARET_SQUARE_O_UP,
-            [pWorld](bool isBtnDown)
-            {
-                char key = 32;
-                if (isBtnDown) pWorld->KeyDown(key);
-                else pWorld->KeyUp(key);
-            }));
-        wnd->AddControl(std::make_shared<UIStateBtn>(btnSize * 4 + btnSpace * 4, btnSize + btnSpace, btnSize, btnSize, ICON_FA_CARET_SQUARE_O_DOWN,
-            [pWorld](bool isBtnDown)
-            {
-                char key = 16;
-                if (isBtnDown) pWorld->KeyDown(key);
-                else pWorld->KeyUp(key);
-            }));
-
+        const int btnSpace = 10;        
+        
         std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "bricks", false);
         menu->OnOpenChanged([this, parent](bool isopen) {
-            if (!isopen) parent->Deactivate(); });
+            if (!isopen) Deactivate(); });
         menu->SetLayout(UILayout::Horizontal);
 
-        
+
         auto typesTable = std::make_shared<UITable>(1);
         int numTypes = BrickManager::Inst().NumTypes();
         typesTable->SetItems(numTypes, [](int start, int count, UITable::TableItem items[])
             {
                 for (int r = 0; r < count; r++)
                 {
-                    std::string typeName = 
+                    std::string typeName =
                         BrickManager::Inst().TypeName(r + start);
                     items[r].text = typeName;
                 }
@@ -118,14 +74,17 @@ namespace sam
         auto colorsPanel = std::make_shared<UIPanel>(0, 0, 150, 0);
         colorsPanel->AddControl(colorsTable);
         menu->AddControl(colorsPanel);
-
-        top->AddControl(menu);
         m_root = menu;
+        m_root->Close();
+        return menu;
+    }
 
+    std::shared_ptr<UIControl> LegoUI::BuildHotbar(DrawContext& ctx, int w, int h)
+    {
         m_hotbar = std::make_shared<UIWindow>(650, -200, 920, 130, "hotbar", false);
         m_hotbar->SetLayout(UILayout::Horizontal);
         auto hotbarTable = std::make_shared<UITable>(8);
-        const SlotPart *pSlots = ctx.m_pPlayer->GetSlots();        
+        const SlotPart* pSlots = ctx.m_pPlayer->GetSlots();
         auto player = ctx.m_pPlayer;
         hotbarTable->SetItems(8, [pSlots, player](int start, int count, UITable::TableItem items[])
             {
@@ -140,10 +99,10 @@ namespace sam
                 }
             });
         hotbarTable->OnItemSelected([player](int idx)
-            { player->SetCurrentSlotIdx(idx); 
+            { player->SetCurrentSlotIdx(idx);
             });
 
-                   
+        World* pWorld = ctx.m_pWorld;
         auto hotbarPanel = std::make_shared<UIPanel>(0, 0, -100, 0);
         hotbarPanel->AddControl(hotbarTable);
         m_hotbar->AddControl(hotbarPanel);
@@ -156,9 +115,7 @@ namespace sam
             }));
 
         m_hotbar->Show();
-        top->AddControl(m_hotbar);
-        
-        return top;
+        return m_hotbar;
     }
 
     void LegoUI::Inventory::BuildPartsTable(int itemIdx)
@@ -187,46 +144,85 @@ namespace sam
             });
 
         m_partsTable->OnItemSelected([this, partsForType](int itemIdx)
-            { 
+            {
                 m_partSelectedFn(partsForType[itemIdx]);
             });
     }
 
-    void LegoUI::OpenInventory(const std::function<void()>& deactivateFn)
+    void LegoUI::Inventory::Open(const std::function<void()>& deactivateFn)
     {
-        if (m_inventory.m_root)
-            m_inventory.m_root->Show();
+        if (m_root)
+            m_root->Show();
         m_isActive = true;
-        m_deactivateFn = deactivateFn;        
+        m_deactivateFn = deactivateFn;
     }
 
-    void LegoUI::CloseInventory()
+    void LegoUI::Inventory::Close()
     {
-        m_inventory.m_root->Close();
+        m_root->Close();
         m_isActive = false;
+    }
+
+    void LegoUI::CloseAll()
+    {
+        if (m_inventory.m_isActive)
+            m_inventory.Close();
+        if (m_mainMenu.m_isActive)
+            m_mainMenu.Close();
     }
 
     bool LegoUI::MouseDown(float x, float y, int buttonId)
     {
         bool ret = UIManager::MouseDown(x, y, buttonId);
-        return m_isActive;
+        return IsActive();
     }
 
     bool LegoUI::MouseDrag(float x, float y, int buttonId)
     {
         bool ret = UIManager::MouseDrag(x, y, buttonId);
-        return m_isActive;
+        return IsActive();
     }
 
     bool LegoUI::MouseUp(int buttonId)
     {
         bool ret = UIManager::MouseUp(buttonId);
-        return m_isActive;
+        return IsActive();
     }
-    
+
     bool LegoUI::WheelScroll(float delta)
     {
         bool ret = UIManager::WheelScroll(delta);
-        return m_isActive;
+        return IsActive();
     }
+
+
+    std::shared_ptr<UIControl> LegoUI::MainMenu::Build(LegoUI* parent, DrawContext& ctx, int w, int h)
+    {
+        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "mainmenu", false);
+        menu->OnOpenChanged([this, parent](bool isopen) {
+            if (!isopen) Deactivate(); });
+        menu->SetLayout(UILayout::Horizontal);
+
+        menu->AddControl(std::make_shared<UIStateBtn>(20, 20, 85, 85, "Quit",
+            [](bool isBtnDown)
+            {
+            }));
+        m_root = menu;
+        return menu;
+    }
+
+    void LegoUI::MainMenu::Open(const std::function<void()>& deactivateFn)
+    {
+        if (m_root)
+            m_root->Show();
+        m_isActive = true;
+        m_deactivateFn = deactivateFn;
+    }
+
+    void LegoUI::MainMenu::Close()
+    {
+        m_root->Close();
+        m_isActive = false;
+    }
+
 }

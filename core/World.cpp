@@ -176,6 +176,11 @@ namespace sam
             m_player->SetRightHandPart(part);
             break;
         }
+        case 'E':
+        {
+            m_showInventoryFn();
+            break;
+        }
         case LeftCtrl:
             m_disableCollisionCheck = true;
             break;

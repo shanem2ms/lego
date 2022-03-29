@@ -87,7 +87,7 @@ namespace partmake
         public event EventHandler<string> OnLogUpdated;
         private bool onlyShowCoveredPortalFaces = false;
 
-        public bool DoMesh { get; set; } = false;
+        public bool DoMesh { get; set; } = true;
         public bool DoDecomp { get; set; } = true;
         public bool BSPPortals { get; set; } = false;
         public bool BSPFaces { get; set; } = false;
@@ -490,7 +490,12 @@ namespace partmake
                 _selectedIndexCount = indicesSel.Length;
             }
 
-            List<LDrawDatFile.Connector> connectors = _part.GetConnectors();
+            List<Tuple<System.DoubleNumerics.Vector3, System.DoubleNumerics.Vector3>> bs = 
+                new List<Tuple<System.DoubleNumerics.Vector3, System.DoubleNumerics.Vector3>>();
+            List <LDrawDatFile.Connector> connectors = _part.GetConnectors(ref bs);
+            this.bisectors = bs.Select(tp => new Tuple<Vector3, Vector3>(
+                new Vector3((float)tp.Item1.X, (float)tp.Item1.Y, (float)tp.Item1.Z),
+                new Vector3((float)tp.Item2.X, (float)tp.Item2.Y, (float)tp.Item2.Z))).ToList();
             connectorVizs.Clear();
             foreach (var conn in connectors)
             {
@@ -1484,6 +1489,9 @@ namespace partmake
             }
             if (ShowBisector)
             {
+                _cl.SetPipeline(_pipeline);
+                _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+                _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
                 Vector4 bisectorColor = new Vector4(1.0f, 0f, 0f, 1.0f);
                 _cl.UpdateBuffer(_materialBuffer, 0, ref bisectorColor);
                 foreach (var edge in bisectors)

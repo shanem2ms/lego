@@ -314,16 +314,18 @@ namespace partmake
             public Vector3 udir, vdir;
             public int idx;
             public Vector3 Origin => normal * d;
+            public double totalArea;
 
             public override string ToString()
             {
-                return $"{idx} N={normal} D={d}";
+                return $"{idx} N={normal} D={d} TotalArea={totalArea}";
             }
             public Plane(Vector3 _n, double _d, int _i)
             {
                 normal = _n;
                 d = _d;
                 idx = _i;
+                totalArea = 0;
                 GetRefDirs(out udir, out vdir);
             }
 
@@ -573,7 +575,14 @@ namespace partmake
                 Vector3 xdir = edges[0].Dir;
                 Vector3 ydir = Vector3.Cross(xdir, nrm);
                 List<Vector2> p = ToFacePts(Vtx.Select(v => v.pt));
-                return Area(p[0], p[1], p[2]);
+                if (p.Count == 3)
+                    return Area(p[0], p[1], p[2]);
+                else
+                {
+                    double a1 = Area(p[0], p[1], p[2]);
+                    double a2 = Area(p[0], p[2], p[3]);
+                    return a1 + a2;
+                }
             }
             public static bool CheckDuplicateEdges(List<EdgePtr> _edges)
             {
@@ -607,6 +616,7 @@ namespace partmake
                 FixEdgeOrder();
                 Plane = mgr.GetPlane(Normal,
                             Vector3.Dot(edges[0].V0.pt, Normal));
+                Plane.totalArea += Area();
             }
 
             public void ReverseWinding()
@@ -1765,115 +1775,130 @@ namespace partmake
             }
 
 
-            public List<Vector3> GetRStuds(Vector3[] candidates, List<Tuple<Vector3, Vector3>> bisectors)
+            public List<Tuple<Vector3, Plane>> GetRStuds(Vector3[] candidates, List<Tuple<Vector3, Vector3>> bisectors)
             {
-                List<Vector3> outPts = new List<Vector3>();
-                foreach (var kv in this.edgeDict)
+                Dictionary<int, Plane> planes = new Dictionary<int, Plane>();
+                foreach (Face f in faces)
                 {
-                    kv.Value.flag = 0;
+                    if (f.Plane.totalArea > 100.0)
+                    {
+                        if (!planes.ContainsKey(f.Plane.idx))
+                            planes.Add(f.Plane.idx, f.Plane);
+                    }
                 }
-                List<Edge> edges = new List<Edge>();
-                List<Vector3> candidatePts = new List<Vector3>();
+                List<Tuple<Vector3, Plane>> outPts = new List<Tuple<Vector3, Plane>>();
+                foreach (var kvplane in planes)
                 {
-                    KdTree<double, Vector3> kd = new KdTree<double, Vector3>(3, new KdTree.Math.DoubleMath());
-                    GetBottomEdges(edges);
-
-                    if (edges.Count == 0)
-                        return outPts;
-
-                    Vector3 planeNormal = new Vector3(0, 1, 0);
-                    double planeDist = Vector3.Dot(edges[0].v0.pt, planeNormal);
-                    foreach (Vector3 c in candidates)
+                    foreach (var kv in this.edgeDict)
                     {
-                        Vector3 pt = c - planeNormal * Vector3.Dot(c, planeNormal);
-                        pt += planeNormal * planeDist;
-                        if (IsUnique(kd, pt))
-                            candidatePts.Add(pt);
+                        kv.Value.flag = 0;
                     }
+                    List<Edge> edges = new List<Edge>();
+                    List<Vector3> candidatePts = new List<Vector3>();
+                    {
+                        KdTree<double, Vector3> kd = new KdTree<double, Vector3>(3, new KdTree.Math.DoubleMath());
+                        GetPlaneEdges(kvplane.Value, edges);
 
-                    foreach (var edge in edges)
-                    {
-                        edge.flag = 1;
-                    }
-                    foreach (var edge in edges)
-                    {
-                        if (edge.len < 6.0f)
+                        if (edges.Count == 0)
                             continue;
-                        foreach (Edge e in edge.v0.edges)
-                        {
-                            if (e == edge || e.flag != 1 || e.len < 6.0f)
-                                continue;
-                            Vector3 v0 = edge.v0.pt;
-                            Vector3 v1a = edge.v1.pt;
-                            Vector3 v1adir = Vector3.Normalize(v1a - v0);
-                            Vector3 v1b = (edge.v0.idx == e.v0.idx) ? e.v1.pt : e.v0.pt;
-                            Vector3 v1bdir = Vector3.Normalize(v1b - v0);
 
-                            Vector3 bisectAngle = Vector3.Normalize(v1adir + v1bdir);
-                            double sinTheta = Vector3.Cross(bisectAngle, v1adir).Length();
-                            Vector3 testPt = v0 + (6.0f / sinTheta) * bisectAngle;
-                            bisectors.Add(new Tuple<Vector3, Vector3>(v0, testPt));
-                            if (IsUnique(kd, testPt))
-                                candidatePts.Add(testPt);
+                        Vector3 planeNormal = kvplane.Value.normal;
+                        double planeDist = Vector3.Dot(edges[0].v0.pt, planeNormal);
+                        foreach (Vector3 c in candidates)
+                        {
+                            Vector3 pt = c - planeNormal * Vector3.Dot(c, planeNormal);
+                            pt += planeNormal * planeDist;
+                            if (IsUnique(kd, pt))
+                                candidatePts.Add(pt);
                         }
 
-                        foreach (Edge e in edge.v1.edges)
+                        foreach (var edge in edges)
                         {
-                            if (e == edge || e.flag != 1 || e.len < 6.0f)
-                                continue;
-
-                            Vector3 v0 = edge.v1.pt;
-                            Vector3 v1a = edge.v0.pt;
-                            Vector3 v1adir = Vector3.Normalize(v1a - v0);
-                            Vector3 v1b = (edge.v1.idx == e.v0.idx) ? e.v1.pt : e.v0.pt;
-                            Vector3 v1bdir = Vector3.Normalize(v1b - v0);
-
-                            Vector3 bisectAngle = Vector3.Normalize(v1adir + v1bdir);
-                            double sinTheta = Vector3.Cross(bisectAngle, v1adir).Length();
-                            Vector3 testPt = v0 + (6.0f / sinTheta) * bisectAngle;
-                            bisectors.Add(new Tuple<Vector3, Vector3>(v0, testPt));
-                            if (IsUnique(kd, testPt))
-                                candidatePts.Add(testPt);
+                            edge.flag = 1;
                         }
-
-                        if (Eps.Eq(edge.len, 12))
+                        foreach (var edge in edges)
                         {
-                            Vector3 edgeNrm = Vector3.Cross(planeNormal, edge.dir);
-                            Vector3 pt1 = (edge.v0.pt + edge.v1.pt) * 0.5f +
-                                edgeNrm * 6.0f;
-                            if (IsUnique(kd, pt1))
-                                candidatePts.Add(pt1);
-                            Vector3 pt2 = (edge.v0.pt + edge.v1.pt) * 0.5f -
-                                edgeNrm * 6.0f;
-                            if (IsUnique(kd, pt2))
-                                candidatePts.Add(pt2);
+                            if (edge.len < 6.0f)
+                                continue;
+                            foreach (Edge e in edge.v0.edges)
+                            {
+                                if (e == edge || e.flag != 1 || e.len < 6.0f)
+                                    continue;
+                                Vector3 v0 = edge.v0.pt;
+                                Vector3 v1a = edge.v1.pt;
+                                Vector3 v1adir = Vector3.Normalize(v1a - v0);
+                                Vector3 v1b = (edge.v0.idx == e.v0.idx) ? e.v1.pt : e.v0.pt;
+                                Vector3 v1bdir = Vector3.Normalize(v1b - v0);
+
+                                Vector3 bisectAngle = Vector3.Normalize(v1adir + v1bdir);
+                                double sinTheta = Vector3.Cross(bisectAngle, v1adir).Length();
+                                Vector3 testPt = v0 + (6.0f / sinTheta) * bisectAngle;
+                                bisectors.Add(new Tuple<Vector3, Vector3>(v0, testPt));
+                                if (IsUnique(kd, testPt))
+                                    candidatePts.Add(testPt);
+                            }
+
+                            foreach (Edge e in edge.v1.edges)
+                            {
+                                if (e == edge || e.flag != 1 || e.len < 6.0f)
+                                    continue;
+
+                                Vector3 v0 = edge.v1.pt;
+                                Vector3 v1a = edge.v0.pt;
+                                Vector3 v1adir = Vector3.Normalize(v1a - v0);
+                                Vector3 v1b = (edge.v1.idx == e.v0.idx) ? e.v1.pt : e.v0.pt;
+                                Vector3 v1bdir = Vector3.Normalize(v1b - v0);
+
+                                Vector3 bisectAngle = Vector3.Normalize(v1adir + v1bdir);
+                                double sinTheta = Vector3.Cross(bisectAngle, v1adir).Length();
+                                Vector3 testPt = v0 + (6.0f / sinTheta) * bisectAngle;
+                                bisectors.Add(new Tuple<Vector3, Vector3>(v0, testPt));
+                                if (IsUnique(kd, testPt))
+                                    candidatePts.Add(testPt);
+                            }
+
+                            if (Eps.Eq(edge.len, 12))
+                            {
+                                Vector3 edgeNrm = Vector3.Cross(planeNormal, edge.dir);
+                                Vector3 pt1 = (edge.v0.pt + edge.v1.pt) * 0.5f +
+                                    edgeNrm * 6.0f;
+                                if (IsUnique(kd, pt1))
+                                    candidatePts.Add(pt1);
+                                Vector3 pt2 = (edge.v0.pt + edge.v1.pt) * 0.5f -
+                                    edgeNrm * 6.0f;
+                                if (IsUnique(kd, pt2))
+                                    candidatePts.Add(pt2);
+                            }
                         }
                     }
-                }
 
-                foreach (Vector3 cpt in candidatePts)
-                {
-                    List<Edge> touchedEdges = new List<Edge>();
-                    bool hasBlockage = false;
-                    foreach (var e in edges)
+                    foreach (Vector3 cpt in candidatePts)
                     {
-                        Vector3 nearestPt = NearestPt(e.v0.pt, e.v1.pt, cpt);
-
-                        double lenSq = (nearestPt - cpt).LengthSquared();
-                        if (lenSq > 34 && lenSq < 38)
+                        List<Edge> touchedEdges = new List<Edge>();
+                        bool hasBlockage = false;
+                        foreach (var e in edges)
                         {
-                            touchedEdges.Add(e);
+                            Vector3 nearestPt = NearestPt(e.v0.pt, e.v1.pt, cpt);
+
+                            double lenSq = (nearestPt - cpt).LengthSquared();
+                            if (lenSq > 34 && lenSq < 38)
+                            {
+                                touchedEdges.Add(e);
+                            }
+                            else if (lenSq < 34)
+                                hasBlockage = true;
                         }
-                        else if (lenSq < 34)
-                            hasBlockage = true;
+
+                        if (hasBlockage)
+                            continue;
+                        if (touchedEdges.Count() >= 3)
+                        {
+                            Debug.WriteLine(kvplane.Key);
+                            outPts.Add(new Tuple<Vector3, Plane>(cpt, kvplane.Value));
+                        }
                     }
-
-                    if (hasBlockage)
-                        continue;
-                    if (touchedEdges.Count() >= 3)
-                        outPts.Add(cpt);
                 }
-
+                outPts = outPts.Distinct().ToList();
                 return outPts;
             }
 
@@ -1939,20 +1964,24 @@ namespace partmake
             {
                 AABB aabb = AABB.CreateFromPoints(this.vertices.Select(v => v.pt).ToList());
                 double maxy = aabb.Max.Y;
-
-                foreach (var e in this.edgeDict.Values)
-                {
-                    if (Eps.Eq(e.len, 12))
-                    {
-
-                    }
-                }
+                
                 foreach (var e in this.edgeDict.Values)
                 {
                     if (Eps.Eq(e.v0.pt.Y, maxy) && Eps.Eq(e.v1.pt.Y, maxy))
                         edges.Add(e);
                 }
             }
+
+            public void GetPlaneEdges(Plane p, List<Edge> edges)
+            {
+                foreach (var e in this.edgeDict.Values)
+                {
+                    if (Eps.Eq(p.DistFromPt(e.v0.pt), 0) &&
+                        Eps.Eq(p.DistFromPt(e.v1.pt), 0))
+                        edges.Add(e);
+                }
+            }
+
             public void GetVertices(List<Vtx> vlist, List<int> faceIndices, bool allowQuads)
             {
                 int faceIdx = 0;
@@ -2055,9 +2084,8 @@ namespace partmake
             KdTree<double, Plane> kdTreePlane =
                 new KdTree<double, Plane>(4, new KdTree.Math.DoubleMath());
             KdTree<double, Vector3> kdTreePoint = new KdTree<double, Vector3>(3, new KdTree.Math.DoubleMath());
-            int nextVtxIdx = 0;
             int planeIdx = 0;
-
+            int nextVtxIdx = 0;
             public Plane GetPlane(Vector3 normal, double d)
             {
                 if (d < 0)

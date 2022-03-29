@@ -275,18 +275,27 @@ namespace partmake
         {
             DisableConnectorsRecursive();
         }
-        public List<Connector> GetConnectors()
+        public List<Connector> GetConnectors(ref List<Tuple<Vector3, Vector3>> bisectors)
         {
             List<Connector> connectors = new List<Connector>();
             List<Connector> rStudCandidates = new List<Connector>();
             GetConnectorsRecursive(connectors, rStudCandidates, false, Matrix4x4.Identity);
-            List<Tuple<Vector3, Vector3>> bisectors = new List<Tuple<Vector3, Vector3>>();
-            List<Vector3> rStuds = 
+            var rStuds = 
                 GetTopoMesh().GetRStuds(rStudCandidates.Select(s => Vector3.Transform(Vector3.Zero, s.mat)).ToArray(), bisectors);
-            foreach (Vector3 rstud in rStuds)
+            foreach (var rstud in rStuds)
             {
-                connectors.Add(new Connector() { mat = Matrix4x4.CreateScale(4, 4, 4) * 
-                    Matrix4x4.CreateTranslation(rstud), type = ConnectorType.RStud });
+                Vector3 u = rstud.Item2.udir;
+                Vector3 n = rstud.Item2.normal;
+                Vector3 v = rstud.Item2.vdir;
+                Matrix4x4 m = new Matrix4x4(
+                    v.X, v.Y, v.Z, 0,
+                    n.X, n.Y, n.Z, 0,
+                    u.X, u.Y, u.Z, 0,
+                    0, 0, 0, 1);
+
+                //rstud.Item2.
+                connectors.Add(new Connector() { mat = Matrix4x4.CreateScale(4, 4, 4) * m *
+                    Matrix4x4.CreateTranslation(rstud.Item1), type = ConnectorType.RStud });
             }
             return connectors.Distinct().ToList();
         }
@@ -427,7 +436,8 @@ namespace partmake
 
         public void WriteConnectorFile(string folder)
         {
-            List<Connector> connectors = GetConnectors();
+            List<Tuple<Vector3, Vector3>> bisectors = new List<Tuple<Vector3, Vector3>>();
+            List<Connector> connectors = GetConnectors(ref bisectors);
             if (connectors.Count == 0)
                 return;
             string jsonstr = JsonConvert.SerializeObject(connectors);
