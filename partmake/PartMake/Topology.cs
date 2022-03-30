@@ -783,7 +783,7 @@ namespace partmake
             public static Settings settings = null;
             public static double Epsilon = 0.00001f;
             public KdTree<double, Vertex> kdTree = new KdTree<double, Vertex>(3, new KdTree.Math.DoubleMath());
-            List<Vertex> vertices = new List<Vertex>();
+            public List<Vertex> vertices = new List<Vertex>();
             public List<Face> faces = new List<Face>();
             public List<ConvexMesh> convexDecomp = new List<ConvexMesh>();
             int nextVtxIdx = 0;
@@ -791,7 +791,7 @@ namespace partmake
             static double vertexMinDist = 0.0005;
             EdgeIntersectCPP edgeIntersect = new EdgeIntersectCPP();
             public List<string> logLines = new List<string>();
-            PlaneMgr planeMgr = new PlaneMgr();
+            public PlaneMgr planeMgr = new PlaneMgr();
 
             string log = null;
             public string LogString

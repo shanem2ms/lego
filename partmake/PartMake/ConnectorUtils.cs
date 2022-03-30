@@ -14,13 +14,15 @@ namespace partmake
     namespace Topology
     {
         public class ConnectorUtils
-        {
+        { 
             static public List<Tuple<Vector3, Plane>> GetRStuds(Mesh m, Vector3[] candidates, List<Tuple<Vector3, Vector3>> bisectors)
             {
+                AABB aabb = AABB.CreateFromPoints(m.vertices.Select(v => v.pt).ToList());
                 Dictionary<int, Plane> planes = new Dictionary<int, Plane>();
+                Plane bottomPlane = m.planeMgr.GetPlane(Vector3.UnitY, aabb.Max.Y);
                 foreach (Face f in m.faces)
                 {
-                    if (f.Plane.totalArea > 100.0)
+                    if (f.Plane.totalArea > 100.0 || f.Plane.idx == bottomPlane.idx)
                     {
                         if (!planes.ContainsKey(f.Plane.idx))
                             planes.Add(f.Plane.idx, f.Plane);
@@ -116,16 +118,17 @@ namespace partmake
 
                     foreach (Vector3 cpt in candidatePts)
                     {
-                        List<Edge> touchedEdges = new List<Edge>();
+                        List<Tuple<Edge, Vector3>> touchedEdges = new List<Tuple<Edge, Vector3>>();
                         bool hasBlockage = false;
                         foreach (var e in edges)
                         {
                             Vector3 nearestPt = Mesh.NearestPt(e.v0.pt, e.v1.pt, cpt);
 
-                            double lenSq = (nearestPt - cpt).LengthSquared();
+                            Vector3 nrmVec = (nearestPt - cpt);
+                            double lenSq = (nrmVec).LengthSquared();
                             if (lenSq > 34 && lenSq < 38)
                             {
-                                touchedEdges.Add(e);
+                                touchedEdges.Add(new Tuple<Edge, Vector3>(e, Vector3.Normalize(nrmVec)));
                             }
                             else if (lenSq < 34)
                                 hasBlockage = true;
@@ -139,7 +142,19 @@ namespace partmake
                                 planeFaces.Any(f => f.aabb.Contains(cpt) != AABB.ContainmentType.Disjoint
                                 && f.IsPointOnPoly(cpt));
                             if (!isOnFace)
-                                outPts.Add(new Tuple<Vector3, Plane>(cpt, kvplane.Value));
+                            {
+                                double minDot = 1;
+                                for (int i = 0; i < touchedEdges.Count; i++)
+                                {
+                                    for (int j = i + 1; j < touchedEdges.Count; j++)
+                                    {
+                                        double dot = Vector3.Dot(touchedEdges[i].Item2, touchedEdges[j].Item2);
+                                        minDot = Math.Min(minDot, dot);
+                                    }
+                                }
+                                if (minDot < 0)
+                                    outPts.Add(new Tuple<Vector3, Plane>(cpt, kvplane.Value));
+                            }
                         }
                     }
                 }

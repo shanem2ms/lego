@@ -307,7 +307,6 @@ namespace partmake
                     u.X, u.Y, u.Z, 0,
                     0, 0, 0, 1);
 
-                //rstud.Item2.
                 connectors.Add(new Connector() { mat = Matrix4x4.CreateScale(4, 4, 4) * m *
                     Matrix4x4.CreateTranslation(rstud.Item1), type = ConnectorType.RStud });
             }
@@ -450,7 +449,7 @@ namespace partmake
 
         public void WriteConnectorFile(string folder)
         {
-            if (GetFaceCount() > 1000)
+            if (GetFaceCount() > 1000 && name != "91405")
                 return;
             List<Tuple<Vector3, Vector3>> bisectors = new List<Tuple<Vector3, Vector3>>();
             List<Connector> connectors = GetConnectors(ref bisectors);
