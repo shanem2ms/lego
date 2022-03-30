@@ -226,8 +226,8 @@ namespace partmake
 
         public static void WriteAll()
         {
-            //WriteConnectors();
-            WriteCollision();
+            WriteConnectors();
+            //WriteCollision();
         }
 
         static void WriteConnectors()

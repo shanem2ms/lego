@@ -213,6 +213,20 @@ namespace partmake
                 }
             }
         }
+
+        int GetFaceCount()
+        {
+            int faceCount = 0;
+            foreach (var child in this.children)
+            {
+                if (child.IsEnabled)
+                {
+                    faceCount += child.File.GetFaceCount();
+                }
+            }
+            faceCount += this.faces.Count();
+            return faceCount;
+        }
         public void GetVertices(List<Vtx> vertices, bool onlySelected)
         {
             GetVerticesRecursive(false, Matrix4x4.Identity, vertices, !onlySelected);
@@ -436,9 +450,11 @@ namespace partmake
 
         public void WriteConnectorFile(string folder)
         {
+            if (GetFaceCount() > 1000)
+                return;
             List<Tuple<Vector3, Vector3>> bisectors = new List<Tuple<Vector3, Vector3>>();
             List<Connector> connectors = GetConnectors(ref bisectors);
-            if (connectors.Count == 0)
+            if (connectors == null || connectors.Count == 0)
                 return;
             string jsonstr = JsonConvert.SerializeObject(connectors);
             string outfile = Path.GetFileNameWithoutExtension(name) + ".json";

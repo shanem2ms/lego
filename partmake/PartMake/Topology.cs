@@ -646,30 +646,29 @@ namespace partmake
 
             public bool IsPointInsideTriangle(Vertex vtx)
             {
-                return !ContainsVertex(vtx.idx) && IsPointOnTriangle(vtx, 0);
+                return !ContainsVertex(vtx.idx) && IsPointOnTriangle(vtx.pt, 0);
             }
             public bool IsPointInsidePoly(Vertex vtx)
             {
-                return (!ContainsVertex(vtx.idx) && IsPointOnPoly(vtx));
+                return (!ContainsVertex(vtx.idx) && IsPointOnPoly(vtx.pt));
             }
 
-            public bool IsPointOnPoly(Vertex vtx)
+            public bool IsPointOnPoly(Vector3 pt)
             {
                 for (int i = 0; i < edges.Count(); ++i)
                 {
-                    if (IsPointOnTriangle(vtx, i))
+                    if (IsPointOnTriangle(pt, i))
                         return true;
                 }
                 return false;
             }
-            public bool IsPointOnTriangle(Vertex vtx)
+            public bool IsPointOnTriangle(Vector3 pt)
             {
-                return IsPointOnTriangle(vtx, 0);
+                return IsPointOnTriangle(pt, 0);
             }
-            public bool IsPointOnTriangle(Vertex vtx, int trioffset)
+            public bool IsPointOnTriangle(Vector3 pt, int trioffset)
             {
                 int ct = edges.Count();
-                Vector3 pt = vtx.pt;
                 Vector3 nrm = Normal;
                 if (!Eps.Eq(Vector3.Dot(pt - edges[(0 + trioffset) % ct].V0.pt, nrm), 0))
                     return false;
@@ -689,7 +688,7 @@ namespace partmake
                        ((p2.Y - p3.Y) * (p1.X - p3.X) + (p3.X - p2.X) * (p1.Y - p3.Y));
                 double gamma = 1.0f - alpha - beta;
 
-                return alpha > 0 && beta > 0 && gamma > 0;
+                return alpha >= 0 && beta >= 0 && gamma >= 0;
             }
             public void FixEdgeOrder()
             {
@@ -1093,7 +1092,7 @@ namespace partmake
                             f.aabb.Contains(e.v1.pt) != AABB.ContainmentType.Disjoint &&
                             f.IsPointInsidePoly(e.v0))
                         {
-                            if (f.IsPointOnPoly(e.v1))
+                            if (f.IsPointOnPoly(e.v1.pt))
                             {
                                 if (f.interioredges == null) f.interioredges = new List<EdgePtr>();
                                 f.interioredges.Add(new EdgePtr(e, false, f));
@@ -1103,7 +1102,7 @@ namespace partmake
                             f.aabb.Contains(e.v1.pt) != AABB.ContainmentType.Disjoint &&
                             f.IsPointInsidePoly(e.v1))
                         {
-                            if (f.IsPointOnPoly(e.v0))
+                            if (f.IsPointOnPoly(e.v0.pt))
                             {
                                 if (f.interioredges == null) f.interioredges = new List<EdgePtr>();
                                 f.interioredges.Add(new EdgePtr(e, false, f));
@@ -1150,7 +1149,7 @@ namespace partmake
                                 f.IsPointInsideTriangle(e.v0) &&
                                 !f.ContainsVertex(e.v1.idx))
                             {
-                                if (!f.IsPointOnTriangle(e.v1))
+                                if (!f.IsPointOnTriangle(e.v1.pt))
                                 {
                                     if (SplitFaceOnEdge(f, e))
                                     {
@@ -1169,7 +1168,7 @@ namespace partmake
                                 f.IsPointInsideTriangle(e.v1) &&
                                 !f.ContainsVertex(e.v0.idx))
                             {
-                                if (!f.IsPointOnTriangle(e.v0))
+                                if (!f.IsPointOnTriangle(e.v0.pt))
                                 {
                                     if (SplitFaceOnEdge(f, e))
                                     {
@@ -1789,6 +1788,8 @@ namespace partmake
                 List<Tuple<Vector3, Plane>> outPts = new List<Tuple<Vector3, Plane>>();
                 foreach (var kvplane in planes)
                 {
+                    List<Face> planeFaces = 
+                        faces.Where(f => f.Plane.idx == kvplane.Key).ToList();
                     foreach (var kv in this.edgeDict)
                     {
                         kv.Value.flag = 0;
@@ -1893,8 +1894,11 @@ namespace partmake
                             continue;
                         if (touchedEdges.Count() >= 3)
                         {
-                            Debug.WriteLine(kvplane.Key);
-                            outPts.Add(new Tuple<Vector3, Plane>(cpt, kvplane.Value));
+                            bool isOnFace = 
+                                planeFaces.Any(f => f.aabb.Contains(cpt) != AABB.ContainmentType.Disjoint 
+                                && f.IsPointOnPoly(cpt));
+                            if (!isOnFace)
+                                outPts.Add(new Tuple<Vector3, Plane>(cpt, kvplane.Value));
                         }
                     }
                 }
