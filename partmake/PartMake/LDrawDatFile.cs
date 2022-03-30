@@ -294,8 +294,8 @@ namespace partmake
             List<Connector> connectors = new List<Connector>();
             List<Connector> rStudCandidates = new List<Connector>();
             GetConnectorsRecursive(connectors, rStudCandidates, false, Matrix4x4.Identity);
-            var rStuds = 
-                GetTopoMesh().GetRStuds(rStudCandidates.Select(s => Vector3.Transform(Vector3.Zero, s.mat)).ToArray(), bisectors);
+            var rStuds =
+                Topology.ConnectorUtils.GetRStuds(GetTopoMesh(), rStudCandidates.Select(s => Vector3.Transform(Vector3.Zero, s.mat)).ToArray(), bisectors);
             foreach (var rstud in rStuds)
             {
                 Vector3 u = rstud.Item2.udir;
