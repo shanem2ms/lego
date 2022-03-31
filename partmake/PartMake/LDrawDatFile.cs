@@ -31,6 +31,8 @@ namespace partmake
         public List<Topology.Face> TopoFaces => topoMesh?.FacesFromId(topoId);
         public Topology.BSPTree BSPTree => topoMesh?.bSPTree;
 
+        public List<string> ReverseLookup => LDrawFolders.ReverseLookup(Name);
+        public List<string> IncludedInParts => LDrawFolders.IncludedInParts(Name);
         public string Name { get => name; }
         public bool IsMultiColor { get => multiColor; }
         public LDrawDatFile(string path)

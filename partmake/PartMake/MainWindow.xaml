@@ -109,7 +109,7 @@
     </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="100" />
+            <ColumnDefinition Width="200" />
             <ColumnDefinition Width="5" />
             <ColumnDefinition Width="300" />
             <ColumnDefinition Width="5" />
@@ -119,13 +119,16 @@
         </Grid.ColumnDefinitions>
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="30" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="30" />
             </Grid.RowDefinitions>
-            <ComboBox Height="30" ItemsSource="{Binding LDrawGroups}" SelectedItem="{Binding Path=SelectedType}" />
-            <ListBox Grid.Row="1" ItemsSource="{Binding LDrawParts}" SelectedItem="{Binding Path=SelectedItem}" />
-            <Button Content="Write All" Grid.Row="2" Click="Button_Click"/>
+            <ComboBox Height="20" ItemsSource="{Binding LDrawGroups}" SelectedItem="{Binding Path=SelectedType}" />
+            <CheckBox Grid.Row="1" Content="Filtered" x:Name="FilteredCheckbox" Checked="FilteredCheckbox_Checked" 
+                      Unchecked="FilteredCheckbox_Checked"/>
+            <ListBox Grid.Row="2" ItemsSource="{Binding LDrawParts}" SelectedItem="{Binding Path=SelectedItem}" />
+            <Button Content="Write All" Grid.Row="3" Click="Button_Click"/>
         </Grid>
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
         <TabControl Grid.Column="2" SelectedIndex="1">
@@ -249,19 +252,16 @@
             </TabItem>
             <TabItem Header="Parts">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="51*"/>
-                        <ColumnDefinition Width="111*"/>
-                        <ColumnDefinition Width="32*"/>
-                    </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="30" />
+                        <RowDefinition Height="2*" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="20" />
                     </Grid.RowDefinitions>
-                    <TextBlock Height="30" Text="{Binding Path=SelectedItemDesc}" Grid.ColumnSpan="3" />
+                    <TextBlock Height="30" Text="{Binding Path=SelectedItemDesc}" />
                     <TreeView Grid.Row="1" Background="AliceBlue" ItemsSource="{Binding Path=CurrentPart}" 
-                      SelectedItemChanged="TreeView_SelectedItemChanged" Grid.ColumnSpan="3">
+                      SelectedItemChanged="TreeView_SelectedItemChanged">
                         <TreeView.Resources>
                             <HierarchicalDataTemplate DataType="{x:Type local:LDrawDatNode}"
                                    ItemsSource="{Binding Path=File.Children}">
@@ -278,7 +278,7 @@
                             </HierarchicalDataTemplate>
                         </TreeView.Resources>
                     </TreeView>
-                    <TreeView Grid.Row="1" ItemsSource="{Binding Path=SelectedNode.TopoFaces}" SelectedItemChanged="TreeView_SelectedINodeChanged" Grid.ColumnSpan="3" Margin="0,488,0,0" Grid.RowSpan="2">
+                    <TreeView Grid.Row="2" ItemsSource="{Binding Path=SelectedNode.TopoFaces}" SelectedItemChanged="TreeView_SelectedINodeChanged">
                         <TreeView.Resources>
                             <HierarchicalDataTemplate DataType="{x:Type topo:Face}"
                                    ItemsSource="{Binding Path=Children}">
@@ -300,6 +300,8 @@
                             </HierarchicalDataTemplate>
                         </TreeView.Resources>
                     </TreeView>
+                    <ListBox Grid.Row="3" ItemsSource="{Binding Path=SelectedNode.ReverseLookup}" />
+                    <Button Grid.Row="4" Content="Filter on Subpart" Click="SubPartFilter_Click" Width="120" HorizontalAlignment="Left" />
                 </Grid>
             </TabItem>
             <TabItem Header="Log" >

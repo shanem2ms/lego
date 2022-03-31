@@ -347,6 +347,30 @@ namespace partmake
                 SelectBSPNode(nextPortal.parentNode);
             }
         }
+
+        private void SubPartFilter_Click(object sender, RoutedEventArgs e)
+        {
+            List<string> parts = SelectedNode.IncludedInParts;
+            var allParts = LDrawFolders.AllParts;
+            foreach (var ap in allParts)
+            {
+                ap.includedInFilter = false;
+            }
+            foreach (string p in parts)
+            {
+                LDrawFolders.Entry entry = LDrawFolders.GetEntry(p);
+                if (entry != null)
+                    entry.includedInFilter = true;
+            }
+            LDrawFolders.FilterEnabled = true;
+            FilteredCheckbox.IsChecked = true;            
+        }
+
+        private void FilteredCheckbox_Checked(object sender, RoutedEventArgs e)
+        {
+            LDrawFolders.FilterEnabled = FilteredCheckbox.IsChecked == true;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("LDrawParts"));
+        }
     }
 
     public class TopoTemplateSelector : DataTemplateSelector

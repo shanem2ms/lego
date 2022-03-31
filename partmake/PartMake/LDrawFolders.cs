@@ -21,6 +21,8 @@ namespace partmake
             public string desc;
             public float[] dims;
             public bool ismainpart;
+            public string[] subparts;
+            public bool includedInFilter;
 
             public int CompareTo(Entry other)
             {
@@ -38,13 +40,18 @@ namespace partmake
         static List<Entry> ldrawParts = new List<Entry>();
         static Dictionary<string, Entry> partPaths = new Dictionary<string, Entry>();
         static string selectedType;
+        static Dictionary<string, List<string>> partsReverseLookup = new Dictionary<string, List<string>>();
+        static public bool FilterEnabled { get; set; } = false;
         static public string SelectedType
         {
             get => selectedType;
             set { selectedType = value; }
         }
-        public static List<Entry> LDrawParts { get => selectedType == null ? new List<Entry>() : 
-                lDrawGroups[selectedType]; }
+        public static List<Entry> LDrawParts { get => selectedType == null ? new List<Entry>() :
+                (FilterEnabled ? lDrawGroups[selectedType].Where(i => i.includedInFilter).ToList() :
+                    lDrawGroups[selectedType]); }
+
+        public static List<Entry> AllParts => ldrawParts;
         public static IEnumerable<string> LDrawGroups => lDrawGroups.Keys;
         static Dictionary<string, List<Entry>> lDrawGroups = new Dictionary<string, List<Entry>>();
         static void GetFilesRecursive(DirectoryInfo di, List<string> filepaths)
@@ -58,6 +65,43 @@ namespace partmake
             {
                 filepaths.Add(fi.FullName);
             }
+        }
+
+        static public List<string> ReverseLookup(string part)
+        {
+            List<string> result;
+            string p = part + ".dat";
+            Entry e = GetEntry(p);
+            if (!partsReverseLookup.TryGetValue(p, out result))
+                    result = null;
+            return result;
+        }
+
+        static public List<string> IncludedInParts(string subpart)
+        {
+            HashSet<string> mainParts = new HashSet<string>();
+
+
+            string p = subpart + ".dat";
+            HashSet<string> subParts = new HashSet<string>() { p };
+            while (subParts.Count > 0)
+            {
+                HashSet<string> nextSubParts = new HashSet<string>();
+                foreach (var part in subParts)
+                {
+                    List<string> results;
+                    if (partsReverseLookup.TryGetValue(part, out results))
+                    {
+                        foreach (var r in results) nextSubParts.Add(r);
+                    }
+                    else
+                        mainParts.Add(part);
+                }
+                subParts = nextSubParts;
+            }
+            var outParts = mainParts.ToList();
+            outParts.Sort();
+            return outParts;
         }
         public static void SetRoot(string folder)
         {
@@ -81,11 +125,12 @@ namespace partmake
                     string dim = "";
                     string typestr;
                     string desc;
+                    HashSet<string> subParts = new HashSet<string>();
                     using (StreamReader sr = new StreamReader(fullName))
                     {
                         bool skip = false;
                         string descline = null;
-                        while (line.Length == 0 || line[0] == '0')
+                        while (!sr.EndOfStream)
                         {
                             line = sr.ReadLine();
                             if (line == null)
@@ -95,6 +140,19 @@ namespace partmake
                             }
                             if (descline == null && line.Length > 0)
                                 descline = line;
+                            string lt = line.Trim();
+                            if (lt.Length == 0)
+                                continue;
+
+                            if (lt[0] == '1')
+                            {
+                                Regex r1 = new Regex(@"1\s+([-\.\d]+)\s+([-\.\d]+)\s+([-\.\d]+)\s+([-\.\d]+)\s+([-\.\d]+)\s+([-\.\d]+)\s+([-\.\d]+)\s+([-\.\d]+)\s+([-\.\d]+)\s+([-\.\d]+)\s+([-\.\d]+)\s+([-\.\d]+)\s+([-\.\d]+)\s+([-\w\\]+\.dat)$");
+                                Match m = r1.Match(lt);
+                                if (m.Groups.Count >= 15)
+                                {
+                                    subParts.Add(m.Groups[14].Value);
+                                }
+                            }
                             /*
                             if (line.StartsWith(@"0 ~Moved to") ||
                                 line.StartsWith(@"0 // Alias of"))
@@ -129,6 +187,12 @@ namespace partmake
                         desc = descline.Trim();
                     }
                     sw.WriteLine("{0}//{1}//{2}//{3}//{4}", name, typestr, dim, desc, reldir);
+                    if (subParts.Count > 0)
+                    {
+                        sw.WriteLine("   " + string.Join("//", subParts));
+                    }
+                    else
+                        sw.WriteLine("");
                 }
                 sw.Close();
                 File.Move(Path.Combine(folder, descFile + ".tmp"), Path.Combine(folder, descFile));
@@ -140,6 +204,7 @@ namespace partmake
                 while (!sr.EndOfStream)
                 {
                     string line = sr.ReadLine();
+                    string line2 = sr.ReadLine();
                     string[] vals = line.Split("//");
                     string name = vals[0];
                     float[] dims = null;
@@ -152,6 +217,13 @@ namespace partmake
                             dims[i] = float.Parse(dstr[i]);
                         }
                     }
+                    line2 = line2.Trim();
+                    List<string> subParts;
+                    if (line2.Length > 0)
+                    {
+                        subParts = new List<string>();
+
+                    }
                     Entry e = new Entry()
                     {
                         path = Path.Combine(rootFolder, vals[4], name),
@@ -159,10 +231,28 @@ namespace partmake
                         type = vals[1],
                         desc = vals[3],
                         dims = dims,
-                        ismainpart = (vals[4] == "parts")
+                        ismainpart = (vals[4] == "parts"),
+                        subparts = line2.Length > 0 ? line2.Split("//") : null
                     };
 
                     partPaths.Add(Path.Combine(vals[4], name).ToLower(), e);
+                }
+            }
+
+            foreach (var pp in partPaths)
+            {
+                if (pp.Value.subparts != null)
+                {
+                    foreach (var sp in pp.Value.subparts)
+                    {
+                        List<string> spList;
+                        if (!partsReverseLookup.TryGetValue(sp, out spList))
+                        {
+                            spList = new List<string>();
+                            partsReverseLookup.Add(sp, spList);
+                        }
+                        spList.Add(pp.Value.name);
+                    }
                 }
             }
 
