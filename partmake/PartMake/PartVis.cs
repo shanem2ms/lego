@@ -499,7 +499,8 @@ namespace partmake
             connectorVizs.Clear();
             foreach (var conn in connectors)
             {
-                LDrawDatFile.ConnectorType mask = (LDrawDatFile.ConnectorType.Stud | LDrawDatFile.ConnectorType.RStud);
+                LDrawDatFile.ConnectorType mask = (LDrawDatFile.ConnectorType.Stud | LDrawDatFile.ConnectorType.RStud |
+                    LDrawDatFile.ConnectorType.MFigHip);
                 if ((conn.type & mask) != 0)
                     connectorVizs.Add(new ConnectorVis() { type = conn.type & mask, mat = DTF(conn.mat) });
             }
@@ -1454,7 +1455,8 @@ namespace partmake
         void DrawBisectors(ref Matrix4x4 mat)
         {
             Dictionary<LDrawDatFile.ConnectorType, Vector4> colors = new Dictionary<LDrawDatFile.ConnectorType, Vector4>()
-                { { LDrawDatFile.ConnectorType.Stud, new Vector4(0.8f, 0.1f, 0, 1) }, { LDrawDatFile.ConnectorType.RStud, new Vector4(0.1f, 0.1f, 0.8f, 1) }};
+                { { LDrawDatFile.ConnectorType.Stud, new Vector4(0.8f, 0.1f, 0, 1) }, { LDrawDatFile.ConnectorType.RStud, new Vector4(0.1f, 0.1f, 0.8f, 1) },
+                { LDrawDatFile.ConnectorType.MFigHip, new Vector4(0.3f, 0.8f, 0, 1) } };
 
             if (ShowConnectors)
             {

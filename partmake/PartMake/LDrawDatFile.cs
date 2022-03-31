@@ -493,9 +493,9 @@ namespace partmake
                 if (Eps.Eq(scale.X, 3) &&
                     Eps.Eq(scale.Z, 3))
                 {
-                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, -10, 0) * transform,
+                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
                         ConnectorType.MFigHip));
-                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 10, 0) * transform,
+                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, -0.5, 0) * transform,
                         ConnectorType.MFigHip));
                 }
             }
