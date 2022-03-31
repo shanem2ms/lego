@@ -98,24 +98,6 @@ namespace partmake
             }
         }
 
-        public static class Eps
-        {
-            public static bool Eq(double a, double b)
-            {
-                double e = a - b;
-                return (e > -Mesh.Epsilon && e < Mesh.Epsilon);
-            }
-
-            public static bool Eq(Vector3 a, Vector3 v)
-            {
-                return (a - v).LengthSquared() < (Mesh.Epsilon * 4);
-            }
-            public static bool Eq(Vector2 a, Vector2 v)
-            {
-                return (a - v).LengthSquared() < (Mesh.Epsilon * 4);
-            }
-        }
-
         public class Loop
         {
             public List<Edge> edges;
@@ -781,7 +763,6 @@ namespace partmake
         public class Mesh
         {
             public static Settings settings = null;
-            public static double Epsilon = 0.00001f;
             public KdTree<double, Vertex> kdTree = new KdTree<double, Vertex>(3, new KdTree.Math.DoubleMath());
             public List<Vertex> vertices = new List<Vertex>();
             public List<Face> faces = new List<Face>();
@@ -1535,8 +1516,8 @@ namespace partmake
 
                             Vector3 ptdir1 = Vector3.Normalize(vtx.pt - e.v0.pt);
                             Vector3 ptdir2 = Vector3.Normalize(e.v1.pt - vtx.pt);
-                            if ((ptdir1 - e.dir).LengthSquared() < Mesh.Epsilon &&
-                                (ptdir2 - e.dir).LengthSquared() < Mesh.Epsilon)
+                            if ((ptdir1 - e.dir).LengthSquared() < Eps.Epsilon &&
+                                (ptdir2 - e.dir).LengthSquared() < Eps.Epsilon)
                             {
                                 double len = (vtx.pt - e.v0.pt).Length();
                                 if (len < elen)

@@ -686,7 +686,7 @@ namespace partmake
 
         public class PointMgr
         {
-            static double Epsilon = Mesh.Epsilon;
+            static double Epsilon = Eps.Epsilon;
             List<double> vals = new List<double>();
             public double AddPoint(double x)
             {

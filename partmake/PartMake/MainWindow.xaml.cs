@@ -7,6 +7,9 @@ using System.Linq;
 using System.Timers;
 using System.ComponentModel;
 using System.Windows.Media;
+using System.Windows.Data;
+using System.Globalization;
+using System.DoubleNumerics;
 
 namespace partmake
 {
@@ -87,7 +90,7 @@ namespace partmake
             SelectedItem = LDrawFolders.GetEntry(part);
             vis = _RenderControl.Vis;
             vis.Part = selectedPart;
-            Eps.Text = Topology.Mesh.Epsilon.ToString();
+            EpsTB.Text = Eps.Epsilon.ToString();
             vis.OnINodeSelected += Vis_OnINodeSelected;
             vis.OnBSPNodeSelected += Vis_OnBSPNodeSelected;
             vis.OnLogUpdated += Vis_OnLogUpdated;
@@ -136,6 +139,7 @@ namespace partmake
             if (item == null)
                 return;
             selectedPart = LDrawFolders.GetPart(item);
+            selectedPart.SetSubPartSizes();
             if (disableConnectors)
                 selectedPart.DisableConnectors();
             if (vis != null)
@@ -200,7 +204,7 @@ namespace partmake
 
         private void Eps_LostFocus(object sender, RoutedEventArgs e)
         {
-            Topology.Mesh.Epsilon = float.Parse((sender as TextBox).Text);
+            Eps.Epsilon = float.Parse((sender as TextBox).Text);
             OnSelectedItem(this.selectedItem);
         }
 
@@ -351,6 +355,7 @@ namespace partmake
         private void SubPartFilter_Click(object sender, RoutedEventArgs e)
         {
             List<string> parts = SelectedNode.IncludedInParts;
+            var worldScale = SelectedNode.WorldScale;
             var allParts = LDrawFolders.AllParts;
             foreach (var ap in allParts)
             {
@@ -360,7 +365,21 @@ namespace partmake
             {
                 LDrawFolders.Entry entry = LDrawFolders.GetEntry(p);
                 if (entry != null)
-                    entry.includedInFilter = true;
+                {
+                    LDrawDatFile file = LDrawFolders.GetPart(entry);
+                    var results = file.GetAllSubPartsOfType(SelectedNode.File.Name);
+                    bool foundMatch = false;
+                    foreach (var result in results)
+                    {
+                        Vector3 scl = result.mat.GetScale();
+                        if (Eps.Eq(scl.X, worldScale.X) &&
+                            Eps.Eq(scl.Z, worldScale.Z))
+                        {
+                            foundMatch = true;
+                        }
+                    }
+                    entry.includedInFilter = foundMatch;
+                }
             }
             LDrawFolders.FilterEnabled = true;
             FilteredCheckbox.IsChecked = true;            
@@ -387,6 +406,27 @@ namespace partmake
                 return FaceTemplate;
 
             return null;
+        }
+    }
+
+    public class BoolToBrush : IValueConverter
+    {
+        public Brush FalseBrush { get; set; }
+        public Brush TrueBrush { get; set; }
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if ((targetType == typeof(Brush) || targetType == typeof(Object)))
+            {
+                bool nVal = (bool)value;
+                return nVal ? TrueBrush : FalseBrush;
+            }
+            return value;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new ArgumentException();
         }
     }
 }

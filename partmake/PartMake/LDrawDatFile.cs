@@ -229,6 +229,52 @@ namespace partmake
             faceCount += this.faces.Count();
             return faceCount;
         }
+
+        public class SubPartResult
+        {
+            public LDrawDatNode node;
+            public Matrix4x4 mat;
+            public bool inverted;
+        }
+        public List<SubPartResult> GetAllSubPartsOfType(string name)
+        {
+            List<SubPartResult> results = new List<SubPartResult>();
+            GetAllSubPartsOfType(results, name, false, Matrix4x4.Identity);
+            return results;
+        }
+
+        void GetAllSubPartsOfType(List<SubPartResult> outParts, string name,
+            bool inverted, Matrix4x4 transform)
+        {
+            foreach (var child in this.children)
+            {
+                Matrix4x4 subMatrix = child.transform * transform;
+                if (child.File.name == name)
+                    outParts.Add(new SubPartResult
+                    {
+                        node = child,
+                        mat = subMatrix,
+                        inverted = inverted ^ child.invert
+                    });
+                child.File.GetAllSubPartsOfType(outParts, name, 
+                    inverted ^ child.invert, subMatrix);
+            }
+        }
+
+        public void SetSubPartSizes()
+        {
+            SetSubPartSizesRecursive(false, Matrix4x4.Identity);
+        }
+
+        void SetSubPartSizesRecursive(bool inverted, Matrix4x4 transform)
+        {
+            foreach (var child in this.children)
+            {
+                Matrix4x4 subMatrix = child.transform* transform;
+                child.WorldScale = subMatrix.GetScale();
+                child.File.SetSubPartSizesRecursive(inverted ^ child.invert, subMatrix);
+            }
+        }
         public void GetVertices(List<Vtx> vertices, bool onlySelected)
         {
             GetVerticesRecursive(false, Matrix4x4.Identity, vertices, !onlySelected);
@@ -265,7 +311,8 @@ namespace partmake
             Stud = 1,
             Clip = 2,
             StudJ = 4,
-            RStud = 8
+            RStud = 8,
+            MFigHip = 16
         }
         public class Connector : IComparable<Connector>
         {
@@ -438,6 +485,18 @@ namespace partmake
                 {
                     rStudCandidates.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(offsets[i]) * transform,
                         ConnectorType.RStud));
+                }
+            }
+            else if (this.name == "4-4cylc")
+            {
+                Vector3 scale = transform.GetScale();
+                if (Eps.Eq(scale.X, 3) &&
+                    Eps.Eq(scale.Z, 3))
+                {
+                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, -10, 0) * transform,
+                        ConnectorType.MFigHip));
+                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 10, 0) * transform,
+                        ConnectorType.MFigHip));
                 }
             }
             else

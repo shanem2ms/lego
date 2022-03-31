@@ -30,9 +30,21 @@ namespace partmake
         public System.Numerics.Vector3 nrm;
         public System.Numerics.Vector2 tx;
     }
+
+    public static class MathExt
+    {
+        public static Vector3 GetScale(this Matrix4x4 mat)
+        {
+            Vector3 scale, pos;
+            Quaternion quat;
+            Matrix4x4.Decompose(mat, out scale, out quat, out pos);
+            return Vector3.Abs(scale);
+        }
+    }
     public class LDrawDatNode
     {
         public Matrix4x4 transform;
+        public Vector3 WorldScale { get; set; }
         public bool invert;
         public LDrawDatFile File { get; set; }
         public bool IsSelected { get; set; }
@@ -337,11 +349,11 @@ namespace partmake
 
         public ContainmentType ContainsEpsilon(Vector3 v)
         {
-            if (v.X < (Min.X - Topology.Mesh.Epsilon) || v.X > (Max.X + Topology.Mesh.Epsilon))
+            if (v.X < (Min.X - Eps.Epsilon) || v.X > (Max.X + Eps.Epsilon))
                 return ContainmentType.Disjoint;
-            if (v.Y < (Min.Y - Topology.Mesh.Epsilon) || v.Y > (Max.Y + Topology.Mesh.Epsilon))
+            if (v.Y < (Min.Y - Eps.Epsilon) || v.Y > (Max.Y + Eps.Epsilon))
                 return ContainmentType.Disjoint;
-            if (v.Z < (Min.Z - Topology.Mesh.Epsilon) || v.Z > (Max.Z + Topology.Mesh.Epsilon))
+            if (v.Z < (Min.Z - Eps.Epsilon) || v.Z > (Max.Z + Eps.Epsilon))
                 return ContainmentType.Disjoint;
             return ContainmentType.Intersects;
         }
@@ -426,10 +438,26 @@ namespace partmake
                 merged.Max.Z = a.Max.Z;
             else
                 merged.Max.Z = b.Max.Z;
+        }       
+
+    }
+    public static class Eps
+    {
+        public static double Epsilon = 0.00001f;
+
+        public static bool Eq(double a, double b)
+        {
+            double e = a - b;
+            return (e > -Epsilon && e < Epsilon);
         }
 
-
-       
-
+        public static bool Eq(Vector3 a, Vector3 v)
+        {
+            return (a - v).LengthSquared() < (Epsilon * 4);
+        }
+        public static bool Eq(Vector2 a, Vector2 v)
+        {
+            return (a - v).LengthSquared() < (Epsilon * 4);
+        }
     }
 }
