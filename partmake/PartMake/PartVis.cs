@@ -97,7 +97,7 @@ namespace partmake
 
         public bool ShowBisector { get; set; }
         public bool NonManifold { get; set; } = false;
-        public bool ShowConnectors { get; set; }
+        public bool ShowConnectors { get; set; } = true;
 
         public bool ShowExteriorPortals { get; set; } = false;
         Vector4[] edgePalette;
@@ -500,9 +500,9 @@ namespace partmake
             foreach (var conn in connectors)
             {
                 LDrawDatFile.ConnectorType mask = (LDrawDatFile.ConnectorType.Stud | LDrawDatFile.ConnectorType.RStud |
-                    LDrawDatFile.ConnectorType.MFigHip);
-                if ((conn.type & mask) != 0)
-                    connectorVizs.Add(new ConnectorVis() { type = conn.type & mask, mat = DTF(conn.mat) });
+                    LDrawDatFile.ConnectorType.MFigHipLeg |
+                    LDrawDatFile.ConnectorType.MFigRHipLeg);
+                connectorVizs.Add(new ConnectorVis() { type = conn.type & mask, mat = DTF(conn.mat) });
             }
 
             this.edges.Clear();
@@ -1455,8 +1455,11 @@ namespace partmake
         void DrawBisectors(ref Matrix4x4 mat)
         {
             Dictionary<LDrawDatFile.ConnectorType, Vector4> colors = new Dictionary<LDrawDatFile.ConnectorType, Vector4>()
-                { { LDrawDatFile.ConnectorType.Stud, new Vector4(0.8f, 0.1f, 0, 1) }, { LDrawDatFile.ConnectorType.RStud, new Vector4(0.1f, 0.1f, 0.8f, 1) },
-                { LDrawDatFile.ConnectorType.MFigHip, new Vector4(0.3f, 0.8f, 0, 1) } };
+                { { LDrawDatFile.ConnectorType.Stud, new Vector4(0.8f, 0.1f, 0, 1) }, 
+                { LDrawDatFile.ConnectorType.RStud, new Vector4(0.1f, 0.1f, 0.8f, 1) },
+                { LDrawDatFile.ConnectorType.MFigHipLeg, new Vector4(0.3f, 0.8f, 0, 1) },
+                { LDrawDatFile.ConnectorType.MFigRHipLeg, new Vector4(0.3f, 0.8f, 0, 1) },
+                { LDrawDatFile.ConnectorType.MFigHipStud, new Vector4(0.3f, 0.2f, 0.9f, 1)}};
 
             if (ShowConnectors)
             {
@@ -1466,7 +1469,9 @@ namespace partmake
 
                 foreach (var c in connectorVizs)
                 {
-                    Vector4 ccol = colors[c.type];
+                    Vector4 ccol;
+                    if (!colors.TryGetValue(c.type, out ccol))
+                        ccol = new Vector4(1, 1, 1, 1);
                     const float lsize = 0.05f;
                     _cl.UpdateBuffer(_materialBuffer, 0, ref ccol);
                     {

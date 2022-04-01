@@ -310,9 +310,15 @@ namespace partmake
         {
             Stud = 1,
             Clip = 2,
-            StudJ = 4,
-            RStud = 8,
-            MFigHip = 16
+            StudJ = 3,
+            RStud = 4,
+            MFigHipLeg = 5,
+            MFigRHipLeg = 6,
+            MFigHipStud = 7,
+            MFigTorsoRArm = 8,
+            MFigTorsoNeck = 9,
+            MFigHeadRNeck = 10,
+            MFigArmKnob = 11
         }
         public class Connector : IComparable<Connector>
         {
@@ -426,8 +432,12 @@ namespace partmake
             }
             else if (studclipj.Contains(this.name))
             {
-                connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 2, 0) * transform, 
-                    ConnectorType.Stud | ConnectorType.StudJ | ConnectorType.Clip));
+                connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 2, 0) * transform,
+                    ConnectorType.Stud));
+                connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 2, 0) * transform,
+                    ConnectorType.StudJ));
+                connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 2, 0) * transform,
+                    ConnectorType.Clip));
             }
             else if (rstud.Contains(this.name))
             {
@@ -441,7 +451,7 @@ namespace partmake
                 };
                 for (int i = 0; i < offsets.Length; ++i)
                 {
-                    rStudCandidates.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(offsets[i]) * transform, 
+                    rStudCandidates.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(offsets[i]) * transform,
                         ConnectorType.RStud));
                 }
             }
@@ -490,15 +500,68 @@ namespace partmake
             else if (this.name == "4-4cylc")
             {
                 Vector3 scale = transform.GetScale();
-                if (Eps.Eq(scale.X, 3) &&
-                    Eps.Eq(scale.Z, 3))
+                if (Eps.Eq2(scale.X, 3) &&
+                    Eps.Eq2(scale.Z, 3))
                 {
-                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
-                        ConnectorType.MFigHip));
-                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, -0.5, 0) * transform,
-                        ConnectorType.MFigHip));
+                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, -0.1, 0) * transform,
+                        ConnectorType.MFigHipLeg));
+                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, -1.1, 0) *
+                        Matrix4x4.CreateFromAxisAngle(Vector3.UnitX, Math.PI) *
+                        transform,
+                        ConnectorType.MFigHipLeg));
                 }
             }
+            else if (this.name == "3-4cyli")
+            {
+                Vector3 scale = transform.GetScale();
+                if (Eps.Eq2(scale.X, 6) &&
+                    Eps.Eq2(scale.Z, 6))
+                {
+                    connectors.Add(CreateBaseConnector(
+                        Matrix4x4.CreateFromAxisAngle(Vector3.UnitX, Math.PI) *
+                        Matrix4x4.CreateTranslation(0, 0.5, 0) *
+                        transform,
+                        ConnectorType.MFigTorsoNeck));
+                }
+            }
+            else if ((this.name == "4-4cyli" ||
+                this.name == "4-4cylo")
+                && inverted)
+            {
+                Vector3 scale = transform.GetScale();
+                if (Eps.Eq2(scale.X, 3) &&
+                    Eps.Eq2(scale.Z, 3))
+                {
+                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, -0.5, 0) * transform,
+                        ConnectorType.MFigRHipLeg));
+                }
+                if (Eps.Eq2(scale.X, 5) &&
+                    Eps.Eq2(scale.Z, 5))
+                {
+                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
+                        ConnectorType.MFigTorsoRArm));
+                }
+                if (Eps.Eq2(scale.X, 6) &&
+                    Eps.Eq2(scale.Z, 6))
+                {
+                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
+                        ConnectorType.MFigHeadRNeck));
+                }
+            }
+            else if (this.name == "knob1")
+            {
+                connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 0, 0) * transform,
+                    ConnectorType.MFigArmKnob));                
+            }
+            else if (this.name == "hipstud")
+            {
+                Vector3 scale = transform.GetScale();
+                {
+                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 5, 0) * transform,
+                        ConnectorType.MFigHipStud));
+                }
+            }
+
             else
             {
                 foreach (var child in this.children)

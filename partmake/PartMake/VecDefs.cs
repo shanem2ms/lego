@@ -443,12 +443,19 @@ namespace partmake
     }
     public static class Eps
     {
-        public static double Epsilon = 0.00001f;
+        public static double Epsilon = 0.00001;
+        public static double Epsilon2 = 0.01;
 
         public static bool Eq(double a, double b)
         {
             double e = a - b;
             return (e > -Epsilon && e < Epsilon);
+        }
+
+        public static bool Eq2(double a, double b)
+        {
+            double e = a - b;
+            return (e > -Epsilon2 && e < Epsilon2);
         }
 
         public static bool Eq(Vector3 a, Vector3 v)
