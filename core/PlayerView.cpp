@@ -104,6 +104,7 @@ namespace sam
                 m_btShape.get());
             m_rigidBody = std::make_shared<btRigidBody>(constructInfo);
             ctx.m_physics->AddRigidBody(m_rigidBody.get());
+            m_rigidBody->setFriction(0.0f);
         }
         auto& dcam = Engine::Inst().DrawCam();
         auto& cam = Engine::Inst().ViewCam();
@@ -124,7 +125,7 @@ namespace sam
         m_jump = false;
         m_rigidBody->applyCentralImpulse(btimp);
         m_rigidBody->activate();
-        m_rigidBody->setFriction(2.0f);
+        m_rigidBody->setFriction(0.0f);
         
         btVector3 p = m_rigidBody->getCenterOfMassPosition();
         m_pos = Vec3f(p[0], p[1], p[2]);

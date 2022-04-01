@@ -671,12 +671,20 @@ namespace sam
             std::filesystem::path(ldrpath) / "LDConfig.ldr";
         std::ifstream ifs(configpath);
         std::regex colorrg("0\\s!COLOUR\\s(\\w+)\\s+CODE\\s+(\\d+)\\s+VALUE\\s#([\\dA-F]+)\\s+EDGE\\s+#([\\dA-F]+)");
+        std::regex legoidrg("0\\s+\\/\\/\\sLEGOID\\s+(\\d+)\\s-\\s([\\w\\s]+)");
+        int legoidCur;
+        std::string legoNameCur;
         while (!ifs.eof())
         {
             std::string line;
             std::getline(ifs, line);
             std::smatch match;
-            if (std::regex_search(line, match, colorrg))
+            if (std::regex_search(line, match, legoidrg))
+            {
+                legoidCur = stoi(match[1].str());
+                legoNameCur = match[2];
+            }
+            else if (std::regex_search(line, match, colorrg))
             {
                 std::string name = match[1];
                 int index = std::stoi(match[2].str());
@@ -691,7 +699,10 @@ namespace sam
                     { (edge >> 16) & 0xFF,
                     (edge >> 8) & 0xFF,
                     edge & 0xFF,
-                    0xFF}
+                    0xFF},
+                    0,
+                    legoidCur,
+                    legoNameCur
                 };
                 m_colors.insert(std::make_pair(index, bc));
             }

@@ -140,17 +140,6 @@ namespace sam
         m_isDown = isDown;
     }
 
-
-    UIWindow::UIWindow(float x, float y, float w, float h, const std::string& name,
-            bool invisible) :
-        UIGroup(x, y, w, h),
-        m_name(name),
-        m_isopen(true),
-        m_isinvisible(invisible)
-    {
-
-    }
-
     UIGroup::UIGroup(float x, float y, float w, float h) :
         UIControl(x, y, w, h),
         m_layout(UILayout::Vertical)
@@ -185,6 +174,16 @@ namespace sam
             control->DrawUI(ctx);
         }
         ctx.layout = oldLayout;
+    }
+
+    UIWindow::UIWindow(float x, float y, float w, float h, const std::string& name,
+        bool invisible) :
+        UIGroup(x, y, w, h),
+        m_name(name),
+        m_isopen(true),
+        m_isinvisible(invisible)
+    {
+
     }
 
     UIControl* UIWindow::IsHit(float x, float y, int buttonId)
@@ -240,7 +239,10 @@ namespace sam
         m_height = size.y / ctx.scaleH;
 
         m_isopen = isopen;
-        UIGroup::DrawUI(ctx);
+        UIContext subCtx = ctx;
+        subCtx.width = m_width;
+        subCtx.height = m_height;
+        UIGroup::DrawUI(subCtx);
         ImGui::End();
     }
 

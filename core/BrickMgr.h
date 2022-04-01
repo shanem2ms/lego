@@ -271,6 +271,8 @@ namespace sam
         RGBA fill;
         RGBA edge;
         int atlasidx;
+        int legoId;
+        std::string legoName;
     };
 
     class BrickManager : public IEngineDraw

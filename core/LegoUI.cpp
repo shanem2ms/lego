@@ -203,7 +203,7 @@ namespace sam
             if (!isopen) Deactivate(); });
         menu->SetLayout(UILayout::Horizontal);
 
-        menu->AddControl(std::make_shared<UIStateBtn>(20, 20, 85, 85, "Quit",
+        menu->AddControl(std::make_shared<UIStateBtn>(20, -105, 85, 85, "Quit",
             [](bool isBtnDown)
             {
             }));

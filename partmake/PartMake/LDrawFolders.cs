@@ -24,8 +24,12 @@ namespace partmake
             public string[] subparts;
             public bool includedInFilter;
 
+            float totalDim { get { float ret = 1; if (dims != null) { foreach (var d in dims) ret *= d; } return ret; } }
+
             public int CompareTo(Entry other)
             {
+                int cmp = totalDim.CompareTo(other.totalDim);
+                if (cmp != 0) return cmp;
                 return ToString().CompareTo(other.ToString());
             }
 
@@ -120,6 +124,8 @@ namespace partmake
                 {
                     string relname = Path.GetRelativePath(folder, fullName);
                     string name = Path.GetFileName(relname);
+                    if (name == @"3245bdq2.dat")
+                        Debugger.Break();
                     string reldir = Path.GetDirectoryName(relname);
                     string line = "";
                     string dim = "";
@@ -153,13 +159,13 @@ namespace partmake
                                     subParts.Add(m.Groups[14].Value);
                                 }
                             }
-                            /*
+                            
                             if (line.StartsWith(@"0 ~Moved to") ||
                                 line.StartsWith(@"0 // Alias of"))
                             {
                                 skip = true;
                                 break;
-                            } */
+                            }
                         }
                         if (skip)
                             continue;
@@ -174,11 +180,12 @@ namespace partmake
                         string[] dims = null;
                         if (psm.Groups.Count > 1)
                         {
-                            dims = new string[psm.Groups.Count / 2];
-                            for (int i = 0; i < psm.Groups.Count; i += 2)
-                            {
-                                dims[i / 2] = psm.Groups[i + 1].Value;
-                            }
+                            List<string> dimstr = new List<string>();
+                            foreach (var c in psm.Groups[1].Captures)
+                                dimstr.Add(c.ToString());
+                            foreach (var c in psm.Groups[3].Captures)
+                                dimstr.Add(c.ToString());
+                            dims = dimstr.ToArray();
 
                             dim = string.Join(" ", dims);
                             descline = descline.Substring(psm.Index + psm.Length);
@@ -198,7 +205,7 @@ namespace partmake
                 File.Move(Path.Combine(folder, descFile + ".tmp"), Path.Combine(folder, descFile));
             }
 
-
+            
             using (StreamReader sr = new StreamReader(Path.Combine(folder, descFile)))
             {
                 while (!sr.EndOfStream)
@@ -224,12 +231,13 @@ namespace partmake
                         subParts = new List<string>();
 
                     }
+                    string desc = vals[3].Trim();
                     Entry e = new Entry()
                     {
                         path = Path.Combine(rootFolder, vals[4], name),
                         name = name,
-                        type = vals[1],
-                        desc = vals[3],
+                        type = vals[1] + (desc.Length > 0 ? " Mod" : ""),
+                        desc = desc,
                         dims = dims,
                         ismainpart = (vals[4] == "parts"),
                         subparts = line2.Length > 0 ? line2.Split("//") : null
@@ -298,8 +306,8 @@ namespace partmake
 
             var stayGrps = lDrawGroups.Where(kv => kv.Value.Count > 100);
             Dictionary<string, List<Entry>> newGrps = new Dictionary<string, List<Entry>>(
-                lDrawGroups.Where(kv => kv.Value.Count > 100));
-            var result = lDrawGroups.Where(kv => kv.Value.Count <= 100).SelectMany(kv => kv.Value).ToList();
+                lDrawGroups.Where(kv => kv.Value.Count > 10));
+            var result = lDrawGroups.Where(kv => kv.Value.Count <= 10).SelectMany(kv => kv.Value).ToList();
             newGrps.Add("misc", result);
             lDrawGroups = newGrps;
         }
