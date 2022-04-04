@@ -158,7 +158,7 @@ namespace sam
     {
         SceneGroup::Draw(ctx);
 
-        if (!m_l.IsGroundLoc() || m_l.m_l != 8)
+        if (m_l.m_l != 8)
             return;
         nOctTilesTotal++;
         nOctTilesDrawn++;

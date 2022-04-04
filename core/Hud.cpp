@@ -25,6 +25,7 @@ namespace sam
     extern int g_numLod9;
     extern int g_behindViewer;
     extern std::string g_partName;
+
 extern int g_buttonDown;
 
 	void Hud::Draw(DrawContext& ctx)
@@ -33,15 +34,15 @@ extern int g_buttonDown;
             ctx.m_mat * CalcMat();
         bgfx::dbgTextClear();
         bgfx::dbgTextPrintf(0, 8, 0x0f, "Fps [%.2f]", g_Fps);
-        bgfx::dbgTextPrintf(0, 8, 0x0f, "Name [%s]", g_partName.c_str());
         bgfx::dbgTextPrintf(0, 10, 0x0f, "VB %d MB", sVBBytes.load() >> 20);
 
         Engine& e = Engine::Inst();
-        Camera::Fly la = e.ViewCam().GetFly();
+        Camera::Fly la = e.ViewCam().GetFly();        
         Vec3f r, u, f;
         la.GetDirs(r, u, f);
         bgfx::dbgTextPrintf(0, 4, 0x0f, "Pos [%f %f %f]", la.pos[0], la.pos[1], la.pos[2]);
-        bgfx::dbgTextPrintf(0, 5, 0x0f, "Dir [%f %f %f]", f[0], f[1], f[2]);
+        bgfx::dbgTextPrintf(0, 5, 0x0f, "Dir [%f %f]", la.dir[0], la.dir[1]);
+        bgfx::dbgTextPrintf(0, 6, 0x0f, "Fwd [%f %f %f]", f[0], f[1], f[2]);
 
         //bgfx::setTransform(m.getData());
         Quad::init();

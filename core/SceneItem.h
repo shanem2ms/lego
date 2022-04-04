@@ -1,16 +1,6 @@
 #pragma once
 typedef struct NVGcontext NVGcontext;
 #include "StdIncludes.h"
-#include <gmtl/gmtl.h>
-#include <gmtl/Matrix.h>
-#include <gmtl/Point.h>
-#include <gmtl/Quat.h>
-#include <gmtl/Vec.h>
-#include <gmtl/AABox.h>
-#include <gmtl/AABoxOps.h>
-#include <gmtl/Plane.h>
-#include <gmtl/PlaneOps.h>
-#include <gmtl/Frustum.h>
 #include <functional>
 
 using namespace gmtl;

@@ -175,7 +175,7 @@ namespace sam
             const std::string& name, std::filesystem::path& cachePath);
         void LoadHires(const std::string& name, std::filesystem::path& cachePath);
         void LoadConnectors(const std::filesystem::path &connectorPath);
-        void LoadCollisionMesh(const std::filesystem::path& collisionPath);
+        bool LoadCollisionMesh(const std::filesystem::path& collisionPath);
         void LoadPrimitives(ldr::Loader* pLoader);
         void GenerateCacheItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
             const std::string& name, std::filesystem::path& cachePath, 
@@ -223,7 +223,7 @@ namespace sam
         void Draw(DrawContext& ctx) override;
         void MruUpdate(Brick* pBrick);        
         void LoadConnectors(Brick* pBrick);
-        void LoadCollision(Brick* pBrick);
+        bool LoadCollision(Brick* pBrick);
         void LoadPrimitives(Brick* pBrick);
         const std::vector<PartId>& PartsForType(
             const std::string typestr)

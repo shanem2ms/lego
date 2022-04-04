@@ -1,8 +1,5 @@
 #pragma once
 #include "StdIncludes.h"
-#include <gmtl/gmtl.h>
-#include <gmtl/Point.h>
-#include <gmtl/AABox.h>
 
 using namespace gmtl;
 namespace sam

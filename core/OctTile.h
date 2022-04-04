@@ -91,7 +91,7 @@ namespace sam
         Vec3f p[2] = { in.mMin,  in.mMax };
         for (int i = 0; i < 8; ++i)
         {
-            Point3f op(p[i / 4][0], p[(i / 2) & 0x1][1], p[i & 0x1][2]);
+            Vec3f op(p[i / 4][0], p[(i / 2) & 0x1][1], p[i & 0x1][2]);
             xform(op, q, op);
             outBox += op;
         }

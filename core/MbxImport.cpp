@@ -12,11 +12,12 @@ using namespace gmtl;
 namespace sam
 {
 
-    void MbxImport::ImportFile(const std::string& file, std::vector<PartInst> &piList)
+    void MbxImport::ImportFile(const std::string& file, const Vec3f &pos, std::vector<PartInst> &piList)
     {
         std::ifstream infile(file);
 
-        //get length of file
+        AABoxf aabb;
+        //get length of files
         infile.seekg(0, std::ios::end);
         size_t length = infile.tellg();
         infile.seekg(0, std::ios::beg);
@@ -26,9 +27,13 @@ namespace sam
 
         json doc = json::parse(str);
         json parts = doc["parts"];
+        size_t count = 0;
         for (json part : parts)
         {
             std::string partname = part["configuration"];
+            size_t idx = partname.find('.');
+            if (idx < partname.size())
+                partname = partname.substr(0, idx);
             partname = BrickManager::Inst().PartAlias(partname);
             json matrix = part["matrix"];
             float m[16];
@@ -47,8 +52,20 @@ namespace sam
             Vec4f out;  
             xform(out, mat, Vec4f(0, 0, 0, 1));
             pi.pos = Vec3f(out);
+            pi.pos[0] = -pi.pos[0];
+            pi.pos *= 0.125f;
+            aabb += pi.pos;
             pi.rot = make<Quatf>(mat);
             piList.push_back(pi);
+            if (count++ > 200)
+                break;
+        }
+
+        Vec3f centerpt = aabb.mMax + aabb.mMin;
+        Vec3f anchorpt(centerpt[0], aabb.mMin[1], centerpt[2]);
+        for (auto& pi : piList)
+        {
+            pi.pos = pi.pos - anchorpt + pos;
         }
     }
 }

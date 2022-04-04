@@ -230,7 +230,7 @@ namespace sam
                 curVtx->m_y = -curVtx->m_y;
                 if (curVtx->m_u == 16)
                     curVtx->m_u = -1;
-                m_bounds += Point3f(curVtx->m_x, curVtx->m_y, curVtx->m_z);
+                m_bounds += Vec3f(curVtx->m_x, curVtx->m_y, curVtx->m_z);
             }
             Vec3f ext = m_bounds.mMax - m_bounds.mMin;
             m_scale = std::max(std::max(ext[0], ext[1]), ext[2]);
@@ -287,10 +287,10 @@ namespace sam
         m_ibhHR = bgfx::createIndexBuffer(bgfx::makeRef(m_indicesHR.data(), m_indicesHR.size() * sizeof(uint32_t)), BGFX_BUFFER_INDEX32);
     }
 
-    void Brick::LoadCollisionMesh(const std::filesystem::path& collisionPath)
+    bool Brick::LoadCollisionMesh(const std::filesystem::path& collisionPath)
     {
         if (m_collisionShape != nullptr)
-            return;
+            return true;
 
         std::vector<std::vector<Vec3d>> meshes;
         if (std::filesystem::exists(collisionPath))
@@ -325,6 +325,7 @@ namespace sam
         
         btVector3 min, max;
         m_collisionShape->getAabb(btTransform::getIdentity(), min, max);
+        return true;
     }
 
 #define tricount (hires ? rpart.num_trianglesC : rpart.num_triangles)
@@ -404,7 +405,7 @@ namespace sam
                 memcpy(&curVtx->m_x, &rpart.vertices[idx].position, sizeof(LdrVector));
                 memcpy(&curVtx->m_nx, &rpart.vertices[idx].normal, sizeof(LdrVector));
                 curVtx->m_u = curVtx->m_v = -1;
-                m_bounds += Point3f(curVtx->m_x, curVtx->m_y, curVtx->m_z);
+                m_bounds += Vec3f(curVtx->m_x, curVtx->m_y, curVtx->m_z);
                 curVtx++;
             }
             memcpy(curIdx, tris, tricount * 3 * sizeof(uint32_t));
@@ -599,13 +600,14 @@ namespace sam
             pBrick->LoadConnectors(connectorPath);
     }
 
-    void BrickManager::LoadCollision(Brick* pBrick)
+    bool BrickManager::LoadCollision(Brick* pBrick)
     {
         std::filesystem::path collisionPath = m_collisionPath / pBrick->m_name;
         collisionPath.replace_extension("col");
 
         if (std::filesystem::exists(collisionPath))
-            pBrick->LoadCollisionMesh(collisionPath);
+            return pBrick->LoadCollisionMesh(collisionPath);
+        return false;
     }
     void BrickManager::LoadPrimitives(Brick* pBrick)
     {

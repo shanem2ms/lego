@@ -51,7 +51,7 @@ inline bool operator!=( const AABox<DATA_TYPE>& b1, const AABox<DATA_TYPE>& b2 )
 
 
 template< class DATA_TYPE >
-inline AABox<DATA_TYPE> &operator += (AABox<DATA_TYPE>& b1, const Point<DATA_TYPE, 3>& p)
+inline AABox<DATA_TYPE> &operator += (AABox<DATA_TYPE>& b1, const Vec<DATA_TYPE, 3>& p)
 {
     for (int i = 0; i < 3; ++i)
     {

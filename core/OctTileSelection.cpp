@@ -49,7 +49,7 @@ namespace sam
             g_numLod9 = 0;
             for (auto& tile : locs)
             {
-                g_numLod9 += tile.m_l == 9 ? 1 : 0;
+                g_numLod9 += tile.m_l == 8 ? 1 : 0;
             }
         }
 
@@ -306,7 +306,7 @@ namespace sam
         Camera::Fly fly = cam.GetFly();
         m_pWorld = ctx.m_pWorld;
         std::vector<Loc> locs;
-        FrustumTiles::Get(cam, locs, 10.0f, g_maxTileLod, playerBounds);
+        FrustumTiles::Get(cam, locs, 100.0f, g_maxTileLod, playerBounds);
 
         std::sort(locs.begin(), locs.end());
         std::vector<std::shared_ptr<OctTile>> loaderTiles;

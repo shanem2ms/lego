@@ -159,12 +159,14 @@ namespace sam
     }
 
     constexpr float pi_over_two = 3.14159265358979323846f * 0.5f;
+    constexpr float pi_over_two_thresh = 3.14159265358979323846f * 0.5f - 0.001f;
     void Player::RawMove(float dx, float dy)
     {
         Engine& e = Engine::Inst();
         m_dir[0] += dx;
         m_dir[1] -= dy;
-        m_dir[1] = std::max(m_dir[1], -pi_over_two);
+        m_dir[1] = std::min(m_dir[1], pi_over_two_thresh);
+        m_dir[1] = std::max(m_dir[1], -pi_over_two_thresh);
     }
 
     void Player::MouseDrag(float x, float y, int buttonId)
@@ -229,10 +231,6 @@ namespace sam
 
         case FButton:
             m_flymode = !m_flymode;
-        break;        case 'I':
-            m_inspectmode = !m_inspectmode;
-            Engine::Inst().SetDbgCam(m_inspectmode);
-            break;
         }
     }
 

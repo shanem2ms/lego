@@ -182,7 +182,8 @@ namespace sam
             {
                 std::vector<PartInst> piImport;
                 MbxImport mbxImport;
-                mbxImport.ImportFile(Application::Inst().Documents() + "/Import/Trixie and Starlight.json", piImport);
+                mbxImport.ImportFile(Application::Inst().Documents() + "/Import/Trixie and Starlight.json", 
+                    m_player->Pos(), piImport);
                 for (const auto& pi : piImport)
                 {
                     m_octTileSelection.AddPartInst(pi);
