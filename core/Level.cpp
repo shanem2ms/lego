@@ -21,7 +21,8 @@ namespace sam
     };
 
 
-    Level::Level() :
+    Level::Level(bool disableWrite) :
+        m_disableWrite(disableWrite),
         m_db(nullptr)
     {
     }
@@ -65,6 +66,8 @@ namespace sam
 
     bool Level::WriteTerrainChunk(const Loc& il, const char* byte, size_t len)
     {
+        if (m_disableWrite)
+            return true;
         Loc l = il;
         l.m_l = -l.m_l;
         leveldb::Slice key((const char*)&l, sizeof(l));
@@ -83,6 +86,8 @@ namespace sam
 
     bool Level::WriteOctChunk(const Loc& l, const char* byte, size_t len)
     {
+        if (m_disableWrite)
+            return true;
         leveldb::Slice key((const char*)&l, sizeof(l));
         leveldb::Slice val(byte, len);
         leveldb::Status status = m_db->Put(leveldb::WriteOptions(), key, val);
@@ -91,6 +96,8 @@ namespace sam
 
     bool Level::WritePlayerData(const Level::PlayerData& pos)
     {
+        if (m_disableWrite)
+            return true;
         leveldb::Slice key("cam", 3);
         leveldb::Slice val((const char *)&pos, sizeof(Level::PlayerData));
         leveldb::Status status = m_db->Put(leveldb::WriteOptions(), key, val);

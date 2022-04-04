@@ -66,7 +66,7 @@ namespace sam
         m_rightHandPartInst = part;
         if (!part.id.IsNull())
         {
-            m_rightHandPart = std::make_shared<LegoBrick>(part, part.paletteIdx, LegoBrick::Physics::None, true);
+            m_rightHandPart = std::make_shared<LegoBrick>(part, part.atlasidx, LegoBrick::Physics::None, true);
             m_rightHandPart->SetOffset(part.pos + Vec3f(0,0,-1.2f));
             m_rightHandPart->SetRotate(part.rot);
             float s = 0.25f;
@@ -178,7 +178,7 @@ namespace sam
         m_currentSlotIdx = std::max(0, std::min(7, m_currentSlotIdx));
         PartInst pi;
         pi.id = m_slots[m_currentSlotIdx].id;
-        pi.paletteIdx = m_slots[m_currentSlotIdx].colorCode;
+        pi.atlasidx = m_slots[m_currentSlotIdx].colorCode;
         SetRightHandPart(pi);
     }
 

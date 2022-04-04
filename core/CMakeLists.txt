@@ -23,6 +23,7 @@ set(Header_Files
     "Engine.h"
     "OctTile.h"
     "Hud.h"
+    "indexed_map.h"
     "Physics.h"
     "Frustum.h"
     "OctTileSelection.h"
@@ -33,6 +34,7 @@ set(Header_Files
     "LegoBrick.h"
     "ConnectionWidget.h"
     "LegoUI.h"
+    "MbxImport.h"
 )  
 
 source_group("Header Files" FILES ${Header_Files})
@@ -69,6 +71,7 @@ set(Source_Files
     "ConnectionWidget.cpp"
     "ConnectionLogic.cpp"
     "LegoUI.cpp"
+    "MbxImport.cpp"
     "ldrawloader.cpp"
     "imgui/imgui.cpp"
     "imgui/dear-imgui/imgui.cpp"
@@ -87,7 +90,7 @@ set(ALL_FILES
     ${Main_Files}
 )
 
-add_library(core STATIC ${ALL_FILES})
+add_library(core STATIC ${ALL_FILES} "indexed_map.h")
 
 target_precompile_headers(core PRIVATE "StdIncludes.h")
 

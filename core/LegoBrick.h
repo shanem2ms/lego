@@ -21,7 +21,7 @@ namespace sam
             Static,
             Dynamic
         };
-        LegoBrick(const PartInst& pi, int paletteIdx, Physics physics = Physics::None, bool showConnectors = false);
+        LegoBrick(const PartInst& pi, int atlasidx, Physics physics = Physics::None, bool showConnectors = false);
         virtual ~LegoBrick();
         void Decomission(DrawContext& ctx) override;
         void Initialize(DrawContext& nvg) override;

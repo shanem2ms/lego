@@ -18,6 +18,7 @@ namespace sam
 
     class Level {
         leveldb::DB* m_db;
+        bool m_disableWrite;
     public: 
 
         struct PlayerData
@@ -32,7 +33,7 @@ namespace sam
             SlotPart slots[16];
         };
 
-        Level();
+        Level(bool disableWrite);
         void OpenDb(const std::string& path);
 
         bool GetTerrainChunk(const Loc& il, std::string* val) const;

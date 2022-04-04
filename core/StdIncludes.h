@@ -4,6 +4,7 @@
 #include <map>
 #include <memory>
 #include <sstream>
+#include <fstream>
 
 #include <bgfx/bgfx.h>
 

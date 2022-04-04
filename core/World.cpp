@@ -15,6 +15,7 @@
 #include "Audio.h"
 #include "PlayerView.h"
 #include "gmtl/AABoxOps.h"
+#include "MbxImport.h"
 #define NOMINMAX
 
 
@@ -30,7 +31,8 @@ namespace sam
         m_pPickedBrick(nullptr),
         m_debugDraw(0),
         m_disableCollisionCheck(false),
-        m_player(std::make_shared<Player>())
+        m_player(std::make_shared<Player>()),
+        m_level(true)
     {        
     }  
 
@@ -176,6 +178,17 @@ namespace sam
             m_player->SetRightHandPart(part);
             break;
         }
+        case 'I':
+            {
+                std::vector<PartInst> piImport;
+                MbxImport mbxImport;
+                mbxImport.ImportFile(Application::Inst().Documents() + "/Import/Trixie and Starlight.json", piImport);
+                for (const auto& pi : piImport)
+                {
+                    m_octTileSelection.AddPartInst(pi);
+                }
+            }
+            break;
         case 'E':
         {
             m_showInventoryFn();
@@ -207,6 +220,7 @@ namespace sam
     Loc g_hitLoc(0, 0, 0);
     float g_hitLocArea = 0;
     float g_hitDist = 0;
+    bool g_doImport = true;
     void World::Update(Engine& e, DrawContext& ctx)
     {
         ctx.debugDraw = m_debugDraw;
@@ -229,7 +243,7 @@ namespace sam
             m_physics = std::make_shared<Physics>();
             Engine::Inst().AddExternalDraw(&m_connectionLogic);
         }
-    
+   
         ctx.m_physics = m_physics;
         if (ctx.m_physics)
             ctx.m_physics->Step(ctx);

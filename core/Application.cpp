@@ -131,7 +131,7 @@ namespace sam
                 player->SetSlot(slotIdx, sp);
                 
                 PartInst pi = m_world->GetPlayer()->GetRightHandPart();
-                pi.paletteIdx = bc.atlasidx;
+                pi.atlasidx = bc.atlasidx;
                 player->SetRightHandPart(pi);
             });
     }

@@ -131,7 +131,16 @@
             <ComboBox Height="20" ItemsSource="{Binding LDrawGroups}" SelectedItem="{Binding Path=SelectedType}" />
             <CheckBox Grid.Row="1" Content="Filtered" x:Name="FilteredCheckbox" Checked="FilteredCheckbox_Checked" 
                       Unchecked="FilteredCheckbox_Checked"/>
-            <ListBox Grid.Row="2" ItemsSource="{Binding LDrawParts}" SelectedItem="{Binding Path=SelectedItem}" />
+            <ListBox Grid.Row="2" ItemsSource="{Binding LDrawParts}" SelectedItem="{Binding Path=SelectedItem}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="x:Type local:LDrawFolders.Entry" >
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="{Binding }" IsChecked="{Binding Path=IncludeInGame}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+                     
             <Button Content="Write All" Grid.Row="3" Click="Button_Click"/>
         </Grid>
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />

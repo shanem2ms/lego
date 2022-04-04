@@ -123,7 +123,7 @@ namespace sam
             {
                 PartInst pi;
                 pi.id = "91405";
-                pi.paletteIdx = 0;
+                pi.atlasidx = 0;
                 pi.pos = Vec3f(0, -0.5f, 0);
                 pi.rot = Quatf();
                 pi.connected = true;
@@ -176,7 +176,7 @@ namespace sam
             Clear();
             for (auto& part : m_parts)
             {
-                auto brick = std::make_shared<LegoBrick>(part, part.paletteIdx, 
+                auto brick = std::make_shared<LegoBrick>(part, part.atlasidx, 
                     part.connected ? LegoBrick::Physics::Static : LegoBrick::Physics::Dynamic, false);
                 brick->SetOffset(part.pos);
                 brick->SetRotate(part.rot);

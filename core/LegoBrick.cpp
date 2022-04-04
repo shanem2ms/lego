@@ -15,10 +15,10 @@
 
 namespace sam
 {
-    LegoBrick::LegoBrick(const PartInst& pi, int paletteIdx, Physics physics, bool showConnectors
+    LegoBrick::LegoBrick(const PartInst& pi, int atlasidx, Physics physics, bool showConnectors
         ) :
         m_partinst(pi),
-        m_paletteIdx(paletteIdx),
+        m_paletteIdx(atlasidx),
         m_showConnectors(showConnectors),
         m_connectorPickIdx(-1),
         m_connectorPickWidget(),

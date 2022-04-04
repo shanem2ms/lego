@@ -33,7 +33,7 @@ namespace sam
     struct PartInst
     {
         PartId id;
-        int paletteIdx;
+        int atlasidx;
         Vec3f pos;
         Quatf rot;
         bool connected;

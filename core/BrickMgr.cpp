@@ -10,7 +10,6 @@
 #include <bx/bx.h>
 #include <queue>
 #include <sstream>
-#include <fstream>
 #include <filesystem>
 #include <regex>
 #define FMT_HEADER_ONLY 1
@@ -286,59 +285,6 @@ namespace sam
 
         m_vbhHR = bgfx::createVertexBuffer(bgfx::makeRef(m_verticesHR.data(), m_verticesHR.size() * sizeof(PosTexcoordNrmVertex)), PosTexcoordNrmVertex::ms_layout);
         m_ibhHR = bgfx::createIndexBuffer(bgfx::makeRef(m_indicesHR.data(), m_indicesHR.size() * sizeof(uint32_t)), BGFX_BUFFER_INDEX32);
-
-
-//#define HACD 1
-#ifdef HACD
-        Simplify::vertices.clear();
-        Simplify::triangles.clear();
-        for (auto& v : m_verticesHR)
-        {
-            Simplify::Vertex p;
-            p.p.x = v.m_x;
-            p.p.y = v.m_y;
-            p.p.z = v.m_z;
-            Simplify::vertices.push_back(p);
-        }
-
-        for (int i = 0; i < m_indicesHR.size(); i += 3)
-        {
-            Simplify::Triangle t;
-            t.v[0] = m_indicesHR[i + 2];
-            t.v[1] = m_indicesHR[i + 1];
-            t.v[2] = m_indicesHR[i];
-            Simplify::triangles.push_back(t);
-        }
-
-        Simplify::simplify_mesh(100, 7);
-
-        std::vector<Vec3f> pts(Simplify::vertices.size());
-        VHACD::IVHACD* pVHACD = VHACD::CreateVHACD();
-        auto it1 = Simplify::vertices.begin();
-        auto it2 = pts.begin();
-        for (; it1 != Simplify::vertices.end(); ++it1, ++it2)
-        {
-            it2->mData[0] = it1->p.x;
-            it2->mData[1] = it1->p.y;
-            it2->mData[2] = it1->p.z;
-        }
-        std::vector<uint32_t> ind;
-        ind.reserve(Simplify::triangles.size() * 3);
-        for (auto& t : Simplify::triangles)
-        {
-            ind.push_back(t.v[0]);
-            ind.push_back(t.v[1]);
-            ind.push_back(t.v[2]);
-        }
-
-        VHACD::IVHACD::Parameters p;
-        p.m_oclAcceleration = false;
-        pVHACD->Compute((const float*)pts.data(), pts.size(), ind.data(), ind.size() / 3,
-            p);
-
-        pVHACD->Release();
-#endif
-
     }
 
     void Brick::LoadCollisionMesh(const std::filesystem::path& collisionPath)
@@ -730,6 +676,7 @@ namespace sam
         }
 
         std::string partnamefile = Application::Inst().Documents() + "/partnames.txt";
+        std::string aliasfile = Application::Inst().Documents() + "/aliases.txt";
         if (std::filesystem::exists(partnamefile))
         {
             std::ifstream ifs(partnamefile);
@@ -770,12 +717,34 @@ namespace sam
             }
 
             m_partsMap.sort();
+
+            std::ifstream ifa(aliasfile);
+            while (!ifa.eof())
+            {
+                std::string aliasline;
+                std::getline(ifa, aliasline);
+                size_t offset = aliasline.find(' ');
+                std::string w1 = aliasline.substr(0, offset);
+                std::string w2 = aliasline.substr(offset + 1);
+                m_aliasParts.insert(std::pair(w1, w2));
+            }
         }
         else
         {
             m_threadPool = std::make_unique<BrickThreadPool>(
                 ldrpath, m_ldrLoaderLR.get());
 
+            std::set<std::string> includeParts;
+            {
+                std::string ingamefile = Application::Inst().Documents() + "/ingame.txt";
+                std::ifstream ifs(ingamefile);
+                while (!ifs.eof())
+                {
+                    std::string partnm;
+                    std::getline(ifs, partnm);
+                    includeParts.insert(partnm);
+                }
+            }
             std::string tmpfile = Application::Inst().Documents() + "/pn.tmp";
             std::ofstream of(tmpfile);
             std::filesystem::path partspath(ldrpath);
@@ -791,12 +760,21 @@ namespace sam
                 if (ext == ".dat")
                 {
                     std::string name = entry.path().filename().string();
+                    std::string namenoext = name.substr(0, name.size() - 4);
+                    //if (includeParts.find(name) == includeParts.end())
+                    //    continue;
                     {
                         std::ifstream ifs(entry.path());
                         std::string line;
                         std::getline(ifs, line);
-                        if (line._Starts_with("0 ~Moved to"))
+                        std::string movedLine("0 ~Moved to ");
+                        if (line._Starts_with(movedLine))
+                        {
+                            std::string aliasPart = line.substr(movedLine.size());
+                            m_aliasParts.insert(
+                                std::make_pair(namenoext, aliasPart));
                             continue;
+                        }
                         try
                         {
                             PartDesc pd;
@@ -871,7 +849,13 @@ namespace sam
                         }
                     }
                 }
+            }            
+            std::ofstream ofa(aliasfile);
+            for (auto& pair : m_aliasParts)
+            {
+                ofa << pair.first << " " << pair.second << std::endl;
             }
+            ofa.close();
             of.close();
             std::filesystem::rename(tmpfile, partnamefile);
         }
@@ -898,7 +882,7 @@ namespace sam
                 ++itType;
         }
 
-        m_typesMap.insert(std::make_pair("misc", misc));
+        m_typesMap.insert(std::make_pair("misc", misc));        
     }
 
     static bgfx::ProgramHandle sShader(BGFX_INVALID_HANDLE);
@@ -1072,5 +1056,14 @@ namespace sam
                 desc.dims[2], desc.desc, desc.filename);
         else
             return fmt::format("{} {}\n{}", desc.type, desc.desc, desc.filename);
+    }
+
+    const std::string& BrickManager::PartAlias(const std::string& name)
+    {
+        auto itPa = m_aliasParts.find(name);
+        if (itPa == m_aliasParts.end())
+            return name;
+        else
+            return itPa->second;
     }
 }

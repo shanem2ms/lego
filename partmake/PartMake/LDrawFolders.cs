@@ -15,6 +15,7 @@ namespace partmake
         public class Entry : IComparable<Entry>
         {
             public string type;
+            public string subtype;
             public string name;
             public string path;
             public LDrawDatFile file;
@@ -23,6 +24,12 @@ namespace partmake
             public bool ismainpart;
             public string[] subparts;
             public bool includedInFilter;
+            bool includedInGame;
+            public bool IncludeInGame
+            {
+                get => includedInGame; set
+                { includedInGame = value; LDrawFolders.WriteIncludedGame(); }
+            }
 
             float totalDim { get { float ret = 1; if (dims != null) { foreach (var d in dims) ret *= d; } return ret; } }
 
@@ -124,13 +131,14 @@ namespace partmake
                 {
                     string relname = Path.GetRelativePath(folder, fullName);
                     string name = Path.GetFileName(relname);
-                    if (name == @"3245bdq2.dat")
+                    if (name == @"35442.dat")
                         Debugger.Break();
                     string reldir = Path.GetDirectoryName(relname);
                     string line = "";
                     string dim = "";
                     string typestr;
                     string desc;
+                    string subtype;
                     HashSet<string> subParts = new HashSet<string>();
                     using (StreamReader sr = new StreamReader(fullName))
                     {
@@ -177,6 +185,8 @@ namespace partmake
                         descline = descline.Substring(tm.Index + tm.Length);
 
                         Match psm = rdim.Match(descline);
+                        subtype = descline.Substring(0, psm.Index).Trim();
+                        subtype = subtype.Replace('/', '\\');
                         string[] dims = null;
                         if (psm.Groups.Count > 1)
                         {
@@ -193,7 +203,7 @@ namespace partmake
 
                         desc = descline.Trim();
                     }
-                    sw.WriteLine("{0}//{1}//{2}//{3}//{4}", name, typestr, dim, desc, reldir);
+                    sw.WriteLine($"{name}//{typestr}//{subtype}//{dim}//{desc}//{reldir}");
                     if (subParts.Count > 0)
                     {
                         sw.WriteLine("   " + string.Join("//", subParts));
@@ -215,9 +225,9 @@ namespace partmake
                     string[] vals = line.Split("//");
                     string name = vals[0];
                     float[] dims = null;
-                    if (vals[2].Length > 0)
+                    if (vals[3].Length > 0)
                     {
-                        string[] dstr = vals[2].Split(' ');
+                        string[] dstr = vals[3].Split(' ');
                         dims = new float[dstr.Length];
                         for (int i = 0; i < dims.Length; ++i)
                         {
@@ -231,19 +241,26 @@ namespace partmake
                         subParts = new List<string>();
 
                     }
-                    string desc = vals[3].Trim();
+                    string desc = vals[4].Trim();
+                    string type = vals[1];
+                    string subtype = vals[2];
+                    if (subtype.Length > 0)
+                        type += " " + subtype;
+                    else if (desc.Length > 0)
+                        type += " Mod";
                     Entry e = new Entry()
                     {
-                        path = Path.Combine(rootFolder, vals[4], name),
+                        path = Path.Combine(rootFolder, vals[5], name),
                         name = name,
-                        type = vals[1] + (desc.Length > 0 ? " Mod" : ""),
+                        type = type,
+                        subtype = subtype,
                         desc = desc,
                         dims = dims,
-                        ismainpart = (vals[4] == "parts"),
+                        ismainpart = (vals[5] == "parts"),
                         subparts = line2.Length > 0 ? line2.Split("//") : null
                     };
 
-                    partPaths.Add(Path.Combine(vals[4], name).ToLower(), e);
+                    partPaths.Add(Path.Combine(vals[5], name).ToLower(), e);
                 }
             }
 
@@ -310,6 +327,15 @@ namespace partmake
             var result = lDrawGroups.Where(kv => kv.Value.Count <= 10).SelectMany(kv => kv.Value).ToList();
             newGrps.Add("misc", result);
             lDrawGroups = newGrps;
+
+            {
+                string path = @"C:\homep4\lego\ingame.txt";
+                string[] lines = File.ReadAllLines(path);
+                foreach (string line in lines)
+                {
+                    ldrawParts.First(e => e.name == line).IncludeInGame = true;
+                }
+            }
         }
 
         public static void LoadAll()
@@ -322,6 +348,21 @@ namespace partmake
             }
         }
 
+        static public void WriteIncludedGame()
+        {
+
+            List<string> fileLines = new List<string>();
+            foreach (Entry e in ldrawParts)
+            {
+                if (e.IncludeInGame)
+                {
+                    fileLines.Add(e.name);
+                }
+            }
+
+            string path = @"C:\homep4\lego\ingame.txt";
+            File.WriteAllLines(path, fileLines);
+        }
         public static void WriteAll()
         {
             WriteConnectors();
