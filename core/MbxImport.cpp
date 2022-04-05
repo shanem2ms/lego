@@ -12,8 +12,12 @@ using namespace gmtl;
 namespace sam
 {
 
-    void MbxImport::ImportFile(const std::string& file, const Vec3f &pos, std::vector<PartInst> &piList)
+    static int partIdx = 0;
+    static Vec3f pos;
+    void MbxImport::ImportFile(const std::string& file, const Vec3f & partPos, std::vector<PartInst> &piList)
     {
+        if (partIdx == 0)
+            pos = partPos;
         std::ifstream infile(file);
 
         AABoxf aabb;
@@ -28,8 +32,9 @@ namespace sam
         json doc = json::parse(str);
         json parts = doc["parts"];
         size_t count = 0;
-        for (json part : parts)
+        for (int pidx = partIdx; pidx < std::min(partIdx + 10, (int)parts.size()); ++pidx)
         {
+            json part = parts[pidx];
             std::string partname = part["configuration"];
             size_t idx = partname.find('.');
             if (idx < partname.size())
@@ -53,14 +58,14 @@ namespace sam
             xform(out, mat, Vec4f(0, 0, 0, 1));
             pi.pos = Vec3f(out);
             pi.pos[0] = -pi.pos[0];
+            pi.pos[2] = -pi.pos[2];
             pi.pos *= 0.125f;
             aabb += pi.pos;
             pi.rot = make<Quatf>(mat);
             piList.push_back(pi);
-            if (count++ > 200)
-                break;
         }
 
+        partIdx += 10;
         Vec3f centerpt = aabb.mMax + aabb.mMin;
         Vec3f anchorpt(centerpt[0], aabb.mMin[1], centerpt[2]);
         for (auto& pi : piList)
