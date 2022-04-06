@@ -143,7 +143,7 @@ namespace partmake
             if (disableConnectors)
                 selectedPart.DisableConnectors();
             if (vis != null)
-                vis.Part = selectedPart;
+                vis.Part = selectedPart;            
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentPart"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Log"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("BSPNodes"));

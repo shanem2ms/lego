@@ -4212,6 +4212,3 @@ LDR_API const LdrRenderPart* ldrGetRenderPart(LdrLoaderHDL loader, LdrPartID idx
 1 10 0 280 0 1 0 0 0 1 0 0 0 1 64782.dat
 1 10 0 320 0 1 0 0 0 1 0 0 0 1 92908.dat
 */
-
-
-

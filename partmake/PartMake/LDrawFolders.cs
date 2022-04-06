@@ -404,6 +404,16 @@ namespace partmake
                 return null;
             return e;
         }
+
+        public static void GetLDrLoader(string _name, out LdrLoader.PosTexcoordNrmVertex []
+            vertices, out int []indices)
+        {
+            Entry e = GetEntry(_name + ".dat");
+            LdrLoader ldrLoader = new LdrLoader();
+            ldrLoader.Load(rootFolder, e.name,
+                out vertices, out indices);
+        }
+        
         public static LDrawDatFile GetPart(string _name)
         {
             string name = _name.ToLower();

@@ -390,4 +390,52 @@ namespace partmake
             }
         }
     }
+
+    public class LdrLoader
+    {
+        [DllImport("EdgeIntersect.dll")]
+        static extern void LdrLoadFile(IntPtr basepath, IntPtr name);
+
+        [DllImport("EdgeIntersect.dll")]
+        static extern IntPtr LdrGetResultPtr();
+        [DllImport("EdgeIntersect.dll")]
+        static extern int LdrGetResultSize();
+
+        public struct PosTexcoordNrmVertex
+        {
+            public float m_x;
+            public float m_y;
+            public float m_z;
+            public float m_u;
+            public float m_v;
+            public float m_nx;
+            public float m_ny;
+            public float m_nz;
+        };
+        public void Load(string basePath, string file, out PosTexcoordNrmVertex[] vertices, 
+            out int []indices)
+        {
+            IntPtr basePathptr = Marshal.StringToHGlobalAnsi(basePath);
+            IntPtr fileptr = Marshal.StringToHGlobalAnsi(file);
+            LdrLoadFile(basePathptr, fileptr);
+            Marshal.FreeHGlobal(basePathptr);
+            Marshal.FreeHGlobal(fileptr);
+            int resultBytes = LdrGetResultSize();
+            IntPtr resultData = LdrGetResultPtr();
+            int nVertices = Marshal.ReadInt32(resultData);
+            resultData = IntPtr.Add(resultData, sizeof(int));
+            
+            vertices = new PosTexcoordNrmVertex[nVertices];
+            int vtxsize = Marshal.SizeOf<PosTexcoordNrmVertex>();
+            for (int i = 0; i < nVertices; i++)
+            {
+                vertices[i] = Marshal.PtrToStructure<PosTexcoordNrmVertex>(resultData);
+                resultData = IntPtr.Add(resultData, vtxsize);
+            }
+            int nIndices = Marshal.ReadInt32(resultData);
+            resultData = IntPtr.Add(resultData, sizeof(int));
+            indices = new int[nIndices];
+            Marshal.Copy(resultData, indices, 0, indices.Length);
+        }
+    }
 }

@@ -32,6 +32,9 @@ namespace partmake
         private DeviceBuffer _bspSelIndexBuffer;
         uint _bspSelIndexCount;
         List<int> faceIndices;
+        private DeviceBuffer _ldrLoaderVertexBuffer;
+        private DeviceBuffer _ldrLoaderIndexBuffer;
+        private int _ldrLoaderIndexCount;
 
         private DeviceBuffer _bspPortalsVertexBuffer;
         private DeviceBuffer _bspPortalsIndexBuffer;
@@ -100,6 +103,8 @@ namespace partmake
         public bool ShowConnectors { get; set; } = true;
 
         public bool ShowExteriorPortals { get; set; } = false;
+        public bool ShowLdrLoader { get; set; } = true;
+        
         Vector4[] edgePalette;
         uint numPrimitives;
 
@@ -552,6 +557,26 @@ namespace partmake
 
             LoadPortalsMesh();
 
+            if (ShowLdrLoader)
+            {
+                LdrLoader.PosTexcoordNrmVertex[] ldrvertices;
+                int[] ldrindices;
+                LDrawFolders.GetLDrLoader(_part.Name, out ldrvertices, out ldrindices);
+
+                if (ldrvertices.Length > 0)
+                {
+                    Vtx[] vlvertices = ldrvertices.Select(v => new Vtx(new Vector3(v.m_x, v.m_y, v.m_z), new Vector3(v.m_nx, v.m_ny, v.m_nz),
+                        new Vector2(v.m_u, v.m_v))).ToArray();
+                    uint[] vlindices = ldrindices.Select(i => (uint)i).ToArray();
+
+                    _ldrLoaderVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vlvertices.Length), BufferUsage.VertexBuffer));
+                    GraphicsDevice.UpdateBuffer(_ldrLoaderVertexBuffer, 0, vlvertices);
+
+                    _ldrLoaderIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)vlindices.Length, BufferUsage.IndexBuffer));
+                    GraphicsDevice.UpdateBuffer(_ldrLoaderIndexBuffer, 0, vlindices);
+                    _ldrLoaderIndexCount = vlindices.Length;
+                }
+            }
             string logstr = Topology.PolygonClip.GetLog();
             OnLogUpdated?.Invoke(this, logstr);
 

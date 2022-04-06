@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "PartMake": {
+      "commandName": "Project",
+      "nativeDebugging": false
+    }
+  }
+}
