@@ -394,7 +394,7 @@ namespace partmake
     public class LdrLoader
     {
         [DllImport("EdgeIntersect.dll")]
-        static extern void LdrLoadFile(IntPtr basepath, IntPtr name);
+        static extern void LdrLoadFile(IntPtr basepath, IntPtr name, IntPtr matptr);
 
         [DllImport("EdgeIntersect.dll")]
         static extern IntPtr LdrGetResultPtr();
@@ -412,14 +412,17 @@ namespace partmake
             public float m_ny;
             public float m_nz;
         };
-        public void Load(string basePath, string file, out PosTexcoordNrmVertex[] vertices, 
+        public void Load(string basePath, string file, System.Numerics.Matrix4x4 matrix, out PosTexcoordNrmVertex[] vertices, 
             out int []indices)
         {
             IntPtr basePathptr = Marshal.StringToHGlobalAnsi(basePath);
             IntPtr fileptr = Marshal.StringToHGlobalAnsi(file);
-            LdrLoadFile(basePathptr, fileptr);
+            IntPtr matptr = Marshal.AllocHGlobal(Marshal.SizeOf<System.Numerics.Matrix4x4>());
+            Marshal.StructureToPtr(matrix, matptr, false);
+            LdrLoadFile(basePathptr, fileptr, matptr);
             Marshal.FreeHGlobal(basePathptr);
             Marshal.FreeHGlobal(fileptr);
+            Marshal.FreeHGlobal(matptr);
             int resultBytes = LdrGetResultSize();
             IntPtr resultData = LdrGetResultPtr();
             int nVertices = Marshal.ReadInt32(resultData);

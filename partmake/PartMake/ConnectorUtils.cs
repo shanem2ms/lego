@@ -19,7 +19,7 @@ namespace partmake
             {
                 AABB aabb = AABB.CreateFromPoints(m.vertices.Select(v => v.pt).ToList());
                 Dictionary<int, Plane> planes = new Dictionary<int, Plane>();
-                Plane bottomPlane = m.planeMgr.GetPlane(Vector3.UnitY, aabb.Max.Y);
+                Plane bottomPlane = m.planeMgr.GetPlane(Vector3.UnitY, 0);
                 foreach (Face f in m.faces)
                 {
                     if (f.Plane.totalArea > 100.0 || f.Plane.idx == bottomPlane.idx)

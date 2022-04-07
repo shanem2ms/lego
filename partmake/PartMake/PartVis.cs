@@ -402,14 +402,7 @@ namespace partmake
             return new Vector3((float)d.X, (float)d.Y, (float)d.Z);
         }
 
-        Matrix4x4 DTF(System.DoubleNumerics.Matrix4x4 m)
-        {
-            return new Matrix4x4((float)m.M11, (float)m.M12, (float)m.M13, (float)m.M14,
-                (float)m.M21, (float)m.M22, (float)m.M23, (float)m.M24,
-                (float)m.M31, (float)m.M32, (float)m.M33, (float)m.M34,
-                (float)m.M41, (float)m.M42, (float)m.M43, (float)m.M44);
-        }
-
+        
         [DllImport("kernel32.dll", EntryPoint = "RtlCopyMemory", SetLastError = false)]
         public static extern void CopyMemory(IntPtr dest, IntPtr src, uint count);
         void OnPartUpdated()
@@ -507,7 +500,7 @@ namespace partmake
                 LDrawDatFile.ConnectorType mask = (LDrawDatFile.ConnectorType.Stud | LDrawDatFile.ConnectorType.RStud |
                     LDrawDatFile.ConnectorType.MFigHipLeg |
                     LDrawDatFile.ConnectorType.MFigRHipLeg);
-                connectorVizs.Add(new ConnectorVis() { type = conn.type & mask, mat = DTF(conn.mat) });
+                connectorVizs.Add(new ConnectorVis() { type = conn.type & mask, mat = conn.mat.ToM44() });
             }
 
             this.edges.Clear();
@@ -533,7 +526,7 @@ namespace partmake
             for (int p = 0; p < primitives.Count; ++p)
             {
                 Matrix4x4 t;
-                Matrix4x4 wwt = DTF(primitives[p].transform) * wm;
+                Matrix4x4 wwt = primitives[p].transform.ToM44() * wm;
 
                 Vector3 opt0 = new Vector3(0, 0, 0), opt1 = new Vector3(1, 1, 1);
                 Vector3 pt0 = Vector3.Transform(opt0, wwt);
@@ -561,7 +554,7 @@ namespace partmake
             {
                 LdrLoader.PosTexcoordNrmVertex[] ldrvertices;
                 int[] ldrindices;
-                LDrawFolders.GetLDrLoader(_part.Name, out ldrvertices, out ldrindices);
+                _part.GetLDrLoaderMesh(out ldrvertices, out ldrindices);
 
                 if (ldrvertices.Length > 0)
                 {
@@ -1002,6 +995,7 @@ namespace partmake
             else
             {
                 DrawMesh(ref mat);
+                DrawLdrLoaderMesh(ref mat);
                 DrawDecomp(ref mat, ref viewmat, ref projMat);
 
                 DrawBSPPortals(ref mat);
@@ -1319,7 +1313,22 @@ namespace partmake
                 }
             }
         }
+        void DrawLdrLoaderMesh(ref Matrix4x4 mat)
+        {
+            if (ShowLdrLoader)
+            {
+                _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
+                Vector4 col = new Vector4(0.2f, 0.6f, 0.6f, 1);
+                _cl.UpdateBuffer(_materialBuffer, 0, ref col);
 
+                _cl.SetPipeline(_pipeline);
+                _cl.SetVertexBuffer(0, _ldrLoaderVertexBuffer);
+                _cl.SetIndexBuffer(_ldrLoaderIndexBuffer, IndexFormat.UInt32);
+                _cl.SetGraphicsResourceSet(0, _projViewSet);
+                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+                _cl.DrawIndexed((uint)_ldrLoaderIndexCount);
+            }
+        }
         void DrawDecomp(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
             if (DoDecomp && _decompMeshes.Count > 0)

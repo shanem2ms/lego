@@ -179,12 +179,20 @@ namespace partmake
         {
             topoMesh = null;
         }
+
+        Matrix4x4 GetBottomAnchorMatrix()
+        {
+            AABB aabb = GetBBox();
+            topoMesh = new Topology.Mesh();
+            return Matrix4x4.CreateScale(new Vector3(1, -1, 1)) * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
+        }
         public Topology.Mesh GetTopoMesh()
         {
             if (topoMesh == null)
             {
-                topoMesh = new Topology.Mesh();
-                GetTopoRecursive(false, Matrix4x4.Identity, topoMesh, "0");
+                GetTopoRecursive(false,
+                    GetBottomAnchorMatrix(),
+                    topoMesh, "0");
                 topoMesh.Fix();
             }
 
@@ -348,7 +356,7 @@ namespace partmake
         {
             List<Connector> connectors = new List<Connector>();
             List<Connector> rStudCandidates = new List<Connector>();
-            GetConnectorsRecursive(connectors, rStudCandidates, false, Matrix4x4.Identity);
+            GetConnectorsRecursive(connectors, rStudCandidates, false, GetBottomAnchorMatrix());
             var rStuds =
                 Topology.ConnectorUtils.GetRStuds(GetTopoMesh(), rStudCandidates.Select(s => Vector3.Transform(Vector3.Zero, s.mat)).ToArray(), bisectors);
             foreach (var rstud in rStuds)
@@ -376,6 +384,12 @@ namespace partmake
             Matrix4x4 cm = Matrix4x4.CreateScale(scl) *
                 Matrix4x4.CreateTranslation(off) * mat;
             return new Connector() { mat = cm, type = type };
+        }
+
+        public void GetLDrLoaderMesh(out LdrLoader.PosTexcoordNrmVertex[] ldrvertices,
+            out int[] ldrindices)
+        {
+            LDrawFolders.GetLDrLoader(this.name, GetBottomAnchorMatrix().ToM44(), out ldrvertices, out ldrindices);
         }
 
         public void GetPrimitives(List<Primitive> primitives)

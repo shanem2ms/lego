@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using System.Numerics;
 
 namespace partmake
 {
@@ -405,12 +406,13 @@ namespace partmake
             return e;
         }
 
-        public static void GetLDrLoader(string _name, out LdrLoader.PosTexcoordNrmVertex []
+        public static void GetLDrLoader(string _name, Matrix4x4 transform, out LdrLoader.PosTexcoordNrmVertex []
             vertices, out int []indices)
         {
             Entry e = GetEntry(_name + ".dat");
             LdrLoader ldrLoader = new LdrLoader();
             ldrLoader.Load(rootFolder, e.name,
+                transform,
                 out vertices, out indices);
         }
         

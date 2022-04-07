@@ -9,8 +9,8 @@ namespace partmake
         public const uint SizeInBytes = 32;
 
         public Vtx(Vector3 p, Vector3 n, Vector2 t)
-        { 
-            pos = new System.Numerics.Vector3((float)p.X, (float)p.Y, (float)p.Z); 
+        {
+            pos = new System.Numerics.Vector3((float)p.X, (float)p.Y, (float)p.Z);
             nrm = new System.Numerics.Vector3((float)n.X, (float)n.Y, (float)n.Z);
             tx = new System.Numerics.Vector2((float)t.X, (float)t.Y);
         }
@@ -18,14 +18,14 @@ namespace partmake
         public Vtx(Vector3 p, Vector2 t)
         {
             pos = new System.Numerics.Vector3((float)p.X, (float)p.Y, (float)p.Z);
-            nrm = new System.Numerics.Vector3(0,0,1);
+            nrm = new System.Numerics.Vector3(0, 0, 1);
             tx = new System.Numerics.Vector2((float)t.X, (float)t.Y);
         }
 
         public Vtx(System.Numerics.Vector3 p, System.Numerics.Vector3 n, System.Numerics.Vector2 t)
         { pos = p; nrm = n; tx = t; }
         public Vtx(System.Numerics.Vector3 p, System.Numerics.Vector2 t)
-        { pos = p; nrm = new System.Numerics.Vector3(0,0,1); tx = t; }
+        { pos = p; nrm = new System.Numerics.Vector3(0, 0, 1); tx = t; }
         public System.Numerics.Vector3 pos;
         public System.Numerics.Vector3 nrm;
         public System.Numerics.Vector2 tx;
@@ -40,6 +40,14 @@ namespace partmake
             Matrix4x4.Decompose(mat, out scale, out quat, out pos);
             return Vector3.Abs(scale);
         }
+
+        public static System.Numerics.Matrix4x4 ToM44(this System.DoubleNumerics.Matrix4x4 m)
+        {
+            return new System.Numerics.Matrix4x4((float)m.M11, (float)m.M12, (float)m.M13, (float)m.M14,
+                (float)m.M21, (float)m.M22, (float)m.M23, (float)m.M24,
+                (float)m.M31, (float)m.M32, (float)m.M33, (float)m.M34,
+                (float)m.M41, (float)m.M42, (float)m.M43, (float)m.M44);
+        }
     }
     public class LDrawDatNode
     {
@@ -48,8 +56,11 @@ namespace partmake
         public bool invert;
         public LDrawDatFile File { get; set; }
         public bool IsSelected { get; set; }
-        public bool IsEnabled { get; 
-            set; } = true;
+        public bool IsEnabled
+        {
+            get;
+            set;
+        } = true;
 
         public bool Invert => invert;
         public bool IsInverted { get; set; }
@@ -97,8 +108,8 @@ namespace partmake
             return Vector3.Dot(v, nrm) - dist;
         }
         public bool IsOnPlane(Vector3 v)
-        {            
-            return (System.Math.Abs(DistFromPlane(v)) < 0.01);                
+        {
+            return (System.Math.Abs(DistFromPlane(v)) < 0.01);
         }
 
         public int FaceSide(Face f)
@@ -163,7 +174,7 @@ namespace partmake
         public Plane GetPlane(bool inverted)
         {
             Vector3 nrm = Normal(inverted);
-            double d = Vector3.Dot(v[0], nrm);                                     
+            double d = Vector3.Dot(v[0], nrm);
             return new Plane() { nrm = nrm, dist = d };
         }
 
@@ -438,7 +449,7 @@ namespace partmake
                 merged.Max.Z = a.Max.Z;
             else
                 merged.Max.Z = b.Max.Z;
-        }       
+        }
 
     }
     public static class Eps
