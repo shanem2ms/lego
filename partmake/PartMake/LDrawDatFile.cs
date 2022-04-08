@@ -183,13 +183,13 @@ namespace partmake
         Matrix4x4 GetBottomAnchorMatrix()
         {
             AABB aabb = GetBBox();
-            topoMesh = new Topology.Mesh();
             return Matrix4x4.CreateScale(new Vector3(1, -1, 1)) * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
         }
         public Topology.Mesh GetTopoMesh()
         {
             if (topoMesh == null)
             {
+                topoMesh = new Topology.Mesh();
                 GetTopoRecursive(false,
                     GetBottomAnchorMatrix(),
                     topoMesh, "0");

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 using System.IO;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
@@ -365,33 +366,39 @@ namespace partmake
             File.WriteAllLines(path, fileLines);
         }
         public static void WriteAll()
-        {
+        {            
             WriteConnectors();
-            //WriteCollision();
+            WriteCollision();
         }
 
         static void WriteConnectors()
         {
             string path = @"C:\homep4\lego\connectors";
+            Directory.Delete(path, true);
             Directory.CreateDirectory(path);
             for (int i = 0; i < ldrawParts.Count; i++)
             {
-                if (i % 100 == 0)
-                    Debug.WriteLine(i);
-                LDrawDatFile df = GetPart(ldrawParts[i]);
-                df.WriteConnectorFile(path);
+                ThreadPool.QueueUserWorkItem((object o) =>
+                {
+                    int idx = (int)o;
+                    LDrawDatFile df = GetPart(ldrawParts[idx]);
+                    df.WriteConnectorFile(path);
+                }, i);
             }
         }
         static void WriteCollision()
         {
             string path = @"C:\homep4\lego\collision";
+            Directory.Delete(path, true);
             Directory.CreateDirectory(path);
             for (int i = 0; i < ldrawParts.Count; i++)
             {
-                if (i % 100 == 0)
-                    Debug.WriteLine(i);
-                LDrawDatFile df = GetPart(ldrawParts[i]);
-                df.WriteCollisionFile(path);
+                ThreadPool.QueueUserWorkItem((object o) =>
+                {
+                    int idx = (int)o;
+                    LDrawDatFile df = GetPart(ldrawParts[idx]);
+                    df.WriteCollisionFile(path);
+                }, i);
             }
 
         }

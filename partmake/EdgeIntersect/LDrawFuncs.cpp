@@ -125,12 +125,34 @@ public:
     }
 };
 
+inline LdrVector transform_point(const LdrMatrix& transform, const LdrVector& vec)
+{
+    LdrVector    out;
+    const float* mat = transform.values;
+    out.x = vec.x * (mat)[0] + vec.y * (mat)[4] + vec.z * (mat)[8] + (mat)[12];
+    out.y = vec.x * (mat)[1] + vec.y * (mat)[5] + vec.z * (mat)[9] + (mat)[13];
+    out.z = vec.x * (mat)[2] + vec.y * (mat)[6] + vec.z * (mat)[10] + (mat)[14];
+    return out;
+}
+
+inline LdrVector transform_vec(const LdrMatrix& transform, const LdrVector& vec)
+{
+    LdrVector    out;
+    const float* mat = transform.values;
+    out.x = vec.x * (mat)[0] + vec.y * (mat)[4] + vec.z * (mat)[8];
+    out.y = vec.x * (mat)[1] + vec.y * (mat)[5] + vec.z * (mat)[9];
+    out.z = vec.x * (mat)[2] + vec.y * (mat)[6] + vec.z * (mat)[10];
+    return out;
+}
+
+
 #define tricount (hires ? rpart.num_trianglesC : rpart.num_triangles)
 #define tris (hires ? rpart.trianglesC : rpart.triangles)
 
 void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
     const std::string& name, std::filesystem::path& filepath,
     const std::vector<int> atlasMaterialMapping, bool hires,
+    const LdrMatrix *matrix,
     std::vector<unsigned char> &data)
 {
     LdrModelHDL model;
@@ -202,8 +224,10 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
         const LdrRenderPart& rpart = pLoader->getRenderPart(instance.part);
         for (uint32_t idx = 0; idx < rpart.num_vertices; ++idx)
         {
-            memcpy(&curVtx->m_x, &rpart.vertices[idx].position, sizeof(LdrVector));
-            memcpy(&curVtx->m_nx, &rpart.vertices[idx].normal, sizeof(LdrVector));
+            LdrVector v = transform_point(*matrix, rpart.vertices[idx].position);
+            LdrVector n = transform_vec(*matrix, rpart.vertices[idx].normal);
+            memcpy(&curVtx->m_x, &v, sizeof(LdrVector));
+            memcpy(&curVtx->m_nx, &n, sizeof(LdrVector));
             curVtx->m_u = curVtx->m_v = -1;
             bounds[0] = min(curVtx->m_x, bounds[0]);
             bounds[1] = min(curVtx->m_y, bounds[1]);
@@ -277,7 +301,7 @@ extern "C" __declspec(dllexport) void LdrLoadFile(const char* basepath, const ch
     std::filesystem::path path(basepath);
     resultData.clear();
     GetLdrItem(ldrLoaderHR.get(), threadPool.get(),
-        name, path, materialMaps, true, resultData);
+        name, path, materialMaps, true, (const LdrMatrix *)matptr, resultData);
 }
 
 extern "C" __declspec(dllexport) void *LdrGetResultPtr()
