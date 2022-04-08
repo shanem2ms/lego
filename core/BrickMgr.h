@@ -22,14 +22,7 @@ namespace ldr
 }
 namespace sam
 {
-    class BrickThreadPool;
-    void DestroyBrickThreadPool(BrickThreadPool*);
     struct ConnectorInfo;
-}
-
-void std::default_delete<sam::BrickThreadPool>::operator()(sam::BrickThreadPool* ptr) const noexcept
-{
-    DestroyBrickThreadPool(ptr);
 }
 
 namespace sam
@@ -177,9 +170,6 @@ namespace sam
         void LoadConnectors(const std::filesystem::path &connectorPath);
         bool LoadCollisionMesh(const std::filesystem::path& collisionPath);
         void LoadPrimitives(ldr::Loader* pLoader);
-        void GenerateCacheItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
-            const std::string& name, std::filesystem::path& cachePath, 
-            const std::vector<int> atlasMaterialMapping, bool hires);
         friend class BrickManager;
     };
 
@@ -281,7 +271,6 @@ namespace sam
         std::filesystem::path m_cachePath;
         std::filesystem::path m_connectorPath;
         std::filesystem::path m_collisionPath;
-        std::unique_ptr<BrickThreadPool> m_threadPool;
         std::vector<Brick*> m_brickRenderQueue;
         bgfxh<bgfx::TextureHandle> m_iconDepth;
         bgfxh<bgfx::TextureHandle> m_colorPalette;

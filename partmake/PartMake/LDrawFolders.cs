@@ -383,9 +383,9 @@ namespace partmake
                     LDrawDatFile df = GetPart(ldrawParts[idx]);
                     if (df.GetFaceCount() > 1000 && df.Name != "91405")
                         return;
-                    //df.WriteConnectorFile(path);
-                   // df.WriteCollisionFile(path);
-                    df.WriteMeshFile(path);
+                    df.WriteConnectorFile(path);
+                    df.WriteCollisionFile(path);
+                    //df.WriteMeshFile(path);
                 }, i);
             }
 

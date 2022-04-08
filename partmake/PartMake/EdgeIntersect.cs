@@ -401,6 +401,9 @@ namespace partmake
             IntPtr outPath);
 
         [DllImport("EdgeIntersect.dll")]
+        static extern void LdrLoadCachedFile(IntPtr filePath);
+        
+        [DllImport("EdgeIntersect.dll")]
         static extern IntPtr LdrGetResultPtr();
         [DllImport("EdgeIntersect.dll")]
         static extern int LdrGetResultSize();
@@ -445,6 +448,30 @@ namespace partmake
             Marshal.Copy(resultData, indices, 0, indices.Length);
         }
 
+        public void LoadCached(string file, out PosTexcoordNrmVertex[] vertices,
+            out int[] indices)
+        {
+            IntPtr basePathptr = Marshal.StringToHGlobalAnsi(file);
+            LdrLoadCachedFile(basePathptr);
+            Marshal.FreeHGlobal(basePathptr);
+            int resultBytes = LdrGetResultSize();
+            IntPtr resultData = LdrGetResultPtr();
+            int nVertices = Marshal.ReadInt32(resultData);
+            resultData = IntPtr.Add(resultData, sizeof(int));
+
+            vertices = new PosTexcoordNrmVertex[nVertices];
+            int vtxsize = Marshal.SizeOf<PosTexcoordNrmVertex>();
+            for (int i = 0; i < nVertices; i++)
+            {
+                vertices[i] = Marshal.PtrToStructure<PosTexcoordNrmVertex>(resultData);
+                resultData = IntPtr.Add(resultData, vtxsize);
+            }
+            int nIndices = Marshal.ReadInt32(resultData);
+            resultData = IntPtr.Add(resultData, sizeof(int));
+            indices = new int[nIndices];
+            Marshal.Copy(resultData, indices, 0, indices.Length);
+        }
+
         public void Write(string basePath, string file, System.Numerics.Matrix4x4 matrix,
             string outPath)
         {
@@ -453,7 +480,7 @@ namespace partmake
             IntPtr outPathPtr = Marshal.StringToHGlobalAnsi(outPath);
             IntPtr matptr = Marshal.AllocHGlobal(Marshal.SizeOf<System.Numerics.Matrix4x4>());
             Marshal.StructureToPtr(matrix, matptr, false);
-            LdrLoadFile(basePathptr, fileptr, matptr);
+            LdrWriteFile(basePathptr, fileptr, matptr, outPathPtr);
             Marshal.FreeHGlobal(basePathptr);
             Marshal.FreeHGlobal(fileptr);
             Marshal.FreeHGlobal(matptr);

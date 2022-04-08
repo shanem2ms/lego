@@ -598,7 +598,7 @@ namespace partmake
         public void WriteMeshFile(string outFolder)
         {
             LDrawFolders.LDrWrite(this.name, GetBottomAnchorMatrix().ToM44(),
-                Path.Combine(outFolder, this.name + ".hr_mesh") );
+                Path.Combine(outFolder, this.name) );
         }
         public void WriteCollisionFile(string folder)
         {

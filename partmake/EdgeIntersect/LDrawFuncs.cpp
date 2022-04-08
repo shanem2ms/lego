@@ -19,7 +19,26 @@ struct PosTexcoordNrmVertex
     float m_ny;
     float m_nz;
 };
+struct RGBA
+{
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
+};
+struct BrickColor
+{
+    int code;
+    std::string name;
+    RGBA fill;
+    RGBA edge;
+    int atlasidx;
+    int legoId;
+    std::string legoName;
+};
 
+static std::map<int, BrickColor> sColors;
+static std::vector<int> sAtlasMapping;
 
 struct Task
 {
@@ -148,6 +167,7 @@ inline LdrVector transform_vec(const LdrMatrix& transform, const LdrVector& vec)
 
 #define tricount (hires ? rpart.num_trianglesC : rpart.num_triangles)
 #define tris (hires ? rpart.trianglesC : rpart.triangles)
+void LoadColors(const std::string& ldrpath);
 
 void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
     const std::string& name, std::filesystem::path& filepath,
@@ -155,6 +175,8 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
     const LdrMatrix *matrix,
     std::vector<unsigned char> &data)
 {
+    if (sColors.size() == 0)
+        LoadColors("c:\\homep4\\lego\\ldraw");
     LdrModelHDL model;
     LdrResult result;
     if (threadPool != nullptr)
@@ -190,6 +212,9 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
     else
     {
         result = pLoader->createModel(name.c_str(), LDR_TRUE, &model);
+        if (result < LDR_SUCCESS)
+            return;
+
     }
 
     LdrRenderModelHDL rmodel;
@@ -264,10 +289,20 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
     data.insert(data.end(), (const char*)idx.data(), (const char*)idx.data() + sizeof(uint32_t) * numidx);
 }
 
+
 static std::vector<unsigned char> resultData;
 static std::shared_ptr<BrickThreadPool> threadPool;
 static std::shared_ptr<ldr::Loader> ldrLoaderHR;
-static std::shared_ptr<ldr::Loader> ldrLoaderLR;
+
+extern "C" __declspec(dllexport) void LdrLoadCachedFile(const char* file)
+{
+    std::ifstream iff(file, std::ios::binary | std::ios::ate);
+    size_t filesize = iff.tellg();
+    iff.seekg(0);
+    resultData.resize(filesize);
+    iff.read((char*)resultData.data(), resultData.size());
+    
+}
 
 extern "C" __declspec(dllexport) void LdrLoadFile(const char* basepath, const char* name, float *matptr)
 {
@@ -298,19 +333,33 @@ extern "C" __declspec(dllexport) void LdrLoadFile(const char* basepath, const ch
     */
     if (threadPool == nullptr)
         threadPool = std::make_shared<BrickThreadPool>(basepath, ldrLoaderHR.get());
-    std::vector<int> materialMaps;
     std::filesystem::path path(basepath);
     resultData.clear();
     GetLdrItem(ldrLoaderHR.get(), threadPool.get(),
-        name, path, materialMaps, true, (const LdrMatrix *)matptr, resultData);
+        name, path, sAtlasMapping, true, (const LdrMatrix *)matptr, resultData);
 }
 
-extern "C" __declspec(dllexport) void LdrWriteFile(const char* basepath, const char* name, float* matptr,
-    char *outPath)
+extern "C" __declspec(dllexport) void *LdrGetResultPtr()
 {
-    if (ldrLoaderHR == nullptr)
+    return resultData.data();
+}
+
+extern "C" __declspec(dllexport) int LdrGetResultSize()
+{
+    return resultData.size();
+}
+
+
+static __declspec(thread) std::shared_ptr<ldr::Loader> ldrThLoaderHR;
+static __declspec(thread) std::shared_ptr<ldr::Loader> ldrThLoaderLR;
+
+extern "C" __declspec(dllexport) void LdrWriteFile(const char* basepath, const char* name, float* matptr,
+    char* outPath)
+{
+    if (ldrThLoaderHR == nullptr)
     {
-        ldrLoaderHR = std::make_shared<ldr::Loader>();
+        ldrThLoaderHR = std::make_shared<ldr::Loader>();
+        ldrThLoaderLR = std::make_shared<ldr::Loader>();
         // initialize library
         LdrLoaderCreateInfo  createInfo = {};
         // while parts are not directly fixed, we will implicitly create a fixed version
@@ -325,31 +374,91 @@ extern "C" __declspec(dllexport) void LdrWriteFile(const char* basepath, const c
         createInfo.renderpartChamfer = 0.35f;
         // installation path of the LDraw Part Library
         createInfo.basePath = basepath;
-        ldrLoaderHR->init(&createInfo);
+        ldrThLoaderHR->init(&createInfo);
 
         createInfo.partHiResPrimitives = LDR_FALSE;
         createInfo.partFixTjunctions = LDR_FALSE;
         createInfo.renderpartChamfer = 0.2f;
-        ldrLoaderLR->init(&createInfo);
+        ldrThLoaderLR->init(&createInfo);
     }
-    if (threadPool == nullptr)
-        threadPool = std::make_shared<BrickThreadPool>(basepath, ldrLoaderHR.get());
-    std::vector<int> materialMaps;
-    std::filesystem::path path(basepath);
-    resultData.clear();
-    GetLdrItem(ldrLoaderHR.get(), threadPool.get(),
-        name, path, materialMaps, true, (const LdrMatrix*)matptr, resultData);
-    std::ofstream file(outPath);
-    file.write((char *)resultData.data(), resultData.size());
-
+    {
+        std::string hrpath(outPath);
+        hrpath += ".hr_mesh";
+        if (!std::filesystem::exists(hrpath))
+        {
+            std::filesystem::path path(basepath);
+            std::vector<unsigned char> outdata;
+            GetLdrItem(ldrThLoaderHR.get(), nullptr,
+                name, path, sAtlasMapping, true, (const LdrMatrix*)matptr, outdata);
+            std::ofstream file(hrpath);
+            file.write((char*)outdata.data(), outdata.size());
+        }
+    }
+    {
+        std::string lrpath(outPath);
+        lrpath += ".lr_mesh";
+        if (!std::filesystem::exists(lrpath))
+        {
+            std::filesystem::path path(basepath);
+            std::vector<unsigned char> outdata;
+            GetLdrItem(ldrThLoaderLR.get(), nullptr,
+                name, path, sAtlasMapping, false, (const LdrMatrix*)matptr, outdata);
+            std::ofstream file(lrpath);
+            file.write((char*)outdata.data(), outdata.size());
+        }
+    }
 }
 
-extern "C" __declspec(dllexport) void *LdrGetResultPtr()
-{
-    return resultData.data();
-}
 
-extern "C" __declspec(dllexport) int LdrGetResultSize()
+
+void LoadColors(const std::string& ldrpath)
 {
-    return resultData.size();
+    std::filesystem::path configpath =
+        std::filesystem::path(ldrpath) / "LDConfig.ldr";
+    std::ifstream ifs(configpath);
+    std::regex colorrg("0\\s!COLOUR\\s(\\w+)\\s+CODE\\s+(\\d+)\\s+VALUE\\s#([\\dA-F]+)\\s+EDGE\\s+#([\\dA-F]+)");
+    std::regex legoidrg("0\\s+\\/\\/\\sLEGOID\\s+(\\d+)\\s-\\s([\\w\\s]+)");
+    int legoidCur;
+    std::string legoNameCur;
+    while (!ifs.eof())
+    {
+        std::string line;
+        std::getline(ifs, line);
+        std::smatch match;
+        if (std::regex_search(line, match, legoidrg))
+        {
+            legoidCur = stoi(match[1].str());
+            legoNameCur = match[2];
+        }
+        else if (std::regex_search(line, match, colorrg))
+        {
+            std::string name = match[1];
+            int index = std::stoi(match[2].str());
+            unsigned int fill = std::stoul(match[3].str(), nullptr, 16);
+            unsigned int edge = std::stoul(match[4].str(), nullptr, 16);
+            BrickColor bc{ index, name,
+                {
+                (fill >> 16) & 0xFF,
+                (fill >> 8) & 0xFF,
+                fill & 0xFF,
+                0xFF},
+                { (edge >> 16) & 0xFF,
+                (edge >> 8) & 0xFF,
+                edge & 0xFF,
+                0xFF},
+                0,
+                legoidCur,
+                legoNameCur
+            };
+            sColors.insert(std::make_pair(index, bc));
+        }
+    }
+    auto itcol = sColors.end();
+    std::advance(itcol, -1);
+    sAtlasMapping.resize(itcol->second.code + 1, -1);
+    for (auto& col : sColors)
+    {
+        sAtlasMapping[col.second.code] = col.second.atlasidx;
+    }
+
 }
