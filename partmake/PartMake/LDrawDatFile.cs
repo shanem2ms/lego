@@ -47,7 +47,7 @@ namespace partmake
         {
             LDrawDatFile c = new LDrawDatFile();
             c.name = name;
-            
+
             foreach (LDrawDatNode node in children)
             {
                 c.children.Add(node.Clone());
@@ -224,7 +224,7 @@ namespace partmake
             }
         }
 
-        int GetFaceCount()
+        public int GetFaceCount()
         {
             int faceCount = 0;
             foreach (var child in this.children)
@@ -264,7 +264,7 @@ namespace partmake
                         mat = subMatrix,
                         inverted = inverted ^ child.invert
                     });
-                child.File.GetAllSubPartsOfType(outParts, name, 
+                child.File.GetAllSubPartsOfType(outParts, name,
                     inverted ^ child.invert, subMatrix);
             }
         }
@@ -278,7 +278,7 @@ namespace partmake
         {
             foreach (var child in this.children)
             {
-                Matrix4x4 subMatrix = child.transform* transform;
+                Matrix4x4 subMatrix = child.transform * transform;
                 child.WorldScale = subMatrix.GetScale();
                 child.File.SetSubPartSizesRecursive(inverted ^ child.invert, subMatrix);
             }
@@ -396,7 +396,7 @@ namespace partmake
         {
             GetPrimitivesRecursive(primitives, false, Matrix4x4.Identity);
         }
-        
+
         static Dictionary<string, PrimitiveType> sPrimTypeMap = new Dictionary<string, PrimitiveType>()
         { { "4-4cyli", PrimitiveType.Cylinder } };
 
@@ -565,7 +565,7 @@ namespace partmake
             else if (this.name == "knob1")
             {
                 connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 0, 0) * transform,
-                    ConnectorType.MFigArmKnob));                
+                    ConnectorType.MFigArmKnob));
             }
             else if (this.name == "hipstud")
             {
@@ -587,8 +587,6 @@ namespace partmake
 
         public void WriteConnectorFile(string folder)
         {
-            if (GetFaceCount() > 1000 && name != "91405")
-                return;
             List<Tuple<Vector3, Vector3>> bisectors = new List<Tuple<Vector3, Vector3>>();
             List<Connector> connectors = GetConnectors(ref bisectors);
             if (connectors == null || connectors.Count == 0)
@@ -597,7 +595,11 @@ namespace partmake
             string outfile = Path.GetFileNameWithoutExtension(name) + ".json";
             File.WriteAllText(Path.Combine(folder, outfile), jsonstr);
         }
-
+        public void WriteMeshFile(string outFolder)
+        {
+            LDrawFolders.LDrWrite(this.name, GetBottomAnchorMatrix().ToM44(),
+                Path.Combine(outFolder, this.name + ".hr_mesh") );
+        }
         public void WriteCollisionFile(string folder)
         {
             try

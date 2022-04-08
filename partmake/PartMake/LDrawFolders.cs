@@ -367,14 +367,13 @@ namespace partmake
         }
         public static void WriteAll()
         {            
-            WriteConnectors();
-            WriteCollision();
+            WriteAllCacheFiles();
         }
-
-        static void WriteConnectors()
+        static void WriteAllCacheFiles()
         {
-            string path = @"C:\homep4\lego\connectors";
-            Directory.Delete(path, true);
+            string path = @"C:\homep4\lego\cache";
+            //if (Directory.Exists(path))
+            //    Directory.Delete(path, true);
             Directory.CreateDirectory(path);
             for (int i = 0; i < ldrawParts.Count; i++)
             {
@@ -382,22 +381,11 @@ namespace partmake
                 {
                     int idx = (int)o;
                     LDrawDatFile df = GetPart(ldrawParts[idx]);
-                    df.WriteConnectorFile(path);
-                }, i);
-            }
-        }
-        static void WriteCollision()
-        {
-            string path = @"C:\homep4\lego\collision";
-            Directory.Delete(path, true);
-            Directory.CreateDirectory(path);
-            for (int i = 0; i < ldrawParts.Count; i++)
-            {
-                ThreadPool.QueueUserWorkItem((object o) =>
-                {
-                    int idx = (int)o;
-                    LDrawDatFile df = GetPart(ldrawParts[idx]);
-                    df.WriteCollisionFile(path);
+                    if (df.GetFaceCount() > 1000 && df.Name != "91405")
+                        return;
+                    //df.WriteConnectorFile(path);
+                   // df.WriteCollisionFile(path);
+                    df.WriteMeshFile(path);
                 }, i);
             }
 
@@ -422,7 +410,14 @@ namespace partmake
                 transform,
                 out vertices, out indices);
         }
-        
+
+        public static void LDrWrite(string _name, Matrix4x4 transform, string outPath)
+        {
+            Entry e = GetEntry(_name + ".dat");
+            LdrLoader ldrLoader = new LdrLoader();
+            ldrLoader.Write(rootFolder, e.name,
+                transform, outPath);
+        }
         public static LDrawDatFile GetPart(string _name)
         {
             string name = _name.ToLower();

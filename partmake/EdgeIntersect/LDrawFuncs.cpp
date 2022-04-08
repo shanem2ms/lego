@@ -267,6 +267,7 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
 static std::vector<unsigned char> resultData;
 static std::shared_ptr<BrickThreadPool> threadPool;
 static std::shared_ptr<ldr::Loader> ldrLoaderHR;
+static std::shared_ptr<ldr::Loader> ldrLoaderLR;
 
 extern "C" __declspec(dllexport) void LdrLoadFile(const char* basepath, const char* name, float *matptr)
 {
@@ -302,6 +303,45 @@ extern "C" __declspec(dllexport) void LdrLoadFile(const char* basepath, const ch
     resultData.clear();
     GetLdrItem(ldrLoaderHR.get(), threadPool.get(),
         name, path, materialMaps, true, (const LdrMatrix *)matptr, resultData);
+}
+
+extern "C" __declspec(dllexport) void LdrWriteFile(const char* basepath, const char* name, float* matptr,
+    char *outPath)
+{
+    if (ldrLoaderHR == nullptr)
+    {
+        ldrLoaderHR = std::make_shared<ldr::Loader>();
+        // initialize library
+        LdrLoaderCreateInfo  createInfo = {};
+        // while parts are not directly fixed, we will implicitly create a fixed version
+        // for renderparts
+        createInfo.partFixMode = LDR_PART_FIX_NONE;
+        createInfo.renderpartBuildMode = LDR_RENDERPART_BUILD_ONLOAD;
+        // required for chamfering
+        createInfo.partFixTjunctions = LDR_TRUE;
+        // optionally look for higher subdivided ldraw primitives
+        createInfo.partHiResPrimitives = LDR_TRUE;
+        // leave 0 to disable
+        createInfo.renderpartChamfer = 0.35f;
+        // installation path of the LDraw Part Library
+        createInfo.basePath = basepath;
+        ldrLoaderHR->init(&createInfo);
+
+        createInfo.partHiResPrimitives = LDR_FALSE;
+        createInfo.partFixTjunctions = LDR_FALSE;
+        createInfo.renderpartChamfer = 0.2f;
+        ldrLoaderLR->init(&createInfo);
+    }
+    if (threadPool == nullptr)
+        threadPool = std::make_shared<BrickThreadPool>(basepath, ldrLoaderHR.get());
+    std::vector<int> materialMaps;
+    std::filesystem::path path(basepath);
+    resultData.clear();
+    GetLdrItem(ldrLoaderHR.get(), threadPool.get(),
+        name, path, materialMaps, true, (const LdrMatrix*)matptr, resultData);
+    std::ofstream file(outPath);
+    file.write((char *)resultData.data(), resultData.size());
+
 }
 
 extern "C" __declspec(dllexport) void *LdrGetResultPtr()
