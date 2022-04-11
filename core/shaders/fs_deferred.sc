@@ -54,7 +54,7 @@ void main()
     vec3 color = unpackColor(gbuf.z);
     vec3 normal = unpackColor(gbuf.r);
     normal = (normal * 2.0) - vec3(1,1,1);
-    vec3 lightdir = vec3(.1,-1,.5);
+    vec3 lightdir = vec3(-.1,1,-.5);
     normalize(lightdir);
     float diff = clamp(dot(lightdir, normal), 0, 1);
 

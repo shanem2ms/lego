@@ -292,7 +292,6 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
 
 static std::vector<unsigned char> resultData;
 static std::shared_ptr<BrickThreadPool> threadPool;
-static std::shared_ptr<ldr::Loader> ldrLoaderHR;
 
 extern "C" __declspec(dllexport) void LdrLoadCachedFile(const char* file)
 {
@@ -301,30 +300,36 @@ extern "C" __declspec(dllexport) void LdrLoadCachedFile(const char* file)
     iff.seekg(0);
     resultData.resize(filesize);
     iff.read((char*)resultData.data(), resultData.size());
-    
+    const unsigned char* ptr = resultData.data();
+    uint32_t numvtx = *(uint32_t*)ptr;
+    ptr += sizeof(uint32_t);
+    std::vector<PosTexcoordNrmVertex> vtxs(numvtx);
+    for (int ivtx = 0; ivtx < numvtx; ++ivtx)
+    {
+        memcpy(&vtxs[ivtx], ptr, sizeof(PosTexcoordNrmVertex));
+        ptr += sizeof(PosTexcoordNrmVertex);
+    }
+    uint32_t numidx = *(uint32_t*)ptr;
 }
 
 extern "C" __declspec(dllexport) void LdrLoadFile(const char* basepath, const char* name, float *matptr)
 {
-    if (ldrLoaderHR == nullptr)
-    {
-        ldrLoaderHR = std::make_shared<ldr::Loader>();
-        // initialize library
-        LdrLoaderCreateInfo  createInfo = {};
-        // while parts are not directly fixed, we will implicitly create a fixed version
-        // for renderparts
-        createInfo.partFixMode = LDR_PART_FIX_NONE;
-        createInfo.renderpartBuildMode = LDR_RENDERPART_BUILD_ONLOAD;
-        // required for chamfering
-        createInfo.partFixTjunctions = LDR_TRUE;
-        // optionally look for higher subdivided ldraw primitives
-        createInfo.partHiResPrimitives = LDR_TRUE;
-        // leave 0 to disable
-        createInfo.renderpartChamfer = 0.35f;
-        // installation path of the LDraw Part Library
-        createInfo.basePath = basepath;
-        ldrLoaderHR->init(&createInfo);
-    }
+    std::shared_ptr<ldr::Loader> ldrLoaderHR = std::make_shared<ldr::Loader>();
+    // initialize library
+    LdrLoaderCreateInfo  createInfo = {};
+    // while parts are not directly fixed, we will implicitly create a fixed version
+    // for renderparts
+    createInfo.partFixMode = LDR_PART_FIX_NONE;
+    createInfo.renderpartBuildMode = LDR_RENDERPART_BUILD_ONLOAD;
+    // required for chamfering
+    createInfo.partFixTjunctions = LDR_TRUE;
+    // optionally look for higher subdivided ldraw primitives
+    createInfo.partHiResPrimitives = LDR_TRUE;
+    // leave 0 to disable
+    createInfo.renderpartChamfer = 0.35f;
+    // installation path of the LDraw Part Library
+    createInfo.basePath = basepath;
+    ldrLoaderHR->init(&createInfo);
     /*
     createInfo.partHiResPrimitives = LDR_FALSE;
     createInfo.partFixTjunctions = LDR_FALSE;
@@ -337,6 +342,8 @@ extern "C" __declspec(dllexport) void LdrLoadFile(const char* basepath, const ch
     resultData.clear();
     GetLdrItem(ldrLoaderHR.get(), threadPool.get(),
         name, path, sAtlasMapping, true, (const LdrMatrix *)matptr, resultData);
+
+    ldrLoaderHR->deinit();
 }
 
 extern "C" __declspec(dllexport) void *LdrGetResultPtr()
@@ -350,37 +357,33 @@ extern "C" __declspec(dllexport) int LdrGetResultSize()
 }
 
 
-static __declspec(thread) std::shared_ptr<ldr::Loader> ldrThLoaderHR;
-static __declspec(thread) std::shared_ptr<ldr::Loader> ldrThLoaderLR;
-
 extern "C" __declspec(dllexport) void LdrWriteFile(const char* basepath, const char* name, float* matptr,
     char* outPath)
 {
-    if (ldrThLoaderHR == nullptr)
-    {
-        ldrThLoaderHR = std::make_shared<ldr::Loader>();
-        ldrThLoaderLR = std::make_shared<ldr::Loader>();
-        // initialize library
-        LdrLoaderCreateInfo  createInfo = {};
-        // while parts are not directly fixed, we will implicitly create a fixed version
-        // for renderparts
-        createInfo.partFixMode = LDR_PART_FIX_NONE;
-        createInfo.renderpartBuildMode = LDR_RENDERPART_BUILD_ONLOAD;
-        // required for chamfering
-        createInfo.partFixTjunctions = LDR_TRUE;
-        // optionally look for higher subdivided ldraw primitives
-        createInfo.partHiResPrimitives = LDR_TRUE;
-        // leave 0 to disable
-        createInfo.renderpartChamfer = 0.35f;
-        // installation path of the LDraw Part Library
-        createInfo.basePath = basepath;
-        ldrThLoaderHR->init(&createInfo);
+    std::shared_ptr<ldr::Loader> ldrThLoaderHR = std::make_shared<ldr::Loader>();
+    std::shared_ptr<ldr::Loader> ldrThLoaderLR = std::make_shared<ldr::Loader>();
+        
+    // initialize library
+    LdrLoaderCreateInfo  createInfo = {};
+    // while parts are not directly fixed, we will implicitly create a fixed version
+    // for renderparts
+    createInfo.partFixMode = LDR_PART_FIX_NONE;
+    createInfo.renderpartBuildMode = LDR_RENDERPART_BUILD_ONLOAD;
+    // required for chamfering
+    createInfo.partFixTjunctions = LDR_TRUE;
+    // optionally look for higher subdivided ldraw primitives
+    createInfo.partHiResPrimitives = LDR_TRUE;
+    // leave 0 to disable
+    createInfo.renderpartChamfer = 0.35f;
+    // installation path of the LDraw Part Library
+    createInfo.basePath = basepath;
+    ldrThLoaderHR->init(&createInfo);
 
-        createInfo.partHiResPrimitives = LDR_FALSE;
-        createInfo.partFixTjunctions = LDR_FALSE;
-        createInfo.renderpartChamfer = 0.2f;
-        ldrThLoaderLR->init(&createInfo);
-    }
+    createInfo.partHiResPrimitives = LDR_FALSE;
+    createInfo.partFixTjunctions = LDR_FALSE;
+    createInfo.renderpartChamfer = 0.2f;
+    ldrThLoaderLR->init(&createInfo);
+
     {
         std::string hrpath(outPath);
         hrpath += ".hr_mesh";
@@ -390,8 +393,10 @@ extern "C" __declspec(dllexport) void LdrWriteFile(const char* basepath, const c
             std::vector<unsigned char> outdata;
             GetLdrItem(ldrThLoaderHR.get(), nullptr,
                 name, path, sAtlasMapping, true, (const LdrMatrix*)matptr, outdata);
-            std::ofstream file(hrpath);
+            std::ofstream file(hrpath, std::ios::binary);
             file.write((char*)outdata.data(), outdata.size());
+            file.flush();
+            file.close();
         }
     }
     {
@@ -403,10 +408,15 @@ extern "C" __declspec(dllexport) void LdrWriteFile(const char* basepath, const c
             std::vector<unsigned char> outdata;
             GetLdrItem(ldrThLoaderLR.get(), nullptr,
                 name, path, sAtlasMapping, false, (const LdrMatrix*)matptr, outdata);
-            std::ofstream file(lrpath);
+            std::ofstream file(lrpath, std::ios::binary);
             file.write((char*)outdata.data(), outdata.size());
+            file.flush();
+            file.close();
         }
     }
+
+    ldrThLoaderLR->deinit();
+    ldrThLoaderHR->deinit();
 }
 
 

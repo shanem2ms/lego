@@ -188,7 +188,7 @@ namespace sam
       
         Physics::Inst().DebugRender(dc);
         
-        bool drawPickBuffer = false;
+        bool drawPickBuffer = true;
         if (drawPickBuffer)
         {
             bgfx::setViewFrameBuffer(5, BGFX_INVALID_HANDLE);

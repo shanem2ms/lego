@@ -309,7 +309,7 @@ namespace sam
             c.dir = Vec3f(out);
             normalize(c.dir);
             if (type & 1) c.type = ConnectorType::Stud;
-            else if (type & 8) c.type = ConnectorType::InvStud;
+            else if (type & 4) c.type = ConnectorType::InvStud;
             else c.type = ConnectorType::Unknown;
             m_connectors.push_back(c);
         }
@@ -627,7 +627,7 @@ namespace sam
                     }
                 }
             }            
-            std::ofstream ofa(aliasfile);
+            std::ofstream ofa(aliasfile, std::ios::binary);
             for (auto& pair : m_aliasParts)
             {
                 ofa << pair.first << " " << pair.second << std::endl;

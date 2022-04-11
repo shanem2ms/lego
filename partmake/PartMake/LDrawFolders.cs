@@ -54,6 +54,7 @@ namespace partmake
         static Dictionary<string, Entry> partPaths = new Dictionary<string, Entry>();
         static string selectedType;
         static Dictionary<string, List<string>> partsReverseLookup = new Dictionary<string, List<string>>();
+        static Dictionary<string, string> aliases = new Dictionary<string, string>();
         static public bool FilterEnabled { get; set; } = false;
         static public string SelectedType
         {
@@ -133,8 +134,6 @@ namespace partmake
                 {
                     string relname = Path.GetRelativePath(folder, fullName);
                     string name = Path.GetFileName(relname);
-                    if (name == @"35442.dat")
-                        Debugger.Break();
                     string reldir = Path.GetDirectoryName(relname);
                     string line = "";
                     string dim = "";
@@ -145,6 +144,7 @@ namespace partmake
                     using (StreamReader sr = new StreamReader(fullName))
                     {
                         bool skip = false;
+                        string aliasname = null;
                         string descline = null;
                         while (!sr.EndOfStream)
                         {
@@ -169,16 +169,28 @@ namespace partmake
                                     subParts.Add(m.Groups[14].Value);
                                 }
                             }
-                            
-                            if (line.StartsWith(@"0 ~Moved to") ||
-                                line.StartsWith(@"0 // Alias of"))
+
+                            string mvto = @"0 ~Moved to ";
+                            string alof = @"0 // Alias of";
+                            if (line.StartsWith(mvto))
                             {
-                                skip = true;
+                                aliasname = line.Substring(mvto.Length);
+                                break;
+                            }
+                            else if (line.StartsWith(alof))
+                            {
+                                aliasname = line.Substring(alof.Length);
                                 break;
                             }
                         }
                         if (skip)
                             continue;
+                        if (aliasname != null)
+                        {
+                            aliases.Add(Path.Combine(reldir, name), aliasname);
+                            aliasname = null;
+                            continue;
+                        }
                         Match tm = r.Match(descline);
                         if (tm.Groups.Count < 2)
                             continue;
@@ -213,6 +225,10 @@ namespace partmake
                     else
                         sw.WriteLine("");
                 }
+                foreach (var al in aliases)
+                {
+                    sw.WriteLine($"{al.Key}//{al.Value}//a");
+                }
                 sw.Close();
                 File.Move(Path.Combine(folder, descFile + ".tmp"), Path.Combine(folder, descFile));
             }
@@ -223,10 +239,15 @@ namespace partmake
                 while (!sr.EndOfStream)
                 {
                     string line = sr.ReadLine();
-                    string line2 = sr.ReadLine();
                     string[] vals = line.Split("//");
                     string name = vals[0];
                     float[] dims = null;
+                    if (vals.Length == 3)
+                    {
+                        aliases.Add(vals[0], vals[1]);
+                        continue;
+                    }
+                    string line2 = sr.ReadLine();
                     if (vals[3].Length > 0)
                     {
                         string[] dstr = vals[3].Split(' ');
@@ -384,16 +405,30 @@ namespace partmake
                     if (df.GetFaceCount() > 1000 && df.Name != "91405")
                         return;
                     df.WriteConnectorFile(path);
-                    df.WriteCollisionFile(path);
+                    //df.WriteCollisionFile(path);
                     //df.WriteMeshFile(path);
                 }, i);
             }
 
         }
 
+        public static string Alias(string name)
+        {
+            string aliasname;
+            if (aliases.TryGetValue(Path.Combine("parts", name), out aliasname))
+                return aliasname + ".dat";
+            if (aliases.TryGetValue(Path.Combine("p", name), out aliasname))
+                return aliasname + ".dat";
+            return null;
+        }
+
         public static Entry GetEntry(string _name)
         {
             string name = _name.ToLower();
+
+            string al = Alias(name);
+            if (al != null)
+                name = al;
             Entry e;
             if (!partPaths.TryGetValue(Path.Combine("parts", name), out e) &&
                 !partPaths.TryGetValue(Path.Combine("p", name), out e))
@@ -406,9 +441,13 @@ namespace partmake
         {
             Entry e = GetEntry(_name + ".dat");
             LdrLoader ldrLoader = new LdrLoader();
-            ldrLoader.Load(rootFolder, e.name,
-                transform,
-                out vertices, out indices);
+            //ldrLoader.Load(rootFolder, e.name,
+            //    transform,
+            //    out vertices, out indices);
+            string path = @"C:\homep4\lego\cache\" + _name;
+            LDrWrite(_name, transform, path);
+            path += ".hr_mesh";
+            ldrLoader.LoadCached(path, out vertices, out indices);
         }
 
         public static void LDrWrite(string _name, Matrix4x4 transform, string outPath)

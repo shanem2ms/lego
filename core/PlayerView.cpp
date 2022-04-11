@@ -27,10 +27,10 @@ namespace sam
         }
 
         m_rightHand = std::make_shared<SceneGroup>();
-        m_rightHand->SetOffset(Vec3f(1.3f, 1.65f, 1.005f));
-        m_rightHand->SetRotate(make<Quatf>(AxisAnglef(gmtl::Math::PI, 0.0f, 1.0f, 0.0f)) *
-            make<Quatf>(AxisAnglef(-gmtl::Math::PI / 8.0f, 0.0f, 0.0f, 1.0f)) *
-            make<Quatf>(AxisAnglef(gmtl::Math::PI / 8.0f, 1.0f, 0.0f, 0.0f)));
+        m_rightHand->SetOffset(Vec3f(-1.3f, -1.65f, 1.005f));
+        m_rightHand->SetRotate(make<Quatf>(AxisAnglef(gmtl::Math::PI, 1.0f, 0.0f, 0.0f)) *
+            make<Quatf>(AxisAnglef(gmtl::Math::PI, 0.0f, 0.0f, 1.0f)));
+            //make<Quatf>(AxisAnglef(gmtl::Math::PI / 8.0f, 1.0f, 0.0f, 0.0f)));
         PartInst pi;
         pi.id = "3820";
         m_rightHand->AddItem(std::make_shared<LegoBrick>(pi, 14));
@@ -51,7 +51,7 @@ namespace sam
         }
         else
         {
-            m_pos = Point3f(0.0f, 10.0f, 0.0f);
+            m_pos = Point3f(0.0f, -10.0f, 0.0f);
             m_dir = Vec2f(1.24564195f, -0.455399066f);
         }
     }
@@ -79,15 +79,17 @@ namespace sam
 
     void Player::GetDirs(Vec3f& right, Vec3f& up, Vec3f& forward) const
     {
-        forward = make<gmtl::Quatf>(AxisAnglef(m_dir[1], 1.0f, 0.0f, 0.0f)) * Vec3f(0, 0, 1);
-        forward = make<gmtl::Quatf>(AxisAnglef(m_dir[0], 0.0f, 1.0f, 0.0f)) * forward;
+        forward = make<gmtl::Quatf>(AxisAnglef(m_dir[1], -1.0f, 0.0f, 0.0f)) * Vec3f(0, 0, 1);
+        forward = make<gmtl::Quatf>(AxisAnglef(m_dir[0], 0.0f, -1.0f, 0.0f)) * forward;
         normalize(forward);
 
-        cross(right, forward, Vec3f(0, -1, 0));
+        cross(right, forward, Vec3f(0, 1, 0));
         normalize(right);
         cross(up, forward, right);
         normalize(up);
     }
+
+
     void Player::Update(DrawContext& ctx, Level& level)
     {
         if (m_rigidBody == nullptr)
@@ -113,7 +115,7 @@ namespace sam
         Vec3f upworld(0, 1, 0);
         GetDirs(right, up, forward);
         Vec3f fwWorld;
-        cross(fwWorld, right, upworld);
+        cross(fwWorld, upworld, right);
 
         Vec3f fwdVel = m_posVel[0] * right +
             (m_posVel[1]) * upworld +
@@ -121,7 +123,7 @@ namespace sam
        
         btVector3 linearVel = m_rigidBody->getLinearVelocity();
         btVector3 btimp = bt(fwdVel) - linearVel;
-        btimp[1] = m_jump ? 7 : 0;
+        btimp[1] = m_jump ? -7 : 0;
         m_jump = false;
         m_rigidBody->applyCentralImpulse(btimp);
         m_rigidBody->activate();
@@ -131,9 +133,9 @@ namespace sam
         m_pos = Vec3f(p[0], p[1], p[2]);
         m_playerBody->SetOffset(m_pos);            
 
-        m_playerBody->SetRotate(make<gmtl::Quatf>(AxisAnglef(m_dir[0], 0.0f, 1.0f, 0.0f)));
+        m_playerBody->SetRotate(make<gmtl::Quatf>(AxisAnglef(m_dir[0], 0.0f, -1.0f, 0.0f)));
         auto dfly = dcam.GetFly();
-        dfly.pos = m_pos + Vec3f(0,55*BrickManager::Scale,0);
+        dfly.pos = m_pos + Vec3f(0,-55*BrickManager::Scale,0);
         dfly.dir = m_dir;
         dcam.SetFly(dfly);
 

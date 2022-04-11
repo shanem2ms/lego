@@ -39,7 +39,7 @@ namespace sam
             | BGFX_STATE_DEPTH_TEST_LESS
             | BGFX_STATE_MSAA
             | BGFX_STATE_BLEND_ALPHA
-            | BGFX_STATE_CULL_CW;
+            | BGFX_STATE_CULL_CCW;
         // Set render states.l
         bgfx::setState(state);
         bgfx::submit(DrawViewId::ForwardRendered, m_shader);

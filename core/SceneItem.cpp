@@ -196,11 +196,11 @@ namespace sam
 
     void Camera::Fly::GetDirs(Vec3f &right, Vec3f &up, Vec3f &forward) const
     {
-        forward = make<gmtl::Quatf>(AxisAnglef(dir[1], 1.0f, 0.0f, 0.0f)) * Vec3f(0, 0, 1);
-        forward = make<gmtl::Quatf>(AxisAnglef(dir[0], 0.0f, 1.0f, 0.0f)) * forward;
+        forward = make<gmtl::Quatf>(AxisAnglef(dir[1], -1.0f, 0.0f, 0.0f)) * Vec3f(0, 0, 1);
+        forward = make<gmtl::Quatf>(AxisAnglef(dir[0], 0.0f, -1.0f, 0.0f)) * forward;
         normalize(forward);
 
-        cross(right, forward, Vec3f(0, -1, 0));
+        cross(right, forward, Vec3f(0, 1, 0));
         normalize(right);
         cross(up, forward, right);
         normalize(up);
