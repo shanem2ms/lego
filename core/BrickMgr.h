@@ -62,8 +62,8 @@ namespace sam
     enum ConnectorType
     {
         Unknown = 0,
-        Stud,
-        InvStud,
+        Stud = 1,
+        InvStud = 2,
         PinholeStud
     };
 
