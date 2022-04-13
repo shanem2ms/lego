@@ -82,7 +82,7 @@ namespace sam
 
         Quatf GetDirAsQuat()
         {
-            if (dot(Vec3f(0, 1, 0), dir) > 0.999f)
+            if (fabs(dot(Vec3f(0, 1, 0), dir)) > 0.999f)
                 return Quatf(QUAT_MULT_IDENTITYF);
             else
             {
