@@ -37,10 +37,6 @@ namespace sam
         {
             Frustumf viewFrust = cam.GetFrustum(nearFrust, farFrust);
             Matrix44f viewproj = cam.GetPerspectiveMatrix(nearFrust, farFrust) * cam.ViewMatrix();
-            Vec3f ctr = FrustumCenter(viewproj);
-
-
-            Vec3f chkpos(floorf(ctr[0]), floorf(ctr[1]), floorf(ctr[2]));
             auto& fly = cam.GetFly();
             Vec3f r, u, f;
             fly.GetDirs(r, u, f);
@@ -65,10 +61,9 @@ namespace sam
 
         static Vec3f FrustumCenter(Matrix44f viewproj)
         {
-            Matrix44f mInv;
             invert(viewproj);
             Vec4f inpt4;
-            xform(inpt4, mInv, Vec4f(0, 0, 0.5f, 1.0f));
+            xform(inpt4, viewproj, Vec4f(0, 0, 0.5f, 1.0f));
             inpt4 /= inpt4[3];
             return Vec3f(inpt4[0], inpt4[1], inpt4[2]);
         }

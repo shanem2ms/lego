@@ -172,6 +172,10 @@ namespace sam
         else
             return;
 
+        if (m_verticesHR.size() == 0 ||
+            m_indicesHR.size() == 0)
+            return;
+
         m_vbhHR = bgfx::createVertexBuffer(bgfx::makeRef(m_verticesHR.data(), m_verticesHR.size() * sizeof(PosTexcoordNrmVertex)), PosTexcoordNrmVertex::ms_layout);
         m_ibhHR = bgfx::createIndexBuffer(bgfx::makeRef(m_indicesHR.data(), m_indicesHR.size() * sizeof(uint32_t)), BGFX_BUFFER_INDEX32);
     }

@@ -32,7 +32,7 @@ namespace sam
         json doc = json::parse(str);
         json parts = doc["parts"];
         size_t count = 0;
-        for (int pidx = partIdx; pidx < std::min(partIdx + 10, (int)parts.size()); ++pidx)
+        for (int pidx = partIdx; pidx < (int)parts.size(); ++pidx)
         {
             json part = parts[pidx];
             std::string partname = part["configuration"];
@@ -58,14 +58,16 @@ namespace sam
             xform(out, mat, Vec4f(0, 0, 0, 1));
             pi.pos = Vec3f(out);
             pi.pos[0] = -pi.pos[0];
+            pi.pos[1] = -pi.pos[1];
             pi.pos[2] = -pi.pos[2];
+            //pi.pos[2] = -pi.pos[2];
             pi.pos *= 0.125f;
             aabb += pi.pos;
             pi.rot = make<Quatf>(mat);
+            //invert(pi.rot);
             piList.push_back(pi);
         }
 
-        partIdx += 10;
         Vec3f centerpt = aabb.mMax + aabb.mMin;
         Vec3f anchorpt(centerpt[0], aabb.mMin[1], centerpt[2]);
         for (auto& pi : piList)

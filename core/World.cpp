@@ -32,7 +32,7 @@ namespace sam
         m_debugDraw(0),
         m_disableCollisionCheck(false),
         m_player(std::make_shared<Player>()),
-        m_level(true)
+        m_level(false)
     {        
     }  
 
@@ -182,7 +182,7 @@ namespace sam
             {
                 std::vector<PartInst> piImport;
                 MbxImport mbxImport;
-                mbxImport.ImportFile(Application::Inst().Documents() + "/Import/scene.mbx", 
+                mbxImport.ImportFile(Application::Inst().Documents() + "/Import/Trixie and Starlight.json", 
                     m_player->Pos(), piImport);
                 for (const auto& pi : piImport)
                 {

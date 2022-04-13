@@ -119,7 +119,7 @@ namespace sam
         }
         if (m_readyState == 1)
         {
-            if (m_l.m_l == 8 && m_l.IsGroundLoc() && abs(m_l.m_x - 128) < 3 && abs(m_l.m_y - 128) < 3)
+            if (m_l.m_l == 8 && m_l.IsGroundLoc())
             {
                 PartInst pi;
                 pi.id = "91405";
@@ -158,8 +158,6 @@ namespace sam
     {
         SceneGroup::Draw(ctx);
 
-        if (m_l.m_l != 8)
-            return;
         nOctTilesTotal++;
         nOctTilesDrawn++;
                    

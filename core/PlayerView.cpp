@@ -102,11 +102,12 @@ namespace sam
             m_initialState = std::make_shared<btDefaultMotionState>(mat4);
             btScalar mass = 1;
             m_btShape = std::make_shared<btCylinderShape>(btVector3(20, 25, 5) * BrickManager::Scale);
-            btRigidBody::btRigidBodyConstructionInfo constructInfo(mass, m_initialState.get(),
+            btRigidBody::btRigidBodyConstructionInfo constructInfo(1, m_initialState.get(),
                 m_btShape.get());
             m_rigidBody = std::make_shared<btRigidBody>(constructInfo);
             ctx.m_physics->AddRigidBody(m_rigidBody.get());
             m_rigidBody->setFriction(0.0f);
+            m_rigidBody->setGravity(btVector3(0,m_flymode ? 0 : 10,0));
         }
         auto& dcam = Engine::Inst().DrawCam();
         auto& cam = Engine::Inst().ViewCam();
@@ -123,7 +124,8 @@ namespace sam
        
         btVector3 linearVel = m_rigidBody->getLinearVelocity();
         btVector3 btimp = bt(fwdVel) - linearVel;
-        btimp[1] = m_jump ? -7 : 0;
+        if (!m_flymode)
+            btimp[1] = m_jump ? -7 : 0;
         m_jump = false;
         m_rigidBody->applyCentralImpulse(btimp);
         m_rigidBody->activate();
@@ -210,11 +212,11 @@ namespace sam
         {
         case LeftShift:
             if (m_flymode)
-                m_posVel[1] -= speed;
+                m_posVel[1] += speed;
             break;
         case SpaceBar:
             if (m_flymode)
-                m_posVel[1] += speed;
+                m_posVel[1] -= speed;
             else
                 m_jump = true;
             break;
@@ -233,6 +235,7 @@ namespace sam
 
         case FButton:
             m_flymode = !m_flymode;
+            m_rigidBody->setGravity(btVector3(0, m_flymode ? 0 : 10, 0));
         }
     }
 
