@@ -15,7 +15,7 @@ namespace sam
 
     void Frustum::Initialize(DrawContext& nvg)
     {
-        m_shader = Engine::Inst().LoadShader("vs_brick.bin", "fs_frustum.bin");
+        m_shader = Engine::Inst().LoadShader("vs_brick.bin", "fs_bbox.bin");
     }
 
     void Frustum::Draw(DrawContext& ctx)

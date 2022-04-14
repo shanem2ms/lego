@@ -236,6 +236,12 @@ namespace sam
         case FButton:
             m_flymode = !m_flymode;
             m_rigidBody->setGravity(btVector3(0, m_flymode ? 0 : 10, 0));
+        case '1':
+            m_inspectmode = false;
+            break;
+        case '2':
+            m_inspectmode = true;
+            break;
         }
     }
 
