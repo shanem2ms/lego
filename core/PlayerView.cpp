@@ -45,7 +45,7 @@ namespace sam
             m_pos = playerdata.pos;
             m_dir = playerdata.dir;
             m_flymode = playerdata.flymode;
-            m_inspectmode = playerdata.inspect;
+            m_inspectmode = false;// playerdata.inspect;
             SetRightHandPart(playerdata.rightHandPart);
             memcpy(m_slots, playerdata.slots, sizeof(m_slots));
         }
@@ -109,40 +109,48 @@ namespace sam
             m_rigidBody->setFriction(0.0f);
             m_rigidBody->setGravity(btVector3(0,m_flymode ? 0 : 10,0));
         }
-        auto& dcam = Engine::Inst().DrawCam();
-        auto& cam = Engine::Inst().ViewCam();
-        Camera::Fly fly = cam.GetFly();
-        Vec3f right, up, forward;
-        Vec3f upworld(0, 1, 0);
-        GetDirs(right, up, forward);
-        Vec3f fwWorld;
-        cross(fwWorld, upworld, right);
 
-        Vec3f fwdVel = m_posVel[0] * right +
-            (m_posVel[1]) * upworld +
-            m_posVel[2] * fwWorld;
-       
-        btVector3 linearVel = m_rigidBody->getLinearVelocity();
-        btVector3 btimp = bt(fwdVel) - linearVel;
-        if (!m_flymode)
-            btimp[1] = m_jump ? -7 : 0;
-        m_jump = false;
-        m_rigidBody->applyCentralImpulse(btimp);
-        m_rigidBody->activate();
-        m_rigidBody->setFriction(0.0f);
-        
-        btVector3 p = m_rigidBody->getCenterOfMassPosition();
-        m_pos = Vec3f(p[0], p[1], p[2]);
-        m_playerBody->SetOffset(m_pos);            
+        Engine::Inst().SetDbgCam(m_inspectmode);
+        if (!m_inspectmode)
+        {
+            auto& cam = Engine::Inst().ViewCam();
+            Vec3f right, up, forward;
+            Vec3f upworld(0, 1, 0);
+            GetDirs(right, up, forward);
+            Vec3f fwWorld;
+            cross(fwWorld, upworld, right);
 
-        m_playerBody->SetRotate(make<gmtl::Quatf>(AxisAnglef(m_dir[0], 0.0f, -1.0f, 0.0f)));
-        auto dfly = dcam.GetFly();
-        dfly.pos = m_pos + Vec3f(0,-55*BrickManager::Scale,0);
-        dfly.dir = m_dir;
-        dcam.SetFly(dfly);
+            Vec3f fwdVel = m_posVel[0] * right +
+                (m_posVel[1]) * upworld +
+                m_posVel[2] * fwWorld;
 
+            btVector3 linearVel = m_rigidBody->getLinearVelocity();
+            btVector3 btimp = bt(fwdVel) - linearVel;
+            if (!m_flymode)
+                btimp[1] = m_jump ? -7 : 0;
+            m_jump = false;
+            m_rigidBody->applyCentralImpulse(btimp);
+            m_rigidBody->activate();
+            m_rigidBody->setFriction(0.0f);
+
+            btVector3 p = m_rigidBody->getCenterOfMassPosition();
+            m_pos = Vec3f(p[0], p[1], p[2]);
+            m_playerBody->SetOffset(m_pos);
+
+            m_playerBody->SetRotate(make<gmtl::Quatf>(AxisAnglef(m_dir[0], 0.0f, -1.0f, 0.0f)));
+            Camera::Fly fly = cam.GetFly();
+            fly.pos = m_pos + Vec3f(0, -55 * BrickManager::Scale, 0);
+            fly.dir = m_dir;
+            cam.SetFly(fly);
+        }
+        else
+        {
+            auto& dcam = Engine::Inst().DrawCam();
+        }
         if ((ctx.m_frameIdx % 60) == 0)
         {
+            Camera::Fly fly = Engine::Inst().ViewCam().GetFly();
+            Camera::Fly dfly = Engine::Inst().DrawCam().GetFly();
             Level::PlayerData playerdata;
             playerdata.pos = fly.pos;
             playerdata.dir = fly.dir;
