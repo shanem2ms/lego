@@ -48,7 +48,7 @@ namespace sam
         OctTileSelection& octTileSelection, bool doCollisionCheck)
     {
         Engine& e = Engine::Inst();
-        Camera::Fly la = e.DrawCam().GetFly();
+        Camera::Fly la = e.ViewCam().GetFly();
         Vec3f r, u, camLookDir;
         la.GetDirs(r, u, camLookDir);
 

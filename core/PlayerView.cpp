@@ -110,7 +110,6 @@ namespace sam
             m_rigidBody->setGravity(btVector3(0,m_flymode ? 0 : 10,0));
         }
 
-        Engine::Inst().SetDbgCam(m_inspectmode);
         if (!m_inspectmode)
         {
             auto& cam = Engine::Inst().ViewCam();
@@ -146,6 +145,15 @@ namespace sam
         else
         {
             auto& dcam = Engine::Inst().DrawCam();
+            Camera::Fly dfly = dcam.GetFly();
+            Vec3f right, up, forward;
+            dfly.GetDirs(right, up, forward);
+
+            Vec3f fwdVel = m_posVel[0] * right +
+                (m_posVel[1]) * up +
+                m_posVel[2] * forward;
+            dfly.pos += fwdVel;
+            dcam.SetFly(dfly);
         }
         if ((ctx.m_frameIdx % 60) == 0)
         {
@@ -244,11 +252,14 @@ namespace sam
         case FButton:
             m_flymode = !m_flymode;
             m_rigidBody->setGravity(btVector3(0, m_flymode ? 0 : 10, 0));
+            break;
         case '1':
             m_inspectmode = false;
+            Engine::Inst().SetDbgCam(m_inspectmode);
             break;
         case '2':
             m_inspectmode = true;
+            Engine::Inst().SetDbgCam(m_inspectmode);
             break;
         }
     }
