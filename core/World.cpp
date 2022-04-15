@@ -222,6 +222,7 @@ namespace sam
     float g_hitLocArea = 0;
     float g_hitDist = 0;
     bool g_doImport = true;
+    Loc g_inLoc{ 0,0,0 };
     void World::Update(Engine& e, DrawContext& ctx)
     {
         ctx.debugDraw = m_debugDraw;
@@ -269,6 +270,17 @@ namespace sam
         m_frustum->SetEnabled(m_player->InspectMode());
        
         m_player->Update(ctx, m_level);
+
+        if (m_player->InspectMode())
+        {
+            auto octtile = m_octTileSelection.TileFromPos(e.DrawCam().GetFly().pos);
+            if (octtile != nullptr)
+            {
+                g_inLoc = octtile->GetLoc();
+            }
+            else
+                g_inLoc = Loc(0, 0, 0);
+        }
         auto &cam = e.ViewCam();
         Camera::Fly fly = cam.GetFly();        
         const float playerHeadHeight = 0.01f;

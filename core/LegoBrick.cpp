@@ -15,7 +15,7 @@
 
 namespace sam
 {
-    LegoBrick::LegoBrick(const PartInst& pi, int atlasidx, Physics physics, bool showConnectors
+    LegoBrick::LegoBrick(const PartInst& pi, int atlasidx, bool hires, Physics physics, bool showConnectors
         ) :
         m_partinst(pi),
         m_paletteIdx(atlasidx),
@@ -24,7 +24,8 @@ namespace sam
         m_connectorPickWidget(),
         m_rigidBody(nullptr),
         m_initialState(nullptr),
-        m_physicsType(physics)
+        m_physicsType(physics),
+        m_hires(hires)
     {
 
     }

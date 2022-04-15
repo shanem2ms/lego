@@ -91,6 +91,8 @@ namespace sam
             m_near = near; m_far = far;
         }
 
+        float GetNear() const { return m_near; } 
+        float GetFar() const { return m_far; }
         Frustumf GetFrustum(float near, float far) const;
 
         void SetLookat(const LookAt& la)

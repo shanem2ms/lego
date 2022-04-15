@@ -175,23 +175,27 @@ namespace sam
             return std::max(log2(maxlen) + 9, 0.0f);
         }
 
+
         static bool GetLocsInView(std::vector<Loc>& locs, const Loc& curLoc,
             const Frustumf& frustum, const Matrix44f& viewProj, const Point3f& camPos, const Vec3f& camRight, const Vec3f& camFwd, float pixelDist, int maxlod, const AABoxf& playerBounds, bool behindCamera)
         {
-            int targetLod = TargetLodForLoc(curLoc, viewProj, camFwd, camPos);            
+            static int minLod = -1;
+            static bool dobreak = false;
+            int targetLod = TargetLodForLoc(curLoc, viewProj, camFwd, camPos);
 
+            //if (dobreak && curLoc == Loc(0, 0, 1, 1))
+            //    __debugbreak();
             if (targetLod >= 0)
             {
-                if (behindCamera && curLoc.m_l > targetLod)
-                    return false;
-                
+               
                 if (curLoc.m_l >= targetLod)
                 {
                     locs.push_back(curLoc);
                     return true;
                 }
             }
-            if (targetLod < 0 && curLoc.m_l == maxlod)
+            if (targetLod < 0 && curLoc.m_l == maxlod &&
+                curLoc.m_l > minLod)
             {
                 locs.push_back(curLoc);
                 return true;

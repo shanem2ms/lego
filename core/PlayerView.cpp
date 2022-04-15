@@ -33,7 +33,7 @@ namespace sam
             //make<Quatf>(AxisAnglef(gmtl::Math::PI / 8.0f, 1.0f, 0.0f, 0.0f)));
         PartInst pi;
         pi.id = "3820";
-        m_rightHand->AddItem(std::make_shared<LegoBrick>(pi, 14));
+        m_rightHand->AddItem(std::make_shared<LegoBrick>(pi, 14, true));
         m_playerBody->AddItem(m_rightHand);
         m_playerHead = std::make_shared<SceneGroup>();
         m_playerHead->SetOffset(Vec3f(0, 2.4f, 0));
@@ -66,7 +66,7 @@ namespace sam
         m_rightHandPartInst = part;
         if (!part.id.IsNull())
         {
-            m_rightHandPart = std::make_shared<LegoBrick>(part, part.atlasidx, LegoBrick::Physics::None, true);
+            m_rightHandPart = std::make_shared<LegoBrick>(part, part.atlasidx, true, LegoBrick::Physics::None, true);
             m_rightHandPart->SetOffset(part.pos + Vec3f(0,0,-1.2f));
             m_rightHandPart->SetRotate(part.rot);
             float s = 0.25f;
@@ -148,11 +148,11 @@ namespace sam
             Camera::Fly dfly = dcam.GetFly();
             Vec3f right, up, forward;
             dfly.GetDirs(right, up, forward);
-
+            float speedFactor = 0.5f;
             Vec3f fwdVel = m_posVel[0] * right +
-                (m_posVel[1]) * up +
+                (-m_posVel[1]) * up +
                 m_posVel[2] * forward;
-            dfly.pos += fwdVel;
+            dfly.pos += fwdVel * speedFactor;            
             dcam.SetFly(dfly);
         }
         if ((ctx.m_frameIdx % 60) == 0)
@@ -183,10 +183,23 @@ namespace sam
     void Player::RawMove(float dx, float dy)
     {
         Engine& e = Engine::Inst();
-        m_dir[0] += dx;
-        m_dir[1] -= dy;
-        m_dir[1] = std::min(m_dir[1], pi_over_two_thresh);
-        m_dir[1] = std::max(m_dir[1], -pi_over_two_thresh);
+        if (!m_inspectmode)
+        {
+            m_dir[0] += dx;
+            m_dir[1] -= dy;
+            m_dir[1] = std::min(m_dir[1], pi_over_two_thresh);
+            m_dir[1] = std::max(m_dir[1], -pi_over_two_thresh);
+        }
+        else
+        {
+            Camera &c = e.DrawCam();
+            Camera::Fly fly = c.GetFly();
+            fly.dir[0] += dx;
+            fly.dir[1] -= dy;
+            //fly.dir[1] = std::min(m_dir[1], pi_over_two_thresh);
+            //fly.dir[1] = std::max(m_dir[1], -pi_over_two_thresh);
+            c.SetFly(fly);
+        }
     }
 
     void Player::MouseDrag(float x, float y, int buttonId)

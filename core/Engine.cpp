@@ -377,6 +377,15 @@ namespace sam
     {
         return std::make_shared<BgfxCallback>();
     }
+
+    void Engine::SetDbgCam(bool dbgCam)
+    {
+        m_debugCam = dbgCam;
+        m_debugCamera = m_camera;        
+        m_debugCamera.SetNearFar(m_camera.GetNear() * 10,
+            m_camera.GetFar() * 10);
+    }
+
 }
 
 

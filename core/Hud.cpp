@@ -25,6 +25,7 @@ namespace sam
     extern int g_numLod9;
     extern int g_behindViewer;
     extern std::string g_partName;
+    extern Loc g_inLoc;
 
 extern int g_buttonDown;
 
@@ -34,7 +35,8 @@ extern int g_buttonDown;
             ctx.m_mat * CalcMat();
         bgfx::dbgTextClear();
         bgfx::dbgTextPrintf(0, 8, 0x0f, "Fps [%.2f]", g_Fps);
-        bgfx::dbgTextPrintf(0, 10, 0x0f, "VB %d MB", sVBBytes.load() >> 20);
+        ///bgfx::dbgTextPrintf(0, 10, 0x0f, "VB %d MB", sVBBytes.load() >> 20);
+        bgfx::dbgTextPrintf(0, 10, 0x0f, "Tile [%d {%d %d %d}]", g_inLoc.m_l, g_inLoc.m_x, g_inLoc.m_y, g_inLoc.m_z );
 
         Engine& e = Engine::Inst();
         Camera::Fly la = e.ViewCam().GetFly();        

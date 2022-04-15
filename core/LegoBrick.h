@@ -21,7 +21,7 @@ namespace sam
             Static,
             Dynamic
         };
-        LegoBrick(const PartInst& pi, int atlasidx, Physics physics = Physics::None, bool showConnectors = false);
+        LegoBrick(const PartInst& pi, int atlasidx, bool hires, Physics physics = Physics::None, bool showConnectors = false);
         virtual ~LegoBrick();
         void Decomission(DrawContext& ctx) override;
         void Initialize(DrawContext& nvg) override;
@@ -39,6 +39,7 @@ namespace sam
         Brick* m_pBrick;
         int m_paletteIdx;
         bool m_showConnectors;
+        bool m_hires;
         int m_connectorPickIdx;
         Physics m_physicsType;
         std::shared_ptr<SceneItem> m_connectorPickWidget;

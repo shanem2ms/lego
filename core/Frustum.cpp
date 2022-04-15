@@ -15,7 +15,7 @@ namespace sam
 
     void Frustum::Initialize(DrawContext& nvg)
     {
-        m_shader = Engine::Inst().LoadShader("vs_brick.bin", "fs_bbox.bin");
+        m_shader = Engine::Inst().LoadShader("vs_frustum.bin", "fs_frustum.bin");
     }
 
     void Frustum::Draw(DrawContext& ctx)
@@ -39,7 +39,7 @@ namespace sam
             | BGFX_STATE_DEPTH_TEST_LESS
             | BGFX_STATE_MSAA
             | BGFX_STATE_BLEND_ALPHA
-            | BGFX_STATE_CULL_CCW;
+            | BGFX_STATE_CULL_CW;
         // Set render states.l
         bgfx::setState(state);
         bgfx::submit(DrawViewId::ForwardRendered, m_shader);

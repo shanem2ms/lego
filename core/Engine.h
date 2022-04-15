@@ -71,11 +71,7 @@ public:
     static Engine& Inst();
     Camera& ViewCam() { return m_camera; }
     Camera& DrawCam() { return m_debugCam ? m_debugCamera : m_camera; }
-    void SetDbgCam(bool dbgCam)
-    {
-        m_debugCam = dbgCam;
-        m_debugCamera = m_camera;
-    }
+    void SetDbgCam(bool dbgCam);
     void Tick(float time);
     int GetNextView() {
         return m_nextView++;

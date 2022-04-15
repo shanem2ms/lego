@@ -58,7 +58,7 @@ namespace sam
             loc.m_z = index;
         }
 
-        bool operator < (const Loc& rhs)
+        bool operator < (const Loc& rhs) const
         {
             if (m_l != rhs.m_l)
                 return m_l < rhs.m_l;
@@ -69,7 +69,7 @@ namespace sam
             return m_z < rhs.m_z;
         }
 
-        bool operator == (const Loc& rhs)
+        bool operator == (const Loc& rhs) const
         {
             if (m_x != rhs.m_x)
                 return false;
@@ -110,6 +110,23 @@ namespace sam
             };
         }
 
+        void GetChildrenAtLevel(int l, std::vector<Loc> &locs) const
+        {
+            int ldelta = l - m_l;
+            Loc loffset(m_x << ldelta, m_y << ldelta, m_z << ldelta, l);
+            int sz = 1 << ldelta;
+            locs.reserve(sz * sz * sz);
+            for (int x = 0; x < sz; ++x)
+            {
+                for (int y = 0; y < sz; ++y)
+                {
+                    for (int z = 0; z < sz; ++z)
+                    {
+                        locs.push_back(Loc(loffset.m_x + x, loffset.m_y + y, loffset.m_z + z, l));
+                    }
+                }
+            }
+        }
         bool IsGroundLoc() const
         {
             return m_y == (1 << (m_l - 1));
@@ -156,20 +173,6 @@ namespace sam
     {
         os << "[" << loc.m_l << ", " << loc.m_x << ", " << loc.m_y << ", " << loc.m_z << "]";
         return os;
-    }
-
-    inline bool operator < (const Loc& lhs, const Loc& rhs)
-    {
-        if (lhs.m_y != rhs.m_y)
-            return lhs.m_y < rhs.m_y;
-        if (lhs.m_x != rhs.m_x)
-            return lhs.m_x < rhs.m_x;
-        if (lhs.m_l != rhs.m_l)
-            return lhs.m_l < rhs.m_l;
-        if (lhs.m_z != rhs.m_z)
-            return lhs.m_z < rhs.m_z;
-
-        return false;
     }
 
 }

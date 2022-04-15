@@ -57,6 +57,7 @@ namespace sam
         void SetIntersects(float i)
         { m_intersects = i; }
 
+        const Loc& GetLoc() const { return m_l; }
         void SetImage(int image)
         {
             m_image = image;

@@ -35,6 +35,7 @@ set(Header_Files
     "ConnectionWidget.h"
     "LegoUI.h"
     "MbxImport.h"
+    "LoresTile.h"
 )  
 
 source_group("Header Files" FILES ${Header_Files})
@@ -72,6 +73,7 @@ set(Source_Files
     "ConnectionLogic.cpp"
     "LegoUI.cpp"
     "MbxImport.cpp"
+    "LoresTile.cpp"
     "ldrawloader.cpp"
     "imgui/imgui.cpp"
     "imgui/dear-imgui/imgui.cpp"
