@@ -55,28 +55,6 @@ namespace sam
         leveldb::Status status = leveldb::DB::Open(options, path.c_str(), &m_db);
     }
 
-    bool Level::GetTerrainChunk(const Loc& il, std::string *val) const
-    {
-        Loc l = il;
-        l.m_l = -l.m_l;
-        leveldb::Slice key((const char*)&l, sizeof(l));
-        leveldb::Status status = m_db->Get(leveldb::ReadOptions(), key, val);
-        return status.ok();
-    }
-
-    bool Level::WriteTerrainChunk(const Loc& il, const char* byte, size_t len)
-    {
-        if (m_disableWrite)
-            return true;
-        Loc l = il;
-        l.m_l = -l.m_l;
-        leveldb::Slice key((const char*)&l, sizeof(l));
-        leveldb::Slice val(byte, len);
-        leveldb::Status status = m_db->Put(leveldb::WriteOptions(), key, val);
-        return status.ok();
-    }
-
-
     bool Level::GetOctChunk(const Loc& l, std::string* val) const
     {
         leveldb::Slice key((const char*)&l, sizeof(l));

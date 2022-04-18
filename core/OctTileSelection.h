@@ -48,6 +48,8 @@ namespace sam
         void RemovePart(const PartInst& pi);
         void GetInterectingParts(const Spheref& sphere, std::vector<PartInst>& piList);
 
+        void AddMultipleParts(World* pWorld, const std::vector<PartInst>& piList);
+
     public:
         OctTileSelection();
         ~OctTileSelection();

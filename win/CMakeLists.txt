@@ -28,7 +28,7 @@ set (PLATFORMLIBS
 
 find_package(Bullet CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
-
+ find_package(libzip CONFIG REQUIRED)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(LIBDBG "debug/")
   set(CMAKE_DEBUG_POSTFIX "_Debug")
@@ -50,6 +50,7 @@ target_link_libraries(${PROJECT_NAME} LINK_PUBLIC
     ${PLATFORMLIBS}
     zlibstatic
     leveldb
+    libzip::zip
        )
        
 target_include_directories(${PROJECT_NAME} PUBLIC

@@ -182,12 +182,9 @@ namespace sam
             {
                 std::vector<PartInst> piImport;
                 MbxImport mbxImport;
-                mbxImport.ImportFile(Application::Inst().Documents() + "/Import/mtncave.mbx", 
+                mbxImport.ImportFile(Application::Inst().Documents() + "/Import/Home Alone.zmbx", 
                     m_player->Pos(), piImport);
-                for (const auto& pi : piImport)
-                {
-                    m_octTileSelection.AddPartInst(pi);
-                }
+                m_octTileSelection.AddMultipleParts(this, piImport);
             }
             break;
         case 'E':

@@ -96,7 +96,7 @@ namespace sam
     }
 
     
-    void OctTile::BackgroundLoad(World* pWorld)
+    bool OctTile::BackgroundLoad(World* pWorld)
     {
         if (m_readyState == 0)
         {
@@ -184,6 +184,8 @@ namespace sam
         {
             m_readyState = 3;
         }
+
+        return m_readyState == 3;
     }
 
     void OctTile::Refresh()
@@ -261,12 +263,16 @@ namespace sam
 
         if (m_needsPersist && m_l.m_l == 8)
         {            
-            ctx.m_pWorld->Level().WriteOctChunk(m_l, (const char*)m_parts.data(), m_parts.size() *
-                sizeof(PartInst));
-            m_needsPersist = false;
+            Persist(ctx.m_pWorld);
         }
     }
 
+    void OctTile::Persist(World *pWorld)
+    {
+        pWorld->Level().WriteOctChunk(m_l, (const char*)m_parts.data(), m_parts.size() *
+            sizeof(PartInst));
+        m_needsPersist = false;
+    }
     void OctTile::Decomission(DrawContext& ctx)
     {
         SceneGroup::Decomission(ctx);

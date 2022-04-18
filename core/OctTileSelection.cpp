@@ -378,7 +378,6 @@ namespace sam
 
         std::sort(tiles.begin(), tiles.end(), [](auto& t1, auto& t2) { return t1->distFromCam > t2->distFromCam;  });
 
-
         float splitdist = tiles[tiles.size() / 2]->distFromCam;
         float neardist = std::numeric_limits<float>::max();
         float fardist = 0;
@@ -506,29 +505,68 @@ namespace sam
 
     void OctTileSelection::AddPartInst(const PartInst& pi)
     {
-        for (auto& pair : m_tiles)
+        Loc l = Loc::FromPoint<8>(pi.pos);
+        auto itTile = m_tiles.find(l);
+        if (itTile != m_tiles.end())
         {
-            AABoxf bbox = pair.first.GetBBox();
-            if (isInVolume(bbox, Point3f(pi.pos)))
-            {
-                PartInst p2 = pi;
-                p2.pos -= (bbox.mMin + bbox.mMax) * 0.5f;
-                pair.second->AddPartInst(p2);
-            }
+            AABoxf bbox = itTile->first.GetBBox();
+            PartInst p2 = pi;
+            p2.pos -= (bbox.mMin + bbox.mMax) * 0.5f;
+            itTile->second->AddPartInst(p2);
         }
     }
 
+    void OctTileSelection::AddMultipleParts(World *pWorld, const std::vector<PartInst>& piList)
+    {
+        std::map<Loc, std::vector<PartInst>> partsPerTile;
+        for (const PartInst& pi : piList)
+        {
+            Loc l = Loc::FromPoint<8>(pi.pos);
+            auto itTile = partsPerTile.find(l);
+            if (itTile == partsPerTile.end())
+            {
+                itTile =
+                    partsPerTile.insert(std::make_pair(l, std::vector<PartInst>())).first;
+            }
+            itTile->second.push_back(pi);
+        }
+        for (const auto& pair : partsPerTile)
+        {
+            auto itTile = m_tiles.find(pair.first);
+            AABoxf bbox = pair.first.GetBBox();
+            if (itTile != m_tiles.end())
+            {
+                for (const PartInst& pi : pair.second)
+                {
+                    PartInst p2 = pi;
+                    p2.pos -= (bbox.mMin + bbox.mMax) * 0.5f;
+                    itTile->second->AddPartInst(p2);
+                }
+            }
+            else
+            {
+                std::shared_ptr<OctTile> sq = std::make_shared<OctTile>(pair.first);
+                while (!sq->BackgroundLoad(pWorld)) {}
+                for (const PartInst& pi : pair.second)
+                {
+                    PartInst p2 = pi;
+                    p2.pos -= (bbox.mMin + bbox.mMax) * 0.5f;
+                    sq->AddPartInst(p2);
+                }
+                sq->Persist(pWorld);
+            }
+        }
+    }
     void OctTileSelection::RemovePart(const PartInst& pi)
     {
-        for (auto& pair : m_tiles)
+        Loc l = Loc::FromPoint<8>(pi.pos);
+        auto itTile = m_tiles.find(l);
+        if (itTile != m_tiles.end())
         {
-            AABoxf bbox = pair.first.GetBBox();
-            if (isInVolume(bbox, Point3f(pi.pos)))
-            {
-                PartInst p2 = pi;
-                p2.pos -= (bbox.mMin + bbox.mMax) * 0.5f;
-                pair.second->RemovePart(p2);
-            }
+            AABoxf bbox = itTile->first.GetBBox();
+            PartInst p2 = pi;
+            p2.pos -= (bbox.mMin + bbox.mMax) * 0.5f;
+            itTile->second->RemovePart(p2);
         }
     }
 

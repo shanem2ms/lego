@@ -5,6 +5,7 @@
 #include "MbxImport.h"
 #include "BrickMgr.h"
 #include "nlohmann/json.hpp"
+#include "zip.h"
 
 using namespace nlohmann;
 using namespace gmtl;
@@ -16,19 +17,29 @@ namespace sam
     static Vec3f pos;
     void MbxImport::ImportFile(const std::string& file, const Vec3f & partPos, std::vector<PartInst> &piList)
     {
+        int err = 0;
+        zip_t* za = zip_open(file.c_str(), 0, &err);
+
+        std::string str;
+        for (int i = 0; i < zip_get_num_entries(za, 0); i++) 
+        {
+            zip_stat_t sb;
+            if (zip_stat_index(za, i, 0, &sb) == 0) 
+            {
+                int len = strlen(sb.name);
+                zip_file_t *zf = zip_fopen_index(za, i, 0);
+                if (zf == nullptr)
+                    continue;
+
+                str.resize(sb.size);
+                int bytesRead = zip_fread(zf, str.data(), str.size());
+                zip_fclose(zf);
+            }
+        }
         if (partIdx == 0)
             pos = partPos;
-        std::ifstream infile(file);
 
         AABoxf aabb;
-        //get length of files
-        infile.seekg(0, std::ios::end);
-        size_t length = infile.tellg();
-        infile.seekg(0, std::ios::beg);
-        std::string str;
-        str.resize(length);
-        infile.read(str.data(), length);
-
         json doc = json::parse(str);
         json parts = doc["parts"];
         size_t count = 0;
@@ -76,7 +87,7 @@ namespace sam
         }
 
         Vec3f centerpt = aabb.mMax + aabb.mMin;
-        Vec3f anchorpt(centerpt[0], aabb.mMin[1], centerpt[2]);
+        Vec3f anchorpt(centerpt[0], aabb.mMax[1], centerpt[2]);
         for (auto& pi : piList)
         {
             pi.pos = pi.pos - anchorpt + pos;

@@ -51,7 +51,7 @@ namespace sam
         OctTile(const Loc& l);
         ~OctTile();
 
-        void BackgroundLoad(World *pWorld);
+        bool BackgroundLoad(World* pWorld);
         bool IsEmpty() const;
 
         void SetIntersects(float i)
@@ -76,7 +76,9 @@ namespace sam
         void AddPartInst(const PartInst& pi);
         bool CanAddPart(const PartInst& pi, const AABoxf& bbox);
         void RemovePart(const PartInst& pi);
-        void GetInterectingParts(const Spheref& sphere, std::vector<PartInst>& piList);        
+        void GetInterectingParts(const Spheref& sphere, std::vector<PartInst>& piList);
+        
+        void Persist(World* pWorld);
     };
 
     class TargetCube : public SceneItem

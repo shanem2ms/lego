@@ -40,7 +40,19 @@ namespace sam
                 l.m_y * (1 << lsize) +
                 l.m_z;
         }
-
+        
+        template <int L>
+        static Loc FromPoint(const Point3f& pt)
+        {
+            constexpr int off = (1 << (L - 1));
+            constexpr float div = 16.0f / (1 << L);
+            Loc l(
+                (int)floor(pt[0] * div) + off,
+                (int)floor(pt[1] * div) + off,
+                (int)floor(pt[2] * div) + off,
+                L);
+            return l;
+        }
         static constexpr void GetLocFromIndex(Loc& loc, uint64_t index)
         {
             int l = 0;
