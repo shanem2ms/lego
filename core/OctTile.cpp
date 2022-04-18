@@ -123,23 +123,41 @@ namespace sam
                 std::vector<Loc> level8Locs;
                 m_l.GetChildrenAtLevel(8, level8Locs);
                 std::string strval;
+                std::vector<std::vector<PartInst>> partsVec;
+                size_t totalCt = 0;
                 Point3f parentCenter = m_l.GetCenter();
                 for (auto& cl : level8Locs)
                 {
                     if (pWorld->Level().GetOctChunk(cl, &strval))
                     {
+                        partsVec.push_back(std::vector<PartInst>());
+                        std::vector<PartInst>& parts = partsVec.back();
                         Point3f childCenter = cl.GetCenter();
-                        size_t parts = strval.size() / sizeof(PartInst);
-                        m_parts.resize(parts);
-                        memcpy(m_parts.data(), strval.data(), strval.size());
-                        for (auto& part : m_parts)
+                        size_t partsCt = strval.size() / sizeof(PartInst);
+                        totalCt += partsCt;
+                        parts.resize(partsCt);
+                        memcpy(parts.data(), strval.data(), strval.size());
+                        for (auto& part : parts)
                         {
                             part.pos = (part.pos + childCenter) - parentCenter;
-                            m_bricks.push_back(BrickManager::Inst().GetBrick(part.id));
                         }
-                        m_readyState = 3;
-                        m_needsRefresh = true;
                     }
+                }
+                if (totalCt > 0)
+                {
+                    m_parts.resize(totalCt);
+                    PartInst *piPtr = m_parts.data();
+                    for (std::vector<PartInst>& parts : partsVec)
+                    {
+                        memcpy(piPtr, parts.data(), parts.size() * sizeof(PartInst));
+                        piPtr += parts.size();
+                    }
+                    for (auto& part : m_parts)
+                    {
+                        m_bricks.push_back(BrickManager::Inst().GetBrick(part.id));
+                    }
+                    m_readyState = 3;
+                    m_needsRefresh = true;
                 }
             }
         }
@@ -201,7 +219,10 @@ namespace sam
             for (auto& part : m_parts)
             {
                 auto brick = std::make_shared<LegoBrick>(part, part.atlasidx, m_l.m_l == 8,
-                    part.connected ? LegoBrick::Physics::Static : LegoBrick::Physics::Dynamic, false);
+                    m_l.m_l == 8 ? (
+                    part.connected ? LegoBrick::Physics::Static : LegoBrick::Physics::Dynamic) :
+                    LegoBrick::Physics::None,
+                    false);
                 brick->SetOffset(part.pos);
                 brick->SetRotate(part.rot);
                 AddItem(brick);

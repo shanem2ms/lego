@@ -50,7 +50,14 @@ namespace sam
             }
             transpose(mat);
             json col = part["material"]["base"];
-            int colorval = col[0];
+            int colorval = 0;
+            if (col[0].is_number_integer())
+                colorval = col[0];
+            else if (col[0].is_string())
+            {
+                std::string str = col[0];
+                colorval = std::stoi(str);
+            }
             PartInst pi;
             pi.id = PartId(partname);
             pi.atlasidx = BrickManager::Inst().GetColorFromLegoId(colorval).atlasidx;

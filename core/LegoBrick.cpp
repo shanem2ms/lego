@@ -46,7 +46,7 @@ namespace sam
             sShader3 = Engine::Inst().LoadShader("vs_connector.bin", "fs_pickbrick.bin");
             sPaletteHandle = bgfx::createUniform("s_brickPalette", bgfx::UniformType::Sampler);
         }
-        m_pBrick = BrickManager::Inst().GetBrick(m_partinst.id, true);
+        m_pBrick = BrickManager::Inst().GetBrick(m_partinst.id, m_hires);
         if (!sUparams.isValid())
             sUparams = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 1);
 

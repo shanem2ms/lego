@@ -182,7 +182,7 @@ namespace sam
             {
                 std::vector<PartInst> piImport;
                 MbxImport mbxImport;
-                mbxImport.ImportFile(Application::Inst().Documents() + "/Import/Trixie and Starlight.json", 
+                mbxImport.ImportFile(Application::Inst().Documents() + "/Import/mtncave.mbx", 
                     m_player->Pos(), piImport);
                 for (const auto& pi : piImport)
                 {
