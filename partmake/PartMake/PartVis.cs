@@ -36,6 +36,10 @@ namespace partmake
         private DeviceBuffer _ldrLoaderIndexBuffer;
         private int _ldrLoaderIndexCount;
 
+        private DeviceBuffer _mbxVertexBuffer;
+        private DeviceBuffer _mbxIndexBuffer;
+        private int _mbxIndexCount;
+
         private DeviceBuffer _bspPortalsVertexBuffer;
         private DeviceBuffer _bspPortalsIndexBuffer;
         List<Tuple<uint, uint>> _bspPortalsIndexCounts;
@@ -103,8 +107,9 @@ namespace partmake
         public bool ShowConnectors { get; set; } = true;
 
         public bool ShowExteriorPortals { get; set; } = false;
-        public bool ShowLdrLoader { get; set; } = true;
-        
+        public bool ShowLdrLoader { get; set; } = false;
+        public bool ShowMbx { get; set; } = true;
+
         Vector4[] edgePalette;
         uint numPrimitives;
 
@@ -570,6 +575,25 @@ namespace partmake
                     _ldrLoaderIndexCount = vlindices.Length;
                 }
             }
+
+            if (ShowMbx)
+            {
+                MbxImport.Mesh mesh = _part.LoadMbx();
+                if (mesh != null)
+                {
+                    Vtx[] vlvertices = mesh.vertices.Select(v => new Vtx(new Vector3(v.X, v.Y, v.Z) * 2.5f, new Vector3(1, 0, 0),
+      new Vector2(0, 0))).ToArray();
+                    uint[] vlindices = mesh.indices.Select(i => (uint)i).ToArray();
+                    _mbxVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vlvertices.Length), BufferUsage.VertexBuffer));
+                    GraphicsDevice.UpdateBuffer(_mbxVertexBuffer, 0, vlvertices);
+
+                    _mbxIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)vlindices.Length, BufferUsage.IndexBuffer));
+                    GraphicsDevice.UpdateBuffer(_mbxIndexBuffer, 0, vlindices);
+                    _mbxIndexCount = vlindices.Length;
+                }
+                else
+                    _mbxIndexCount = 0;
+            }
             string logstr = Topology.PolygonClip.GetLog();
             OnLogUpdated?.Invoke(this, logstr);
 
@@ -996,6 +1020,7 @@ namespace partmake
             {
                 DrawMesh(ref mat);
                 DrawLdrLoaderMesh(ref mat);
+                DrawMbxMesh(ref mat);
                 DrawDecomp(ref mat, ref viewmat, ref projMat);
 
                 DrawBSPPortals(ref mat);
@@ -1329,6 +1354,23 @@ namespace partmake
                 _cl.DrawIndexed((uint)_ldrLoaderIndexCount);
             }
         }
+        void DrawMbxMesh(ref Matrix4x4 mat)
+        {
+            if (ShowMbx && _mbxIndexCount > 0)
+            {
+                _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
+                Vector4 col = new Vector4(0.2f, 0.6f, 0.6f, 1);
+                _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+
+                _cl.SetPipeline(_pipeline);
+                _cl.SetVertexBuffer(0, _mbxVertexBuffer);
+                _cl.SetIndexBuffer(_mbxIndexBuffer, IndexFormat.UInt32);
+                _cl.SetGraphicsResourceSet(0, _projViewSet);
+                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+                _cl.DrawIndexed((uint)_mbxIndexCount);
+            }
+        }
+
         void DrawDecomp(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
             if (DoDecomp && _decompMeshes.Count > 0)

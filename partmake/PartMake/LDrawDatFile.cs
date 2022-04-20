@@ -41,6 +41,11 @@ namespace partmake
             Read(path);
         }
 
+        public MbxImport.Mesh LoadMbx()
+        {
+            return
+                MbxImport.LoadMeshfile(Path.Combine(LDrawFolders.MdxFolder, Path.ChangeExtension(this.name, "json")));
+        }
         LDrawDatFile()
         { }
         public LDrawDatFile Clone()

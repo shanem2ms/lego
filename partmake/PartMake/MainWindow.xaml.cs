@@ -10,6 +10,7 @@ using System.Windows.Media;
 using System.Windows.Data;
 using System.Globalization;
 using System.DoubleNumerics;
+using Microsoft.Win32;
 
 namespace partmake
 {
@@ -94,6 +95,7 @@ namespace partmake
             vis.OnINodeSelected += Vis_OnINodeSelected;
             vis.OnBSPNodeSelected += Vis_OnBSPNodeSelected;
             vis.OnLogUpdated += Vis_OnLogUpdated;
+            LDrawFolders.ApplyFilterMdx();
         }
 
         private void Vis_OnLogUpdated(object sender, string e)
@@ -174,9 +176,23 @@ namespace partmake
             Rebuild();
         }
 
-        private void Button_Click(object sender, RoutedEventArgs e)
+        private void WriteAll_Button_Click(object sender, RoutedEventArgs e)
         {
             LDrawFolders.WriteAll();
+        }
+        private void ImportMbx_Button_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFileDialog dlg = new OpenFileDialog();
+            dlg.FileName = "ZMBX Files"; // Default file name
+            dlg.DefaultExt = ".zmbx"; // Default file extension
+            dlg.Filter = "ZMBX (.zmbx)|*.zmbx"; // Filter files by extension
+            string importDir = Path.GetFullPath(Path.Combine(LDrawFolders.RootFolder, @"..\Import"));
+            dlg.InitialDirectory = importDir;
+            if (dlg.ShowDialog() == true)
+            {
+                MbxImport mbxImport = new MbxImport(dlg.FileName);
+                mbxImport.WriteAll();
+            }
         }
 
         private void _RenderControl_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)

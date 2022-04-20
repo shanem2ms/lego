@@ -48,8 +48,14 @@ namespace partmake
                 string dimstr = dimarr != null ? string.Join("x", dimarr) : "";
                 return string.Format("{0} {1} {2}", type, dimstr, desc);
             }
+
+            string MdxPath => Path.Combine(LDrawFolders.MdxFolder, Path.ChangeExtension(this.name, "json"));
+            public bool HasMdx => File.Exists(MdxPath);
+
         }
         static string rootFolder;
+        public static string RootFolder => rootFolder ?? string.Empty;
+        public static string MdxFolder => Path.Combine(RootFolder, "Mbx");
         static List<Entry> ldrawParts = new List<Entry>();
         static Dictionary<string, Entry> partPaths = new Dictionary<string, Entry>();
         static string selectedType;
@@ -78,6 +84,14 @@ namespace partmake
             foreach (FileInfo fi in di.GetFiles("*.dat"))
             {
                 filepaths.Add(fi.FullName);
+            }
+        }
+
+        static public void ApplyFilterMdx()
+        {
+            foreach (var part in AllParts)
+            {
+                part.includedInFilter = part.HasMdx;
             }
         }
 

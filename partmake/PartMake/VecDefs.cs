@@ -414,8 +414,6 @@ namespace partmake
             return aabb;
         }
 
-
-
         /// <summary>
         /// Creates the smallest bounding box which contains two other bounding boxes.
         /// </summary>
