@@ -188,7 +188,7 @@ namespace partmake
         Matrix4x4 GetBottomAnchorMatrix()
         {
             AABB aabb = GetBBox();
-            return Matrix4x4.CreateScale(new Vector3(1, -1, 1)) * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
+            return Matrix4x4.CreateScale(new Vector3(1, -1, -1)) * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
         }
         public Topology.Mesh GetTopoMesh()
         {

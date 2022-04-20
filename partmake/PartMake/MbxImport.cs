@@ -22,6 +22,10 @@ namespace partmake
         }
         public Dictionary<string, Mesh> partGeo = new Dictionary<string, Mesh>();
 
+        bool is_bit_set(int num, int bit)
+        {
+            return (num & (1 << bit)) != 0;
+        }
         public MbxImport(string filename)
         {
             using (var file = File.OpenRead(filename))
@@ -51,11 +55,66 @@ namespace partmake
                                             (float)varray[idx+1],
                                             (float)varray[idx+2]));
                                     }
+                                    JArray uvs = partV["uvs"] as JArray;
+                                    int uvLayers = uvs != null ? uvs.Count : 0;
                                     JArray farray = partV["faces"] as JArray;
                                     List<int> indices = new List<int>();
-                                    for (int idx = 0; idx < farray.Count; idx ++)
+                                    int offset = 0;
+                                    while (offset < farray.Count)
                                     {
-                                        indices.Add((int)farray[idx]);
+                                        int type = (int)farray[offset++];
+                                        bool isQuad = is_bit_set(type, 0);
+                                        bool hasMaterial = is_bit_set(type, 1);
+                                        bool hasFaceUv = is_bit_set(type, 2);
+                                        bool hasFaceVertexUv = is_bit_set(type, 3);
+                                        bool hasFaceNormal = is_bit_set(type, 4);
+                                        bool hasFaceVertexNormal = is_bit_set(type, 5);
+                                        bool hasFaceColor = is_bit_set(type, 6);
+                                        bool hasFaceVertexColor = is_bit_set(type, 7);
+
+                                        if (isQuad)
+                                        {
+                                            int a = (int)farray[offset++];
+                                            int b = (int)farray[offset++];
+                                            int c = (int)farray[offset++];
+                                            int d = (int)farray[offset++];
+                                            indices.Add(a);
+                                            indices.Add(b);
+                                            indices.Add(c);
+                                            indices.Add(a);
+                                            indices.Add(c);
+                                            indices.Add(d);
+                                        }
+                                        else
+                                        {
+                                            int a = (int)farray[offset++];
+                                            int b = (int)farray[offset++];
+                                            int c = (int)farray[offset++];
+                                            indices.Add(a);
+                                            indices.Add(b);
+                                            indices.Add(c);
+                                        }
+                                        if (hasMaterial)
+                                            offset++;
+
+                                        for (int uvidx = 0; uvidx < uvLayers; uvidx++)
+                                        {
+                                            if (hasFaceUv)
+                                                offset++;
+                                            if (hasFaceVertexUv)
+                                                offset += isQuad ? 4 : 3;
+                                        }
+
+                                        if (hasFaceNormal)
+                                            offset++;
+
+                                        if (hasFaceVertexNormal)
+                                            offset += isQuad ? 4 : 3;
+                                        if (hasFaceColor)
+                                            offset++;
+
+                                        if (hasFaceVertexColor)
+                                            offset += isQuad ? 4 : 3;
                                     }
                                     partGeo.Add(partp.Name, new Mesh() { vertices = vertices, indices = indices });
                                 }
