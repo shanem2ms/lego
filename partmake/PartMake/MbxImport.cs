@@ -31,6 +31,7 @@ namespace partmake
             using (var file = File.OpenRead(filename))
             using (var zip = new ZipArchive(file, ZipArchiveMode.Read))
             {
+                List<Mesh> knobMeshes = new List<Mesh>();
                 foreach (var entry in zip.Entries)
                 {
                     using (var stream = entry.Open())
@@ -38,85 +39,52 @@ namespace partmake
                         StreamReader streamReader = new StreamReader(stream);
                         string str = streamReader.ReadToEnd();
                         JObject json = JObject.Parse(str);
+                        JObject details = json["details"] as JObject;
+                        JToken knobs = details["knobs"];
+                        foreach (JToken knob in knobs.Children())
+                        {
+                            if (knob.Type == JTokenType.Property)
+                            {
+                                JProperty p = (JProperty)knob;
+                                Mesh mesh = ReadGeometry(p.Value as JObject);
+                                knobMeshes.Add(mesh);
+                            }
+                        }
+
+                        JToken configs = json["configurations"];
+                        foreach (JToken c in configs.Children())
+                        {
+                            if (c.Type == JTokenType.Property)
+                            {
+                                JProperty geom = (JProperty)c;
+                                foreach (JProperty partp in geom.Value.Children())
+                                {
+                                    JObject partV = partp.Value as JObject;
+                                    JArray knobsA = partV["geometry"]["extras"]["knobs"] as JArray;
+                                    int kcnt = knobsA.Count;
+                                    for (int i = 0; i < kcnt; i++)
+                                    {
+                                        JArray jpos = knobsA[i]["transform"]["position"] as JArray;
+                                        JArray jqaut = knobsA[i]["transform"]["quaternion"] as JArray;
+                                        int ktype = (int)knobsA[i]["type"];
+                                    }
+                                    //partGeo.Add(partp.Name, mesh);
+                                }
+                            }
+                        }
+
                         JToken geometries = json["geometries"];
                         foreach (JToken geo in geometries.Children())
-                        {                           
+                        {
                             if (geo.Type == JTokenType.Property)
                             {
                                 JProperty geom = (JProperty)geo;
                                 foreach (JProperty partp in geom.Value.Children())
                                 {
                                     JObject partV = partp.Value as JObject;
-                                    JArray varray = partV["vertices"] as JArray;
-                                    List<Vector3> vertices = new List<Vector3>();
-                                    for (int idx = 0; idx < varray.Count; idx +=3)
-                                    {
-                                        vertices.Add(new Vector3((float)varray[idx],
-                                            (float)varray[idx+1],
-                                            (float)varray[idx+2]));
-                                    }
-                                    JArray uvs = partV["uvs"] as JArray;
-                                    int uvLayers = uvs != null ? uvs.Count : 0;
-                                    JArray farray = partV["faces"] as JArray;
-                                    List<int> indices = new List<int>();
-                                    int offset = 0;
-                                    while (offset < farray.Count)
-                                    {
-                                        int type = (int)farray[offset++];
-                                        bool isQuad = is_bit_set(type, 0);
-                                        bool hasMaterial = is_bit_set(type, 1);
-                                        bool hasFaceUv = is_bit_set(type, 2);
-                                        bool hasFaceVertexUv = is_bit_set(type, 3);
-                                        bool hasFaceNormal = is_bit_set(type, 4);
-                                        bool hasFaceVertexNormal = is_bit_set(type, 5);
-                                        bool hasFaceColor = is_bit_set(type, 6);
-                                        bool hasFaceVertexColor = is_bit_set(type, 7);
+                                    Mesh mesh = ReadGeometry(partV);
 
-                                        if (isQuad)
-                                        {
-                                            int a = (int)farray[offset++];
-                                            int b = (int)farray[offset++];
-                                            int c = (int)farray[offset++];
-                                            int d = (int)farray[offset++];
-                                            indices.Add(a);
-                                            indices.Add(b);
-                                            indices.Add(c);
-                                            indices.Add(a);
-                                            indices.Add(c);
-                                            indices.Add(d);
-                                        }
-                                        else
-                                        {
-                                            int a = (int)farray[offset++];
-                                            int b = (int)farray[offset++];
-                                            int c = (int)farray[offset++];
-                                            indices.Add(a);
-                                            indices.Add(b);
-                                            indices.Add(c);
-                                        }
-                                        if (hasMaterial)
-                                            offset++;
-
-                                        for (int uvidx = 0; uvidx < uvLayers; uvidx++)
-                                        {
-                                            if (hasFaceUv)
-                                                offset++;
-                                            if (hasFaceVertexUv)
-                                                offset += isQuad ? 4 : 3;
-                                        }
-
-                                        if (hasFaceNormal)
-                                            offset++;
-
-                                        if (hasFaceVertexNormal)
-                                            offset += isQuad ? 4 : 3;
-                                        if (hasFaceColor)
-                                            offset++;
-
-                                        if (hasFaceVertexColor)
-                                            offset += isQuad ? 4 : 3;
-                                    }
-                                    partGeo.Add(partp.Name, new Mesh() { vertices = vertices, indices = indices });
+                                    partGeo.Add(partp.Name, mesh);
                                 }
                             }
                         }
@@ -126,6 +94,80 @@ namespace partmake
 
         }
 
+        Mesh ReadGeometry(JObject partV)
+        {
+            List<Vector3> vertices = new List<Vector3>();
+            List<int> indices = new List<int>();
+            JArray varray = partV["vertices"] as JArray;
+            for (int idx = 0; idx < varray.Count; idx += 3)
+            {
+                vertices.Add(new Vector3((float)varray[idx],
+                    (float)varray[idx + 1],
+                    (float)varray[idx + 2]));
+            }
+            JArray uvs = partV["uvs"] as JArray;
+            int uvLayers = uvs != null ? uvs.Count : 0;
+            JArray farray = partV["faces"] as JArray;
+            int offset = 0;
+            while (offset < farray.Count)
+            {
+                int type = (int)farray[offset++];
+                bool isQuad = is_bit_set(type, 0);
+                bool hasMaterial = is_bit_set(type, 1);
+                bool hasFaceUv = is_bit_set(type, 2);
+                bool hasFaceVertexUv = is_bit_set(type, 3);
+                bool hasFaceNormal = is_bit_set(type, 4);
+                bool hasFaceVertexNormal = is_bit_set(type, 5);
+                bool hasFaceColor = is_bit_set(type, 6);
+                bool hasFaceVertexColor = is_bit_set(type, 7);
+
+                if (isQuad)
+                {
+                    int a = (int)farray[offset++];
+                    int b = (int)farray[offset++];
+                    int c = (int)farray[offset++];
+                    int d = (int)farray[offset++];
+                    indices.Add(a);
+                    indices.Add(b);
+                    indices.Add(c);
+                    indices.Add(a);
+                    indices.Add(c);
+                    indices.Add(d);
+                }
+                else
+                {
+                    int a = (int)farray[offset++];
+                    int b = (int)farray[offset++];
+                    int c = (int)farray[offset++];
+                    indices.Add(a);
+                    indices.Add(b);
+                    indices.Add(c);
+                }
+                if (hasMaterial)
+                    offset++;
+
+                for (int uvidx = 0; uvidx < uvLayers; uvidx++)
+                {
+                    if (hasFaceUv)
+                        offset++;
+                    if (hasFaceVertexUv)
+                        offset += isQuad ? 4 : 3;
+                }
+
+                if (hasFaceNormal)
+                    offset++;
+
+                if (hasFaceVertexNormal)
+                    offset += isQuad ? 4 : 3;
+                if (hasFaceColor)
+                    offset++;
+
+                if (hasFaceVertexColor)
+                    offset += isQuad ? 4 : 3;
+            }
+
+            return new Mesh() { vertices = vertices, indices = indices };
+        }
         public void CompareAll()
         {
             foreach (var kv in this.partGeo)
@@ -154,7 +196,7 @@ namespace partmake
             {
                 string jsonstr = JsonConvert.SerializeObject(kv.Value);
                 string outfile = Path.GetFileNameWithoutExtension(kv.Key) + ".json";
-                File.WriteAllText(Path.Combine(LDrawFolders.MdxFolder, outfile), jsonstr);                
+                File.WriteAllText(Path.Combine(LDrawFolders.MdxFolder, outfile), jsonstr);
             }
         }
 

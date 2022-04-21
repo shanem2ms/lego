@@ -27,6 +27,7 @@ namespace partmake
         AABB? aabb;
 
         Topology.Mesh topoMesh;
+        MbxImport.Mesh mbxMesh;
         string topoId;
         public List<Topology.Face> TopoFaces => topoMesh?.FacesFromId(topoId);
         public Topology.BSPTree BSPTree => topoMesh?.bSPTree;
@@ -43,8 +44,9 @@ namespace partmake
 
         public MbxImport.Mesh LoadMbx()
         {
-            return
-                MbxImport.LoadMeshfile(Path.Combine(LDrawFolders.MdxFolder, Path.ChangeExtension(this.name, "json")));
+            if (mbxMesh == null)
+                mbxMesh = MbxImport.LoadMeshfile(Path.Combine(LDrawFolders.MdxFolder, Path.ChangeExtension(this.name, "json")));
+            return mbxMesh;
         }
         LDrawDatFile()
         { }
@@ -187,8 +189,40 @@ namespace partmake
 
         Matrix4x4 GetBottomAnchorMatrix()
         {
-            AABB aabb = GetBBox();
-            return Matrix4x4.CreateScale(new Vector3(1, -1, -1)) * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
+            LoadMbx();
+            if (mbxMesh != null)
+            {
+                List<Vtx> vertices = new List<Vtx>();
+                GetVertices(vertices, false);
+                var pts = vertices.Select(v => new Vector3(v.pos.X, v.pos.Y, v.pos.Z));
+                AABB aabb = AABB.CreateFromPoints(pts);
+
+                AABB aabbMbx = AABB.CreateFromPoints(mbxMesh.vertices.Select(v => new System.DoubleNumerics.Vector3(v.X, v.Y, v.Z) * 2.5));
+                Vector3 mbxSize = aabbMbx.Max - aabbMbx.Min;
+                Vector3 size = aabb.Max - aabb.Min;
+                double div0 = mbxSize.X / size.X;
+                if (div0 < 1) div0 = 1 / div0;
+                double div1 = mbxSize.X / size.Z;
+                if (div1 < 1) div1 = 1 / div1;
+                Matrix4x4 top = Matrix4x4.CreateScale(new Vector3(1, -1, -1));
+                if (div0 > div1 && div0 > 1.1)
+                {
+                    top = top * Matrix4x4.CreateRotationY(Math.PI / 2);
+                }
+                top = top * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
+                aabb = AABB.CreateFromPoints(pts.Select(pt => Vector3.Transform(pt, top)));
+
+                Vector3 mbxOff = (aabbMbx.Max + aabbMbx.Min) * 0.5f;
+                Vector3 off = (aabb.Max + aabb.Min) * 0.5f;
+                Vector3 d = mbxOff - off;
+                top = top * Matrix4x4.CreateTranslation(new Vector3(d.X, 0, d.Z));
+                return top;
+            }
+            else
+            {
+                AABB aabb = GetBBox();
+                return Matrix4x4.CreateScale(new Vector3(1, -1, -1)) * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
+            }
         }
         public Topology.Mesh GetTopoMesh()
         {
