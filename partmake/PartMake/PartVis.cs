@@ -847,7 +847,7 @@ namespace partmake
                 _pipeline = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
                     BlendStateDescription.SingleAlphaBlend,
                     DepthStencilStateDescription.DepthOnlyLessEqual,
-                    new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
+                    new RasterizerStateDescription(FaceCullMode.Back, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
                     PrimitiveTopology.TriangleList,
                     shaderSet,
                     new[] { projViewLayout, worldTextureLayout },

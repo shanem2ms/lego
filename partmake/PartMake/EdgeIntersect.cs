@@ -487,4 +487,17 @@ namespace partmake
             Marshal.FreeHGlobal(outPathPtr);
         }
     }
+
+    public class MbxOrient
+    {
+        [DllImport("EdgeIntersect.dll")]
+        static extern void FindOrientation(IntPtr vertices0, UInt32 numvertices0, IntPtr indices0, UInt32 numindices0,
+                IntPtr vertices1, UInt32 numvertices1, IntPtr indices1, UInt32 numindices1);
+
+        public void Orient(List<Vector3> v0, List<Vector3> v1, List<int> i1)
+        {
+            v0.Select(v => new System.Numerics.Vector3((float)v.X, (float)v.Y, (float)v.Z))
+        }
+
+    }
 }

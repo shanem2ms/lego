@@ -198,6 +198,11 @@ namespace partmake
                 AABB aabb = AABB.CreateFromPoints(pts);
 
                 AABB aabbMbx = AABB.CreateFromPoints(mbxMesh.vertices.Select(v => new System.DoubleNumerics.Vector3(v.X, v.Y, v.Z) * 2.5));
+
+                MbxOrient mbxOrient = new MbxOrient();
+                mbxOrient.Orient(pts.ToList(), mbxMesh.vertices.Select(v => new Vector3(v.X, v.Y, v.Z) * 2.5f).ToList(),
+                    mbxMesh.indices);
+
                 Vector3 mbxSize = aabbMbx.Max - aabbMbx.Min;
                 Vector3 size = aabb.Max - aabb.Min;
                 double div0 = mbxSize.X / size.X;
@@ -209,13 +214,13 @@ namespace partmake
                 {
                     top = top * Matrix4x4.CreateRotationY(Math.PI / 2);
                 }
-                top = top * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
                 aabb = AABB.CreateFromPoints(pts.Select(pt => Vector3.Transform(pt, top)));
 
                 Vector3 mbxOff = (aabbMbx.Max + aabbMbx.Min) * 0.5f;
                 Vector3 off = (aabb.Max + aabb.Min) * 0.5f;
                 Vector3 d = mbxOff - off;
-                top = top * Matrix4x4.CreateTranslation(new Vector3(d.X, 0, d.Z));
+                top = top * Matrix4x4.CreateTranslation(new Vector3(d.X, d.Y, d.Z));
+
                 return top;
             }
             else

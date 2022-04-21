@@ -19,6 +19,23 @@ namespace partmake
         {
             public List<Vector3> vertices { get; set; }
             public List<int> indices { get; set; }
+
+            public void Append(Mesh other)
+            {
+                int cnt = vertices.Count;
+                indices.AddRange(
+                    other.indices.Select(i => i + cnt));
+                vertices.AddRange(other.vertices);
+            }
+
+            public Mesh Transform(Matrix4x4 mat)
+            {
+                return new Mesh()
+                {
+                    vertices = vertices.Select(v => Vector3.Transform(v, mat)).ToList(),
+                    indices = indices
+                };
+            }
         }
         public Dictionary<string, Mesh> partGeo = new Dictionary<string, Mesh>();
 
@@ -26,12 +43,21 @@ namespace partmake
         {
             return (num & (1 << bit)) != 0;
         }
+
+        class DetailConfig
+        {
+            public Vector3 pos;
+            public Quaternion rot;
+            public int type;
+        }
         public MbxImport(string filename)
         {
             using (var file = File.OpenRead(filename))
             using (var zip = new ZipArchive(file, ZipArchiveMode.Read))
             {
                 List<Mesh> knobMeshes = new List<Mesh>();
+                Dictionary<string, List<DetailConfig>> knobConfigs 
+                    = new Dictionary<string, List<DetailConfig>>();
                 foreach (var entry in zip.Entries)
                 {
                     using (var stream = entry.Open())
@@ -60,15 +86,25 @@ namespace partmake
                                 foreach (JProperty partp in geom.Value.Children())
                                 {
                                     JObject partV = partp.Value as JObject;
+                                    string geoname = (string)partV["geometry"]["file"];
+                                    if (knobConfigs.ContainsKey(geoname))
+                                        continue;
                                     JArray knobsA = partV["geometry"]["extras"]["knobs"] as JArray;
                                     int kcnt = knobsA.Count;
+                                    List<DetailConfig> kconfigs = new List<DetailConfig>();
+                                    knobConfigs.Add(geoname, kconfigs);
                                     for (int i = 0; i < kcnt; i++)
                                     {
                                         JArray jpos = knobsA[i]["transform"]["position"] as JArray;
-                                        JArray jqaut = knobsA[i]["transform"]["quaternion"] as JArray;
+                                        JArray jquat = knobsA[i]["transform"]["quaternion"] as JArray;
                                         int ktype = (int)knobsA[i]["type"];
+                                        kconfigs.Add(new DetailConfig()
+                                        {
+                                            pos = new Vector3((float)jpos[0], (float)jpos[1], (float)jpos[2]),
+                                            rot = new Quaternion((float)jquat[0], (float)jquat[1], (float)jquat[2], (float)jquat[3]),
+                                            type = ktype
+                                        });
                                     }
-                                    //partGeo.Add(partp.Name, mesh);
                                 }
                             }
                         }
@@ -83,7 +119,17 @@ namespace partmake
                                 {
                                     JObject partV = partp.Value as JObject;
                                     Mesh mesh = ReadGeometry(partV);
-
+                                    if (knobConfigs.ContainsKey(partp.Name))
+                                    {
+                                        List<DetailConfig> cfgList = knobConfigs[partp.Name];
+                                        foreach (DetailConfig cfg in cfgList)
+                                        {
+                                            Mesh knobmesh = knobMeshes[cfg.type - 1].Transform(
+                                                Matrix4x4.CreateFromQuaternion(cfg.rot) *
+                                                Matrix4x4.CreateTranslation(cfg.pos));
+                                            mesh.Append(knobmesh);
+                                        }
+                                    }
                                     partGeo.Add(partp.Name, mesh);
                                 }
                             }
