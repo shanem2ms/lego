@@ -491,12 +491,51 @@ namespace partmake
     public class MbxOrient
     {
         [DllImport("EdgeIntersect.dll")]
-        static extern void FindOrientation(IntPtr vertices0, UInt32 numvertices0, IntPtr indices0, UInt32 numindices0,
-                IntPtr vertices1, UInt32 numvertices1, IntPtr indices1, UInt32 numindices1);
+        static extern void FindOrientation(IntPtr vertices0, int numvertices0, IntPtr indices0, int numindices0,
+                IntPtr vertices1, int numvertices1, IntPtr indices1, int numindices1);
 
         public void Orient(List<Vector3> v0, List<Vector3> v1, List<int> i1)
         {
-            v0.Select(v => new System.Numerics.Vector3((float)v.X, (float)v.Y, (float)v.Z))
+            var v0arr = v0.Select(v => new System.Numerics.Vector3((float)v.X, (float)v.Y, (float)v.Z)).ToArray();
+            int []i0arr = new int[v0arr.Length];
+            for (int i = 0; i < i0arr.Length; i++)
+            {
+                i0arr[i] = (int)i;
+            }
+            var v1arr = v1.Select(v => new System.Numerics.Vector3((float)v.X, (float)v.Y, (float)v.Z)).ToArray();
+            int []i1arr = i1.Select(ii => (int)ii).ToArray();
+
+            int v3size = Marshal.SizeOf<System.Numerics.Vector3>();
+
+            IntPtr v0ptr = Marshal.AllocHGlobal(v0arr.Length * v3size);
+            IntPtr curptr0 = v0ptr;
+            foreach (System.Numerics.Vector3 v in v0arr)
+            {
+                Marshal.StructureToPtr(v, curptr0, false);
+                curptr0 = IntPtr.Add(curptr0, v3size);
+            }
+
+            IntPtr i0ptr = Marshal.AllocHGlobal(i0arr.Length * sizeof(int));
+            Marshal.Copy(i0arr, 0, i0ptr, i0arr.Length);
+
+            IntPtr v1ptr = Marshal.AllocHGlobal(v1arr.Length * v3size);
+            IntPtr curptr1 = v1ptr;
+            foreach (System.Numerics.Vector3 v in v1arr)
+            {
+                Marshal.StructureToPtr(v, curptr1, false);
+                curptr1 = IntPtr.Add(curptr1, v3size);
+            }
+
+            IntPtr i1ptr = Marshal.AllocHGlobal(i1arr.Length * sizeof(int));
+            Marshal.Copy(i1arr, 0, i1ptr, i1arr.Length);
+
+            FindOrientation(v0ptr, v0arr.Length, i0ptr, i0arr.Length,
+                v1ptr, v1arr.Length, i1ptr, i1arr.Length);
+
+            Marshal.FreeHGlobal(v0ptr);
+            Marshal.FreeHGlobal(i0ptr);
+            Marshal.FreeHGlobal(v1ptr);
+            Marshal.FreeHGlobal(i1ptr);
         }
 
     }
