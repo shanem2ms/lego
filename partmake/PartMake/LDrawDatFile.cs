@@ -195,6 +195,11 @@ namespace partmake
                 List<Vtx> vertices = new List<Vtx>();
                 GetVertices(vertices, false);
                 var pts = vertices.Select(v => new Vector3(v.pos.X, v.pos.Y, v.pos.Z));
+                MbxOrient mbxOrient = new MbxOrient();
+                Matrix4x4 mat = mbxOrient.Orient(vertices.Select(v => new Vector3(v.pos.X, v.pos.Y, v.pos.Z)).ToList(), 
+                    mbxMesh.vertices.Select(v => new Vector3(v.X, v.Y, v.Z) * 2.5f).ToList(),
+                    mbxMesh.indices);
+                /*
                 AABB aabb = AABB.CreateFromPoints(pts);
 
                 AABB aabbMbx = AABB.CreateFromPoints(mbxMesh.vertices.Select(v => new System.DoubleNumerics.Vector3(v.X, v.Y, v.Z) * 2.5));
@@ -214,16 +219,11 @@ namespace partmake
                 aabb = AABB.CreateFromPoints(pts.Select(pt => Vector3.Transform(pt, top)));
 
                 
-                MbxOrient mbxOrient = new MbxOrient();
-                mbxOrient.Orient(pts.Select(pt => Vector3.Transform(pt, top)).ToList(), mbxMesh.vertices.Select(v => new Vector3(v.X, v.Y, v.Z) * 2.5f).ToList(),
-                    mbxMesh.indices);
-
                 Vector3 mbxOff = (aabbMbx.Max + aabbMbx.Min) * 0.5f;
                 Vector3 off = (aabb.Max + aabb.Min) * 0.5f;
                 Vector3 d = mbxOff - off;
-                top = top * Matrix4x4.CreateTranslation(new Vector3(d.X, d.Y, d.Z));
-
-                return top;
+                top = top * Matrix4x4.CreateTranslation(new Vector3(d.X, d.Y, d.Z));*/
+                return mat;
             }
             else
             {

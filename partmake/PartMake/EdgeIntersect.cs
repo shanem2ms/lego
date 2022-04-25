@@ -492,9 +492,10 @@ namespace partmake
     {
         [DllImport("EdgeIntersect.dll")]
         static extern void FindOrientation(IntPtr vertices0, int numvertices0, IntPtr indices0, int numindices0,
-                IntPtr vertices1, int numvertices1, IntPtr indices1, int numindices1);
+                IntPtr vertices1, int numvertices1, IntPtr indices1, int numindices1,
+                IntPtr outMatrix);
 
-        public void Orient(List<Vector3> v0, List<Vector3> v1, List<int> i1)
+        public Matrix4x4 Orient(List<Vector3> v0, List<Vector3> v1, List<int> i1)
         {
             var v0arr = v0.Select(v => new System.Numerics.Vector3((float)v.X, (float)v.Y, (float)v.Z)).ToArray();
             int []i0arr = new int[v0arr.Length];
@@ -529,13 +530,41 @@ namespace partmake
             IntPtr i1ptr = Marshal.AllocHGlobal(i1arr.Length * sizeof(int));
             Marshal.Copy(i1arr, 0, i1ptr, i1arr.Length);
 
+            IntPtr outMatPtr = Marshal.AllocHGlobal(sizeof(float) * 16);
             FindOrientation(v0ptr, v0arr.Length, i0ptr, i0arr.Length,
-                v1ptr, v1arr.Length, i1ptr, i1arr.Length);
+                v1ptr, v1arr.Length, i1ptr, i1arr.Length, outMatPtr);
+
+
+            System.Numerics.Matrix4x4 mat = 
+                Marshal.PtrToStructure<System.Numerics.Matrix4x4>(outMatPtr);
+            Matrix4x4 dmat = new Matrix4x4(
+                (double)mat.M11,
+                (double)mat.M12,
+                (double)mat.M13,
+                (double)mat.M14,
+
+                (double)mat.M21,
+                (double)mat.M22,
+                (double)mat.M23,
+                (double)mat.M24,
+
+                (double)mat.M31,
+                (double)mat.M32,
+                (double)mat.M33,
+                (double)mat.M34,
+
+                (double)mat.M41,
+                (double)mat.M42,
+                (double)mat.M43,
+                (double)mat.M44);
 
             Marshal.FreeHGlobal(v0ptr);
             Marshal.FreeHGlobal(i0ptr);
             Marshal.FreeHGlobal(v1ptr);
             Marshal.FreeHGlobal(i1ptr);
+            Marshal.FreeHGlobal(outMatPtr);
+
+            return dmat;
         }
 
     }
