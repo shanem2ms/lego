@@ -163,6 +163,43 @@ inline LdrVector transform_vec(const LdrMatrix& transform, const LdrVector& vec)
     out.z = vec.x * (mat)[2] + vec.y * (mat)[6] + vec.z * (mat)[10];
     return out;
 }
+inline LdrVector vec_mul(const LdrVector a, const float b)
+{
+    return { a.x * b, a.y * b, a.z * b };
+}
+inline float vec_dot(const LdrVector a, const LdrVector b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+inline float vec_sq_length(const LdrVector a)
+{
+    return vec_dot(a, a);
+}
+inline float vec_length(const LdrVector a)
+{
+    return sqrt(vec_dot(a, a));
+}
+
+inline LdrVector vec_normalize(const LdrVector a)
+{
+    float len = vec_length(a);
+    return vec_mul(a, (1.0f / len));
+}
+inline LdrVector vec_cross(const LdrVector a, const LdrVector b)
+{
+    return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
+}
+inline LdrVector vec_sub(const LdrVector a, const LdrVector b)
+{
+    return { a.x - b.x, a.y - b.y, a.z - b.z };
+}
+
+inline LdrVector getTriangleNormal(const LdrVector& v0,
+    const LdrVector& v1,
+    const LdrVector& v2)
+{
+    return vec_normalize(vec_cross(vec_sub(v1, v0), vec_sub(v2, v0)));
+}
 
 
 #define tricount (hires ? rpart.num_trianglesC : rpart.num_triangles)
@@ -181,7 +218,8 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
     LdrResult result;
     if (threadPool != nullptr)
     {
-        result = pLoader->createModel(name.c_str(), LDR_FALSE, &model);
+        result = pLoader->createModel(name.c_str(), LDR_FALSE, &model,
+            *matrix);
         if (result != LDR_SUCCESS)
             return;
         uint32_t numParts = pLoader->getNumRegisteredParts();
@@ -211,7 +249,9 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
     }
     else
     {
-        result = pLoader->createModel(name.c_str(), LDR_TRUE, &model);
+        LdrMatrix idmat = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+        result = pLoader->createModel(name.c_str(), LDR_TRUE, &model,
+            idmat);
         if (result < LDR_SUCCESS)
             return;
 
@@ -263,6 +303,23 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
             curVtx++;
         }
         memcpy(curIdx, tris, tricount * 3 * sizeof(uint32_t));
+        uint32_t* endIdx = curIdx + tricount * 3;
+
+        auto ldrvtxs = rpart.vertices;
+        for (uint32_t* pIdx = curIdx; pIdx < endIdx; pIdx += 3)
+        {
+            LdrVector n = getTriangleNormal(ldrvtxs[*pIdx].position,
+                ldrvtxs[*(pIdx + 1)].position,
+                ldrvtxs[*(pIdx + 2)].position);
+
+            if (vec_dot(ldrvtxs[*pIdx].normal, n) < 0)
+            {
+                uint32_t tmp = *pIdx;
+                *pIdx = *(pIdx + 2);
+                *(pIdx + 2) = tmp;
+            }
+        }
+
         for (uint32_t idx = 0; idx < tricount * 3; ++idx, curIdx++)
             *curIdx = *curIdx + vtxOffset;
         if (rpart.materials != nullptr)
@@ -272,7 +329,6 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
             LdrVertexIndex* pVtxIdx = tris;
             for (uint32_t idx = 0; idx < tricount * 3; ++idx, pVtxIdx++)
             {
-
                 if (*pVtxIdx != LDR_INVALID_ID)
                     pvtx[*pVtxIdx + vtxOffset].m_u =
                     (*curMat != -1) ? atlasMaterialMapping[*curMat] : -1;

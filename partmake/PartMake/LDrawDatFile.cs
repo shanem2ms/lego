@@ -198,41 +198,21 @@ namespace partmake
             {
                 List<Vtx> vertices = new List<Vtx>();
                 GetVertices(vertices, false);
-                var pts = vertices.Select(v => new Vector3(v.pos.X, v.pos.Y, v.pos.Z));
-                MbxOrient mbxOrient = new MbxOrient();
-                Matrix4x4 mat = mbxOrient.Orient(vertices.Select(v => new Vector3(v.pos.X, v.pos.Y, v.pos.Z)).ToList(), 
-                    mbxMesh.vertices.Select(v => new Vector3(v.X, v.Y, v.Z) * 2.5f).ToList(),
-                    mbxMesh.indices);
-                /*
-                AABB aabb = AABB.CreateFromPoints(pts);
-
-                AABB aabbMbx = AABB.CreateFromPoints(mbxMesh.vertices.Select(v => new System.DoubleNumerics.Vector3(v.X, v.Y, v.Z) * 2.5));
-
-
-                Vector3 mbxSize = aabbMbx.Max - aabbMbx.Min;
-                Vector3 size = aabb.Max - aabb.Min;
-                double div0 = mbxSize.X / size.X;
-                if (div0 < 1) div0 = 1 / div0;
-                double div1 = mbxSize.X / size.Z;
-                if (div1 < 1) div1 = 1 / div1;
-                Matrix4x4 top = Matrix4x4.CreateScale(new Vector3(1, -1, -1));
-                if (div0 > div1 && div0 > 1.1)
+                if (vertices.Count < 10000)
                 {
-                    top = top * Matrix4x4.CreateRotationY(Math.PI / 2);
+                    var pts = vertices.Select(v => new Vector3(v.pos.X, v.pos.Y, v.pos.Z));
+                    MbxOrient mbxOrient = new MbxOrient();
+                    Matrix4x4 mat = mbxOrient.Orient(vertices.Select(v => new Vector3(v.pos.X, v.pos.Y, v.pos.Z)).ToList(),
+                        mbxMesh.vertices.Select(v => new Vector3(v.X, v.Y, v.Z) * 2.5f).ToList(),
+                        mbxMesh.indices);
+                    partMatrix = mat;
                 }
-                aabb = AABB.CreateFromPoints(pts.Select(pt => Vector3.Transform(pt, top)));
-
-                
-                Vector3 mbxOff = (aabbMbx.Max + aabbMbx.Min) * 0.5f;
-                Vector3 off = (aabb.Max + aabb.Min) * 0.5f;
-                Vector3 d = mbxOff - off;
-                top = top * Matrix4x4.CreateTranslation(new Vector3(d.X, d.Y, d.Z));*/
-                partMatrix = mat;
             }
-            else
+            
+            if (partMatrix == null)
             {
                 AABB aabb = GetBBox();
-                partMatrix = Matrix4x4.CreateScale(new Vector3(1, -1, -1)) * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
+                partMatrix = Matrix4x4.CreateScale(new Vector3(1, -1, 1)) * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
             }
         }
         public Topology.Mesh GetTopoMesh()

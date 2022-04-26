@@ -96,6 +96,9 @@ namespace partmake
             vis.OnBSPNodeSelected += Vis_OnBSPNodeSelected;
             vis.OnLogUpdated += Vis_OnLogUpdated;
             LDrawFolders.ApplyFilterMdx();
+            LDrawFolders.FilterEnabled = true;
+            FilteredCheckbox.IsChecked = true;
+
         }
 
         private void Vis_OnLogUpdated(object sender, string e)

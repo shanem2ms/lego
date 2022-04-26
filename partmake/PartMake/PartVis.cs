@@ -94,8 +94,8 @@ namespace partmake
         public event EventHandler<string> OnLogUpdated;
         private bool onlyShowCoveredPortalFaces = false;
 
-        public bool DoMesh { get; set; } = true;
-        public bool DoDecomp { get; set; } = true;
+        public bool DoMesh { get; set; } = false;
+        public bool DoDecomp { get; set; } = false;
         public bool BSPPortals { get; set; } = false;
         public bool BSPFaces { get; set; } = false;
 
@@ -107,8 +107,8 @@ namespace partmake
         public bool ShowConnectors { get; set; } = true;
 
         public bool ShowExteriorPortals { get; set; } = false;
-        public bool ShowLdrLoader { get; set; } = false;
-        public bool ShowMbx { get; set; } = true;
+        public bool ShowLdrLoader { get; set; } = true;
+        public bool ShowMbx { get; set; } = false;
 
         Vector4[] edgePalette;
         uint numPrimitives;
@@ -1340,7 +1340,7 @@ namespace partmake
         }
         void DrawLdrLoaderMesh(ref Matrix4x4 mat)
         {
-            if (ShowLdrLoader)
+            if (ShowLdrLoader && _ldrLoaderVertexBuffer != null)
             {
                 _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
                 Vector4 col = new Vector4(0.2f, 0.6f, 0.6f, 1);

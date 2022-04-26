@@ -209,7 +209,7 @@ namespace sam
             btConvexHullShape* pCvxShape = new btConvexHullShape();            
             for (auto& pt : mesh)
             {
-                pCvxShape->addPoint(btVector3(pt[0], pt[1], pt[2]) * BrickManager::Scale, false);
+                pCvxShape->addPoint(btVector3(pt[0], -pt[1], pt[2]) * BrickManager::Scale, false);
             }
             pCvxShape->recalcLocalAabb();
             m_collisionShape->addChildShape(btTransform::getIdentity(), pCvxShape);

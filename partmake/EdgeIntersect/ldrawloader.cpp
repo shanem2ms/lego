@@ -2553,10 +2553,11 @@ namespace ldr {
         return resultFinal;
     }
 
-    LdrResult Loader::createModel(const char* filename, LdrBool32 autoResolve, LdrModelHDL* pModel)
+    LdrResult Loader::createModel(const char* filename, LdrBool32 autoResolve, LdrModelHDL* pModel,
+        const LdrMatrix& transform)
     {
         LdrModel* model = new LdrModel;
-        LdrResult result = loadPart(*model, filename, autoResolve);
+        LdrResult result = loadPart(*model, filename, autoResolve, transform);
         if (result == LDR_SUCCESS || result == LDR_WARNING_PART_NOT_FOUND) {
             *pModel = model;
         }
@@ -3026,7 +3027,8 @@ namespace ldr {
         return finalResult;
     }
 
-    LdrResult Loader::loadPart(LdrModel& model, const char* filename, LdrBool32 autoResolve)
+    LdrResult Loader::loadPart(LdrModel& model, const char* filename, LdrBool32 autoResolve,
+        const LdrMatrix &transform)
     {
 
         char str[256];
@@ -3091,7 +3093,6 @@ namespace ldr {
             }
         }
 
-        LdrMatrix transform = mat_identity();
         LdrResult finalResult = appendSubModel(builder, isMpd ? builder.subTexts[0] : txt, transform, LDR_MATERIAL_COMMON, autoResolve);
 
         initModel(model, builder);
@@ -4123,10 +4124,11 @@ LDR_API LdrResult ldrBuildRenderParts(LdrLoaderHDL loader, uint32_t numParts, co
     return lldr->buildRenderParts(numParts, parts, partStride);
 }
 
-LDR_API LdrResult ldrCreateModel(LdrLoaderHDL loader, const char* filename, LdrBool32 autoResolve, LdrModelHDL* pModel)
+LDR_API LdrResult ldrCreateModel(LdrLoaderHDL loader, const char* filename, LdrBool32 autoResolve, LdrModelHDL* pModel,
+    LdrMatrix *transform)
 {
     ldr::Loader* lldr = (ldr::Loader*)loader;
-    return lldr->createModel(filename, autoResolve, pModel);
+    return lldr->createModel(filename, autoResolve, pModel, *transform);
 }
 
 LDR_API void ldrResolveModel(LdrLoaderHDL loader, LdrModelHDL model)

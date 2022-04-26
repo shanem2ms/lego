@@ -84,7 +84,8 @@ namespace ldr {
 
         LdrResult buildRenderParts(uint32_t numParts, const LdrPartID* parts, size_t partStride);
 
-        LdrResult createModel(const char* filename, LdrBool32 autoResolve, LdrModelHDL* pModel);
+        LdrResult createModel(const char* filename, LdrBool32 autoResolve, LdrModelHDL* pModel,
+            const LdrMatrix& transform);
         void      destroyModel(LdrModelHDL model);
         // only required if autoResolve was false
         LdrResult resolveModel(LdrModelHDL model);
@@ -548,7 +549,8 @@ namespace ldr {
 
         LdrResult loadData(LdrPart& part, LdrRenderPart& renderpart, const char* filename, bool isPrimitive);
         LdrResult loadModel(LdrModel& model, const char* filename, LdrBool32 autoResolve);
-        LdrResult loadPart(LdrModel& model, const char* filename, LdrBool32 autoResolve);
+        LdrResult loadPart(LdrModel& model, const char* filename, LdrBool32 autoResolve,
+            const LdrMatrix& transform);
         LdrResult loadPrimitive(const char* filename, int level, const LdrMatrix& matrix, bool isInverted, bool excludePrimitive,
             const std::set<std::string>& primitiveFiles, bool debugPrint, std::vector<LdrPrimitive>& connections, LdrBbox& wsBbox);
         LdrResult makeRenderModel(LdrRenderModel& rmodel, LdrModelHDL model, LdrBool32 autoResolve);
