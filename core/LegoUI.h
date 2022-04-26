@@ -74,6 +74,31 @@ namespace sam
             bool m_isActive;
         };
 
+        class ImportWindow
+        {
+        public:
+            std::shared_ptr<UIWindow> m_root;
+
+
+            ImportWindow() :
+                m_isActive(false) {}
+
+            std::shared_ptr<UIControl> Build(LegoUI* parent, DrawContext& ctx, int w, int h);
+
+            void Open(const std::function<void()>& deactivateFn);
+            void Close();
+
+            void Deactivate() {
+                m_isActive = false;
+                if (m_deactivateFn != nullptr)
+                {
+                    m_deactivateFn();
+                }
+            }
+            std::function<void()> m_deactivateFn;
+            bool m_isActive;
+        };
+
         MainMenu m_mainMenu;
         LegoUI() {}
         std::shared_ptr<UIControl> Build(DrawContext& ctx, int w, int h) override;

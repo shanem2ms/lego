@@ -180,7 +180,7 @@ namespace sam
         }
         case 'I':
             {
-                std::vector<PartInst> piImport;
+            std::vector<PartInst> piImport;
                 MbxImport mbxImport;
                 mbxImport.ImportFile(Application::Inst().Documents() + "/Import/Home Alone.zmbx", 
                     m_player->Pos(), piImport);

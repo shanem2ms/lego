@@ -26,6 +26,9 @@ namespace partmake
         string name;
         AABB? aabb;
 
+        Matrix4x4? partMatrix;
+        Matrix4x4 PartMatrix { get { if (!partMatrix.HasValue) RefreshPartMatrix(); return partMatrix.Value; } }
+                    
         Topology.Mesh topoMesh;
         MbxImport.Mesh mbxMesh;
         string topoId;
@@ -187,7 +190,8 @@ namespace partmake
             topoMesh = null;
         }
 
-        Matrix4x4 GetBottomAnchorMatrix()
+        
+        void RefreshPartMatrix()
         {
             LoadMbx();
             if (mbxMesh != null)
@@ -223,12 +227,12 @@ namespace partmake
                 Vector3 off = (aabb.Max + aabb.Min) * 0.5f;
                 Vector3 d = mbxOff - off;
                 top = top * Matrix4x4.CreateTranslation(new Vector3(d.X, d.Y, d.Z));*/
-                return mat;
+                partMatrix = mat;
             }
             else
             {
                 AABB aabb = GetBBox();
-                return Matrix4x4.CreateScale(new Vector3(1, -1, -1)) * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
+                partMatrix = Matrix4x4.CreateScale(new Vector3(1, -1, -1)) * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
             }
         }
         public Topology.Mesh GetTopoMesh()
@@ -237,7 +241,7 @@ namespace partmake
             {
                 topoMesh = new Topology.Mesh();
                 GetTopoRecursive(false,
-                    GetBottomAnchorMatrix(),
+                    PartMatrix,
                     topoMesh, "0");
                 topoMesh.Fix();
             }
@@ -402,7 +406,7 @@ namespace partmake
         {
             List<Connector> connectors = new List<Connector>();
             List<Connector> rStudCandidates = new List<Connector>();
-            GetConnectorsRecursive(connectors, rStudCandidates, false, GetBottomAnchorMatrix());
+            GetConnectorsRecursive(connectors, rStudCandidates, false, PartMatrix);
             var rStuds =
                 Topology.ConnectorUtils.GetRStuds(GetTopoMesh(), rStudCandidates.Select(s => Vector3.Transform(Vector3.Zero, s.mat)).ToArray(), bisectors);
             foreach (var rstud in rStuds)
@@ -435,7 +439,7 @@ namespace partmake
         public void GetLDrLoaderMesh(out LdrLoader.PosTexcoordNrmVertex[] ldrvertices,
             out int[] ldrindices)
         {
-            LDrawFolders.GetLDrLoader(this.name, GetBottomAnchorMatrix().ToM44(), out ldrvertices, out ldrindices);
+            LDrawFolders.GetLDrLoader(this.name, PartMatrix.ToM44(), out ldrvertices, out ldrindices);
         }
 
         public void GetPrimitives(List<Primitive> primitives)
@@ -643,7 +647,7 @@ namespace partmake
         }
         public void WriteMeshFile(string outFolder)
         {
-            LDrawFolders.LDrWrite(this.name, GetBottomAnchorMatrix().ToM44(),
+            LDrawFolders.LDrWrite(this.name, PartMatrix.ToM44(),
                 Path.Combine(outFolder, this.name) );
         }
         public void WriteCollisionFile(string folder)
@@ -653,7 +657,7 @@ namespace partmake
                 DisableConnectors();
                 Debug.WriteLine(name);
                 Topology.Mesh tm = new Topology.Mesh();
-                GetTopoRecursive(false, Matrix4x4.Identity, tm, "0");
+                GetTopoRecursive(false, PartMatrix, tm, "0");
                 string outfile = Path.GetFileNameWithoutExtension(name) + ".col";
                 tm.WriteCollision(Path.Combine(folder, outfile));
             }

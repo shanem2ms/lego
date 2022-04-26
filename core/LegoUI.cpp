@@ -203,7 +203,12 @@ namespace sam
             if (!isopen) Deactivate(); });
         menu->SetLayout(UILayout::Horizontal);
 
-        menu->AddControl(std::make_shared<UIStateBtn>(20, -105, 85, 85, "Quit",
+        menu->AddControl(std::make_shared<UIStateBtn>(20, 100, 165, 85, "Import",
+            [](bool isBtnDown)
+            {
+            }));
+
+        menu->AddControl(std::make_shared<UIStateBtn>(20, -105, 165, 85, "Quit",
             [](bool isBtnDown)
             {
             }));
@@ -220,6 +225,42 @@ namespace sam
     }
 
     void LegoUI::MainMenu::Close()
+    {
+        m_root->Close();
+        m_isActive = false;
+    }
+
+
+    std::shared_ptr<UIControl> LegoUI::ImportWindow::Build(LegoUI* parent, DrawContext& ctx, int w, int h)
+    {
+        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "ImportWindow", false);
+        menu->OnOpenChanged([this, parent](bool isopen) {
+            if (!isopen) Deactivate(); });
+        menu->SetLayout(UILayout::Horizontal);
+
+
+        menu->AddControl(std::make_shared<UIStateBtn>(20, -105, 165, 85, "Import",
+            [](bool isBtnDown)
+            {
+            }));
+
+        menu->AddControl(std::make_shared<UIStateBtn>(220, -105, 165, 85, "Cancel",
+            [](bool isBtnDown)
+            {
+            }));
+        m_root = menu;
+        return menu;
+    }
+
+    void LegoUI::ImportWindow::Open(const std::function<void()>& deactivateFn)
+    {
+        if (m_root)
+            m_root->Show();
+        m_isActive = true;
+        m_deactivateFn = deactivateFn;
+    }
+
+    void LegoUI::ImportWindow::Close()
     {
         m_root->Close();
         m_isActive = false;

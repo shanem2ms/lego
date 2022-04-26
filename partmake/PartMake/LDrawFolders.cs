@@ -415,12 +415,14 @@ namespace partmake
                 ThreadPool.QueueUserWorkItem((object o) =>
                 {
                     int idx = (int)o;
+                    if (!ldrawParts[idx].HasMdx)
+                        return;
                     LDrawDatFile df = GetPart(ldrawParts[idx]);
                     if (df.GetFaceCount() > 1000 && df.Name != "91405")
                         return;
                     df.WriteConnectorFile(path);
-                    //df.WriteCollisionFile(path);
-                    //df.WriteMeshFile(path);
+                    df.WriteCollisionFile(path);
+                    df.WriteMeshFile(path);
                 }, i);
             }
 
