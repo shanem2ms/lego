@@ -7,6 +7,7 @@
 #include "Hud.h"
 #include "Mesh.h"
 #include "Physics.h"
+#include <bimg/decode.h>
 
 namespace sam
 {
@@ -388,4 +389,130 @@ namespace sam
 
 }
 
+void* load(bx::FileReaderI* _reader, bx::AllocatorI* _allocator, const char* _filePath, uint32_t* _size)
+{
+    if (bx::open(_reader, _filePath))
+    {
+        uint32_t size = (uint32_t)bx::getSize(_reader);
+        void* data = BX_ALLOC(_allocator, size);
+        bx::Error err;
+        _reader->read(data, size, &err);
+        bx::close(_reader);
+        if (NULL != _size)
+        {
+            *_size = size;
+        }
+        return data;
+    }
+    else
+    {
+    }
+
+    if (NULL != _size)
+    {
+        *_size = 0;
+    }
+
+    return NULL;
+}
+
+static bx::DefaultAllocator sAllocator;
+
+static void imageReleaseCb(void* _ptr, void* _userData)
+{
+    BX_UNUSED(_ptr);
+    bimg::ImageContainer* imageContainer = (bimg::ImageContainer*)_userData;
+    bimg::imageFree(imageContainer);
+}
+
+void unload(void* _ptr)
+{
+    BX_FREE(&sAllocator, _ptr);
+}
+
+bgfx::TextureHandle loadTexture(bx::FileReaderI* _reader, const char* _filePath, uint64_t _flags, uint8_t _skip, bgfx::TextureInfo* _info, bimg::Orientation::Enum* _orientation)
+{
+    BX_UNUSED(_skip);
+    bgfx::TextureHandle handle = BGFX_INVALID_HANDLE;
+
+    uint32_t size;
+    void* data = load(_reader, &sAllocator, _filePath, &size);
+    if (NULL != data)
+    {
+        bimg::ImageContainer* imageContainer = bimg::imageParse(&sAllocator, data, size);
+
+        if (NULL != imageContainer)
+        {
+            if (NULL != _orientation)
+            {
+                *_orientation = imageContainer->m_orientation;
+            }
+
+            const bgfx::Memory* mem = bgfx::makeRef(
+                imageContainer->m_data
+                , imageContainer->m_size
+                , imageReleaseCb
+                , imageContainer
+            );
+            unload(data);
+
+            if (imageContainer->m_cubeMap)
+            {
+                handle = bgfx::createTextureCube(
+                    uint16_t(imageContainer->m_width)
+                    , 1 < imageContainer->m_numMips
+                    , imageContainer->m_numLayers
+                    , bgfx::TextureFormat::Enum(imageContainer->m_format)
+                    , _flags
+                    , mem
+                );
+            }
+            else if (1 < imageContainer->m_depth)
+            {
+                handle = bgfx::createTexture3D(
+                    uint16_t(imageContainer->m_width)
+                    , uint16_t(imageContainer->m_height)
+                    , uint16_t(imageContainer->m_depth)
+                    , 1 < imageContainer->m_numMips
+                    , bgfx::TextureFormat::Enum(imageContainer->m_format)
+                    , _flags
+                    , mem
+                );
+            }
+            else if (bgfx::isTextureValid(0, false, imageContainer->m_numLayers, bgfx::TextureFormat::Enum(imageContainer->m_format), _flags))
+            {
+                handle = bgfx::createTexture2D(
+                    uint16_t(imageContainer->m_width)
+                    , uint16_t(imageContainer->m_height)
+                    , 1 < imageContainer->m_numMips
+                    , imageContainer->m_numLayers
+                    , bgfx::TextureFormat::Enum(imageContainer->m_format)
+                    , _flags
+                    , mem
+                );
+            }
+
+            if (bgfx::isValid(handle))
+            {
+                bgfx::setName(handle, _filePath);
+            }
+
+            if (NULL != _info)
+            {
+                bgfx::calcTextureSize(
+                    *_info
+                    , uint16_t(imageContainer->m_width)
+                    , uint16_t(imageContainer->m_height)
+                    , uint16_t(imageContainer->m_depth)
+                    , imageContainer->m_cubeMap
+                    , 1 < imageContainer->m_numMips
+                    , imageContainer->m_numLayers
+                    , bgfx::TextureFormat::Enum(imageContainer->m_format)
+                );
+            }
+        }
+    }
+
+    return handle;
+}
 
