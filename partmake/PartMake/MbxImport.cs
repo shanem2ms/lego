@@ -86,7 +86,9 @@ namespace partmake
                                 foreach (JProperty partp in geom.Value.Children())
                                 {
                                     JObject partV = partp.Value as JObject;
+                                    int version = (int)partV["version"];
                                     string geoname = (string)partV["geometry"]["file"];
+
                                     if (knobConfigs.ContainsKey(geoname))
                                         continue;
                                     JArray knobsA = partV["geometry"]["extras"]["knobs"] as JArray;

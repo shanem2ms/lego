@@ -49,8 +49,9 @@ namespace partmake
                 return string.Format("{0} {1} {2}", type, dimstr, desc);
             }
 
-            string MdxPath => Path.Combine(LDrawFolders.MdxFolder, Path.ChangeExtension(this.name, "json"));
-            public bool HasMdx => File.Exists(MdxPath);
+            string MbxPath => Path.Combine(LDrawFolders.MdxFolder, Path.ChangeExtension(this.name, "json"));
+            string MbxV2Path => Path.Combine(LDrawFolders.MdxFolder, Path.GetFileNameWithoutExtension(this.name) + "v2.json");
+            public bool HasMbx => File.Exists(MbxPath) || File.Exists(MbxV2Path);
 
         }
         static string rootFolder;
@@ -91,7 +92,7 @@ namespace partmake
         {
             foreach (var part in AllParts)
             {
-                part.includedInFilter = part.HasMdx;
+                part.includedInFilter = part.HasMbx;
             }
         }
 
@@ -415,7 +416,7 @@ namespace partmake
                 ThreadPool.QueueUserWorkItem((object o) =>
                 {
                     int idx = (int)o;
-                    if (!ldrawParts[idx].HasMdx)
+                    if (!ldrawParts[idx].HasMbx)
                         return;
                     LDrawDatFile df = GetPart(ldrawParts[idx]);
                     if (df.GetFaceCount() > 1000 && df.Name != "91405")

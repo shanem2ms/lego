@@ -28,7 +28,8 @@ namespace sam
 
         m_rightHand = std::make_shared<SceneGroup>();
         m_rightHand->SetOffset(Vec3f(-1.3f, -1.65f, 1.005f));
-        m_rightHand->SetRotate(make<Quatf>(AxisAnglef(gmtl::Math::PI, 1.0f, 0.0f, 0.0f)) *
+        m_rightHand->SetRotate(
+            //make<Quatf>(AxisAnglef(gmtl::Math::PI, 1.0f, 0.0f, 0.0f)) *
             make<Quatf>(AxisAnglef(gmtl::Math::PI, 0.0f, 0.0f, 1.0f)));
             //make<Quatf>(AxisAnglef(gmtl::Math::PI / 8.0f, 1.0f, 0.0f, 0.0f)));
         PartInst pi;
@@ -212,6 +213,7 @@ namespace sam
         m_currentSlotIdx -= (int)delta;
         m_currentSlotIdx = std::max(0, std::min(7, m_currentSlotIdx));
         PartInst pi;
+        pi.canBeDestroyed = true;
         pi.id = m_slots[m_currentSlotIdx].id;
         pi.atlasidx = m_slots[m_currentSlotIdx].colorCode;
         SetRightHandPart(pi);

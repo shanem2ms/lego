@@ -769,12 +769,10 @@ namespace sam
     BrickManager& BrickManager::Inst() { return *spMgr; }
     Brick* BrickManager::GetBrick(const PartId& name, bool hires)
     {
-        static std::mutex cachemtx;
         Brick& b = m_bricks[name];
         if (!b.m_vbhLR.isValid())
         {
             b.LoadLores(m_ldrLoaderLR.get(), name.GetFilename(), m_cachePath);
-            m_brickRenderQueue.push_back(&b);
         }
         if (hires && (!b.m_vbhHR.isValid()))
         {
@@ -787,6 +785,14 @@ namespace sam
         return &b;
     }
 
+    bgfx::TextureHandle BrickManager::GetBrickThumbnail(const PartId& name)
+    {
+        Brick* b = GetBrick(name);
+        if (!b->m_icon.isValid())
+            m_brickRenderQueue.push_back(b);
+
+        return b->m_icon;
+    }
     void BrickManager::MruUpdate(Brick* pBrick)
     {
         pBrick->m_mruCtr = m_mruCtr++;

@@ -28,7 +28,7 @@ namespace partmake
 
         Matrix4x4? partMatrix;
         Matrix4x4 PartMatrix { get { if (!partMatrix.HasValue) RefreshPartMatrix(); return partMatrix.Value; } }
-                    
+
         Topology.Mesh topoMesh;
         MbxImport.Mesh mbxMesh;
         string topoId;
@@ -45,10 +45,18 @@ namespace partmake
             Read(path);
         }
 
+        string MbxPath => Path.Combine(LDrawFolders.MdxFolder, Path.ChangeExtension(this.name, "json"));
+        string MbxV2Path => Path.Combine(LDrawFolders.MdxFolder, Path.GetFileNameWithoutExtension(this.name) + "v2.json");
+
         public MbxImport.Mesh LoadMbx()
         {
             if (mbxMesh == null)
-                mbxMesh = MbxImport.LoadMeshfile(Path.Combine(LDrawFolders.MdxFolder, Path.ChangeExtension(this.name, "json")));
+            {
+                if (File.Exists(MbxPath))
+                    mbxMesh = MbxImport.LoadMeshfile(MbxPath);
+                else if (File.Exists(MbxV2Path))
+                    mbxMesh = MbxImport.LoadMeshfile(MbxV2Path);
+            }
             return mbxMesh;
         }
         LDrawDatFile()
@@ -190,7 +198,7 @@ namespace partmake
             topoMesh = null;
         }
 
-        
+
         void RefreshPartMatrix()
         {
             LoadMbx();
@@ -208,7 +216,7 @@ namespace partmake
                     partMatrix = mat;
                 }
             }
-            
+
             if (partMatrix == null)
             {
                 AABB aabb = GetBBox();
@@ -400,8 +408,12 @@ namespace partmake
                     u.X, u.Y, u.Z, 0,
                     0, 0, 0, 1);
 
-                connectors.Add(new Connector() { mat = Matrix4x4.CreateScale(4, 4, 4) * m *
-                    Matrix4x4.CreateTranslation(rstud.Item1), type = ConnectorType.RStud });
+                connectors.Add(new Connector()
+                {
+                    mat = Matrix4x4.CreateScale(4, 4, 4) * m *
+                    Matrix4x4.CreateTranslation(rstud.Item1),
+                    type = ConnectorType.RStud
+                });
             }
             return connectors.Distinct().ToList();
         }
@@ -628,7 +640,7 @@ namespace partmake
         public void WriteMeshFile(string outFolder)
         {
             LDrawFolders.LDrWrite(this.name, PartMatrix.ToM44(),
-                Path.Combine(outFolder, this.name) );
+                Path.Combine(outFolder, this.name));
         }
         public void WriteCollisionFile(string folder)
         {

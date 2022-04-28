@@ -91,8 +91,7 @@ namespace sam
                 int currentSlockIdx = player->GetCurrentSlotIdx();
                 for (int r = 0; r < count; r++)
                 {
-                    Brick* pBrick = BrickManager::Inst().GetBrick(pSlots[r].id);
-                    items[r].image = pBrick->m_icon;
+                    items[r].image = BrickManager::Inst().GetBrickThumbnail(pSlots[r].id);
                     items[r].imgTint =
                         (uint32_t&)BrickManager::Inst().GetColorFromCode(pSlots[r].colorCode).fill;
                     items[r].colorRect = ((start + r) == currentSlockIdx ? 0xFF808000 : 0xFF000000);
@@ -131,9 +130,8 @@ namespace sam
                 for (int r = 0; r < count; r++)
                 {
                     const PartId& name = partsForType[r + start];
-                    Brick* pBrick = BrickManager::Inst().GetBrick(name);
                     items[r].text = std::to_string(r + start) + ": " + name.Name();
-                    items[r].image = pBrick->m_icon;
+                    items[r].image = BrickManager::Inst().GetBrickThumbnail(name);
                 }
             });
 

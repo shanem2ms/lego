@@ -103,7 +103,7 @@ float GetOverlap(Vec3f* vertices0, int32_t numvertices0, int32_t* indices0, int3
         GetUnion(vertices1, indices1, numindices1, unionPolys1, d);
         double a1 = AreaPolys(unionPolys1);
 
-        if ((std::min(a0, a1) / std::max(a0, a1)) < 0.9f)
+        if ((std::min(a0, a1) / std::max(a0, a1)) < 0.5f)
             return -1;
 
         PolygonClipper intersect;
@@ -132,7 +132,7 @@ extern "C" __declspec(dllexport) void FindOrientation(Vec3f *vertices0, int32_t 
         for (int rotIdx = 0; rotIdx < 4; ++rotIdx)
         {
             Matrix44f mat =
-                makeRot<Matrix44f>(AxisAnglef(Math::PI_OVER_2 * rotIdx, Vec3f(0, 1, 0))) *
+                makeRot<Matrix44f>(AxisAnglef(Math::PI_OVER_4 * rotIdx, Vec3f(0, 1, 0))) *
                 makeScale<Matrix44f>(Vec3f(
                     (sx & 1) == 0 ? 1 : -1,
                     (sx & 2) == 0 ? 1 : -1,
@@ -146,5 +146,33 @@ extern "C" __declspec(dllexport) void FindOrientation(Vec3f *vertices0, int32_t 
             }
         }
     }
+
+    if (bestScore > 0.8f)
+    {
+        memcpy(outMatrix, bestMat.mData, sizeof(float) * 16);
+        return;
+    }
+
+    bestScore = 0;
+    for (int sx = 0; sx < 8; ++sx)
+    {
+        for (int rotIdx = 0; rotIdx < 8; ++rotIdx)
+        {
+            Matrix44f mat =
+                makeRot<Matrix44f>(AxisAnglef(Math::PI_OVER_4 * rotIdx, Vec3f(1, 0, 0))) *
+                makeScale<Matrix44f>(Vec3f(
+                    (sx & 1) == 0 ? 1 : -1,
+                    (sx & 2) == 0 ? 1 : -1,
+                    (sx & 4) == 0 ? 1 : -1));
+            float score = GetOverlap(vertices0, numvertices0, indices0, numindices0,
+                vertices1, numvertices1, indices1, numindices1, mat);
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestMat = mat;
+            }
+        }
+    }
+
     memcpy(outMatrix, bestMat.mData, sizeof(float) * 16);
 }

@@ -100,15 +100,15 @@ namespace partmake
         public bool BSPFaces { get; set; } = false;
 
         public bool DoRaycast { get; set; } = false;
-        public bool ShowEdges { get; set; } = false;
+        public bool ShowEdges { get; set; } = true;
 
         public bool ShowBisector { get; set; }
         public bool NonManifold { get; set; } = false;
         public bool ShowConnectors { get; set; } = true;
 
         public bool ShowExteriorPortals { get; set; } = false;
-        public bool ShowLdrLoader { get; set; } = true;
-        public bool ShowMbx { get; set; } = false;
+        public bool ShowLdrLoader { get; set; } = false;
+        public bool ShowMbx { get; set; } = true;
 
         Vector4[] edgePalette;
         uint numPrimitives;

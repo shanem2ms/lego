@@ -199,6 +199,7 @@ namespace sam
 
         static BrickManager& Inst();
         Brick *GetBrick(const PartId& name, bool hires = false);
+        bgfx::TextureHandle GetBrickThumbnail(const PartId& name);
         BrickManager(const std::string& ldrpath);
         static Vec4f Color(uint32_t hex);
         const PartId& GetPartId(size_t idx);
