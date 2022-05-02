@@ -9,6 +9,8 @@
 #include "Physics.h"
 #include <bimg/decode.h>
 
+bgfx::TextureHandle loadTexture(bx::FileReaderI* _reader, const char* _filePath, uint64_t _flags, uint8_t _skip, bgfx::TextureInfo* _info, bimg::Orientation::Enum* _orientation);
+
 namespace sam
 {
     static Engine* sEngine = nullptr;
@@ -64,6 +66,10 @@ namespace sam
                     m_pickDepthTex };
 
                 m_pickFB = bgfx::createFrameBuffer(BX_COUNTOF(fbtextures), fbtextures, true);                
+                bx::FileReader texReader;
+                bgfx::TextureInfo ti;
+                bimg::Orientation::Enum o;
+                loadTexture(&texReader, "C:\\homep4\\lego\\hdri\\provence_studio_2k.exr", 0, 0, &ti, &o);
             }
             m_needRebuild = false;
 
