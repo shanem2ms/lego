@@ -78,7 +78,7 @@ namespace sam
             btRigidBody::btRigidBodyConstructionInfo constructInfo(mass, m_initialState.get(),
                 m_pBrick->m_collisionShape.get());
             m_rigidBody = std::make_shared<btRigidBody>(constructInfo);
-            dc.m_physics->TestCollision(m_rigidBody.get());
+            //dc.m_physics->TestCollision(m_rigidBody.get());
             dc.m_physics->AddRigidBody(m_rigidBody.get());
         }
     }
@@ -145,7 +145,7 @@ namespace sam
             bgfx::setState(state);
             bgfx::setVertexBuffer(0, m_pBrick->m_vbhHR);
             bgfx::setIndexBuffer(m_pBrick->m_ibhHR);
-            bgfx::submit(DrawViewId::DeferredObjects, sShader);
+            bgfx::submit(DrawViewId::MainObjects, sShader);
         }
         else
         {

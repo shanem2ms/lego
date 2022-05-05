@@ -15,7 +15,7 @@ namespace sam
 
     enum DrawViewId
     {
-        DeferredObjects = 0,
+        MainObjects = 0,
         DeferredLighting = 1,
         ForwardRendered = 2,
         HUD = 3,

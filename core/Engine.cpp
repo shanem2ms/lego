@@ -115,15 +115,15 @@ namespace sam
         gmtl::Matrix44f view = DrawCam().ViewMatrix();
         gmtl::Matrix44f proj0 = DrawCam().GetPerspectiveMatrix(near, far);
 
-        bgfx::setViewName(DrawViewId::DeferredObjects, "DeferredObjects");
-        bgfx::setViewFrameBuffer(DrawViewId::DeferredObjects, m_depthFB); 
-        bgfx::setViewClear(DrawViewId::DeferredObjects,
+        bgfx::setViewName(DrawViewId::MainObjects, "MainObjects");
+        bgfx::setViewFrameBuffer(DrawViewId::MainObjects, m_depthFB); 
+        bgfx::setViewClear(DrawViewId::MainObjects,
             BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
             0x000000ff,
             1.0f,
             0
         );
-        bgfx::setViewTransform(DrawViewId::DeferredObjects, view.getData(), proj0.getData());
+        bgfx::setViewTransform(DrawViewId::MainObjects, view.getData(), proj0.getData());
 
         
         bgfx::setViewName(DrawViewId::DeferredLighting, "DeferredLighting");

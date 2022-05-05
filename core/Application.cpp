@@ -34,9 +34,10 @@ namespace sam
     static std::chrono::steady_clock::time_point sFrameStart;
 
 #if WATCHDOGTHREAD
+    using namespace std::chrono_literals;
+    static std::chrono::milliseconds timeoutVal = 200ms;
     static bool sWatchDogCheckEnabled = false;
     void WatchDogFunc();
-    using namespace std::chrono_literals;
 #endif
 
     Application::Application(const std::string& startupPath) :
@@ -63,7 +64,7 @@ namespace sam
             std::this_thread::sleep_for(1ms);
             auto elapsed = std::chrono::high_resolution_clock::now()
                 - sFrameStart;
-            if (sWatchDogCheckEnabled && elapsed > 20ms)
+            if (sWatchDogCheckEnabled && elapsed > timeoutVal)
             {
                 __debugbreak();
             }
@@ -256,7 +257,7 @@ namespace sam
         m_legoUI->Update(*m_engine, m_width, m_height, ctx);
         m_world->Update(*m_engine, ctx);
 
-        bgfx::setViewRect(DrawViewId::DeferredObjects, 0, 0, uint16_t(m_width), uint16_t(m_height));
+        bgfx::setViewRect(DrawViewId::MainObjects, 0, 0, uint16_t(m_width), uint16_t(m_height));
         bgfx::setViewRect(DrawViewId::DeferredLighting, 0, 0, uint16_t(m_width), uint16_t(m_height));
         bgfx::setViewRect(DrawViewId::ForwardRendered, 0, 0, uint16_t(m_width), uint16_t(m_height));
 
@@ -274,7 +275,7 @@ namespace sam
         g_Fps = (float)1000000.0f / microseconds;
 
 #if WATCHDOGTHREAD
-        if (elapsed < 20ms)
+        if (elapsed < timeoutVal)
         {
             if (counter++ == 100)
                 sWatchDogCheckEnabled = true;

@@ -53,6 +53,7 @@ void main()
     wpos = wpos / wpos.w;
     vec3 color = unpackColor(gbuf.z);
     vec3 normal = unpackColor(gbuf.r);
+    vec3 shane = normal;
     normal = (normal * 2.0) - vec3(1,1,1);
     vec3 lightdir = vec3(-.1,1,-.5);
     normalize(lightdir);
@@ -64,7 +65,8 @@ void main()
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 15);
     vec3 specular = specularStrength * spec * 1;  
 
-    gl_FragColor.rgb = color * ao * (diff * 0.5 + 0.5 + specular);
+    gl_FragColor.rgb = //color * ao * (diff * 0.5 + 0.5 + specular);
+    shane;
 	gl_FragColor.a = 1;
 } 
 

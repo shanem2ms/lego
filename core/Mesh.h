@@ -258,3 +258,51 @@ struct VoxCube
     static void ReleaseFn(void* ptr, void* pThis);
 
 };
+
+
+struct Uniforms
+{
+    enum { NumVec4 = 12 };
+
+    void init()
+    {
+        u_params = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, NumVec4);
+    }
+
+    void submit()
+    {
+        bgfx::setUniform(u_params, m_params, NumVec4);
+    }
+
+    void destroy()
+    {
+        bgfx::destroy(u_params);
+    }
+
+    union
+    {
+        struct
+        {
+            union
+            {
+                float m_mtx[16];
+                /* 0*/ struct { float m_mtx0[4]; };
+                /* 1*/ struct { float m_mtx1[4]; };
+                /* 2*/ struct { float m_mtx2[4]; };
+                /* 3*/ struct { float m_mtx3[4]; };
+            };
+            /* 4*/ struct { float m_glossiness, m_reflectivity, m_exposure, m_bgType; };
+            /* 5*/ struct { float m_metalOrSpec, m_unused5[3]; };
+            /* 6*/ struct { float m_doDiffuse, m_doSpecular, m_doDiffuseIbl, m_doSpecularIbl; };
+            /* 7*/ struct { float m_cameraPos[3], m_unused7[1]; };
+            /* 8*/ struct { float m_rgbDiff[4]; };
+            /* 9*/ struct { float m_rgbSpec[4]; };
+            /*10*/ struct { float m_lightDir[3], m_unused10[1]; };
+            /*11*/ struct { float m_lightCol[3], m_unused11[1]; };
+        };
+
+        float m_params[NumVec4 * 4];
+    };
+
+    bgfx::UniformHandle u_params;
+};
