@@ -69,7 +69,8 @@ namespace sam
                 bx::FileReader texReader;
                 bgfx::TextureInfo ti;
                 bimg::Orientation::Enum o;
-                loadTexture(&texReader, "C:\\homep4\\lego\\hdri\\provence_studio_2k.exr", 0, 0, &ti, &o);
+                m_envTex = loadTexture(&texReader, "C:\\homep4\\lego\\hdri\\bolonga_lod.dds", 0, 0, &ti, &o);
+                m_envIrrTex = loadTexture(&texReader, "C:\\homep4\\lego\\hdri\\bolonga_irr.dds", 0, 0, &ti, &o);
             }
             m_needRebuild = false;
 

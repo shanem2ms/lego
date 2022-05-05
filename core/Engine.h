@@ -47,6 +47,8 @@ class Engine
     bgfxh<bgfx::TextureHandle> m_gbufferTex;
     bgfxh<bgfx::TextureHandle> m_pickDepthTex;
     bgfxh<bgfx::TextureHandle> m_pickColorTex;
+    bgfxh<bgfx::TextureHandle> m_envTex;
+    bgfxh<bgfx::TextureHandle> m_envIrrTex;
     bgfxh<bgfx::TextureHandle> m_pickColorRB;
     bgfxh<bgfx::UniformHandle> m_blitTexRef;
     bgfxh<bgfx::FrameBufferHandle> m_pickFB;
