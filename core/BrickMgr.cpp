@@ -731,11 +731,10 @@ namespace sam
             );
 
             Matrix44f m;
-            m = makeScale<Matrix44f>(Vec3f(1, -1, 0.25)) *
+            m = makeScale<Matrix44f>(Vec3f(1, 1, 0.25)) *
                 makeTrans<Matrix44f>(Vec3f(0, 0, 0.75f)) *
-                makeRot<Matrix44f>(AxisAnglef(gmtl::Math::PI, Vec3f(1, 0, 0))) *
-                makeRot<Matrix44f>(AxisAnglef(gmtl::Math::PI_OVER_4, Vec3f(1, 0, 0))) *
-                makeRot<Matrix44f>(AxisAnglef(3 * gmtl::Math::PI_OVER_4, Vec3f(0, 1, 0))) *
+                makeRot<Matrix44f>(AxisAnglef(3 * gmtl::Math::PI_OVER_4, Vec3f(1, 0, 0))) *
+                makeRot<Matrix44f>(AxisAnglef(1 * gmtl::Math::PI_OVER_4, Vec3f(0, 1, 0))) *
                 makeScale<Matrix44f>(1.0f / brick->m_scale) *
                 makeTrans<Matrix44f>(-brick->m_center);
             bgfx::setTransform(m.getData());

@@ -103,6 +103,15 @@ namespace sam
                 m_octTileSelection.RemovePart(piAdj);
             }
         }
+        else if (buttonId == 3 && m_pPickedBrick != nullptr)
+        {            
+            const PartId &id = m_pPickedBrick->GetPartInst().id;
+            m_player->
+                ReplaceCurrentPart(id.Name());
+            
+            m_player->ReplaceCurrentPartColor(
+                BrickManager::Inst().GetColorFromIdx(m_pPickedBrick->GetPartInst().atlasidx));
+        }
     }
 
     constexpr float pi_over_two = 3.14159265358979323846f * 0.5f;

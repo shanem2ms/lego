@@ -462,17 +462,17 @@ namespace partmake
             //    transform,
             //    out vertices, out indices);
             string path = @"C:\homep4\lego\cache\" + _name;
-            LDrWrite(_name, transform, path);
+            LDrWrite(_name, transform, path, true);
             path += ".hr_mesh";
             ldrLoader.LoadCached(path, out vertices, out indices);
         }
 
-        public static void LDrWrite(string _name, Matrix4x4 transform, string outPath)
+        public static void LDrWrite(string _name, Matrix4x4 transform, string outPath, bool force)
         {
             Entry e = GetEntry(_name + ".dat");
             LdrLoader ldrLoader = new LdrLoader();
             ldrLoader.Write(rootFolder, e.name,
-                transform, outPath);
+                transform, outPath, force);
         }
         public static LDrawDatFile GetPart(string _name)
         {

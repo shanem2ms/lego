@@ -414,7 +414,7 @@ extern "C" __declspec(dllexport) int LdrGetResultSize()
 
 
 extern "C" __declspec(dllexport) void LdrWriteFile(const char* basepath, const char* name, float* matptr,
-    char* outPath)
+    char* outPath, bool force)
 {
     std::shared_ptr<ldr::Loader> ldrThLoaderHR = std::make_shared<ldr::Loader>();
     std::shared_ptr<ldr::Loader> ldrThLoaderLR = std::make_shared<ldr::Loader>();
@@ -443,7 +443,7 @@ extern "C" __declspec(dllexport) void LdrWriteFile(const char* basepath, const c
     {
         std::string hrpath(outPath);
         hrpath += ".hr_mesh";
-        if (!std::filesystem::exists(hrpath))
+        if (force || !std::filesystem::exists(hrpath))
         {
             std::filesystem::path path(basepath);
             std::vector<unsigned char> outdata;
@@ -458,7 +458,7 @@ extern "C" __declspec(dllexport) void LdrWriteFile(const char* basepath, const c
     {
         std::string lrpath(outPath);
         lrpath += ".lr_mesh";
-        if (!std::filesystem::exists(lrpath))
+        if (force || !std::filesystem::exists(lrpath))
         {
             std::filesystem::path path(basepath);
             std::vector<unsigned char> outdata;

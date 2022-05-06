@@ -107,7 +107,7 @@ namespace partmake
         public bool ShowConnectors { get; set; } = true;
 
         public bool ShowExteriorPortals { get; set; } = false;
-        public bool ShowLdrLoader { get; set; } = false;
+        public bool ShowLdrLoader { get; set; } = true;
         public bool ShowMbx { get; set; } = true;
 
         Vector4[] edgePalette;

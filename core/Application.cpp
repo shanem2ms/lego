@@ -111,29 +111,14 @@ namespace sam
         m_legoUI->Inventory().OnPartSelected([this](const PartId& partname)
             {
                 auto player = m_world->GetPlayer();
-                int slotIdx = player->GetCurrentSlotIdx();
-                SlotPart sp = player->GetSlots()[slotIdx];
-                sp.id = partname;
-                player->SetSlot(slotIdx, sp);                    
-
-                PartInst pi = m_world->GetPlayer()->GetRightHandPart();
-                pi.id = partname;
-                player->SetRightHandPart(pi);
+                player->ReplaceCurrentPart(partname);
             });
 
         m_legoUI->Inventory().OnColorSelected([this](int idx)
             {
                 const BrickColor& bc = BrickManager::Inst().GetColorFromIdx(idx);
-
                 auto player = m_world->GetPlayer();
-                int slotIdx = player->GetCurrentSlotIdx();
-                SlotPart sp = player->GetSlots()[slotIdx];
-                sp.colorCode = bc.code;
-                player->SetSlot(slotIdx, sp);
-                
-                PartInst pi = m_world->GetPlayer()->GetRightHandPart();
-                pi.atlasidx = bc.atlasidx;
-                player->SetRightHandPart(pi);
+                player->ReplaceCurrentPartColor(bc);
             });
     }
 

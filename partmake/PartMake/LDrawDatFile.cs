@@ -27,7 +27,7 @@ namespace partmake
         AABB? aabb;
 
         Matrix4x4? partMatrix;
-        Matrix4x4 PartMatrix { get { if (!partMatrix.HasValue) RefreshPartMatrix(); return partMatrix.Value; } }
+        public Matrix4x4 PartMatrix { get { if (!partMatrix.HasValue) RefreshPartMatrix(); return partMatrix.Value; } }
 
         Topology.Mesh topoMesh;
         MbxImport.Mesh mbxMesh;
@@ -220,7 +220,7 @@ namespace partmake
             if (partMatrix == null)
             {
                 AABB aabb = GetBBox();
-                partMatrix = Matrix4x4.CreateScale(new Vector3(1, -1, 1)) * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
+                partMatrix = Matrix4x4.CreateScale(new Vector3(-1, -1, 1)) * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
             }
         }
         public Topology.Mesh GetTopoMesh()
@@ -640,7 +640,7 @@ namespace partmake
         public void WriteMeshFile(string outFolder)
         {
             LDrawFolders.LDrWrite(this.name, PartMatrix.ToM44(),
-                Path.Combine(outFolder, this.name));
+                Path.Combine(outFolder, this.name), true);
         }
         public void WriteCollisionFile(string folder)
         {

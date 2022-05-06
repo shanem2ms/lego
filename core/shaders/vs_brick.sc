@@ -20,6 +20,6 @@ void main()
 	float v = (floor(a_texcoord0.x / 16) / 16.0);
 	vec4 col = texture2DLod(s_brickPalette, vec2(u,v), 0);
 	v_vtxcolor = col;
-	v_normal = a_normal;  
+	v_normal = mul(u_model[0], vec4(a_normal, 0.0));  
 	gl_Position = mul(u_modelViewProj, vec4(a_position.x, a_position.y, a_position.z, 1.0) );
 }

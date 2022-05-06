@@ -35,6 +35,15 @@ namespace partmake
         PartVis vis = null;
 
         public string SelectedItemDesc { get { return selectedItem?.desc; } }
+        public string SelectedItemMatrix { get {
+                if (selectedPart == null)
+                    return "";
+                Vector3 scale;
+                Quaternion rotation;
+                Vector3 translate;
+                Matrix4x4.Decompose(selectedPart.PartMatrix, out scale, out rotation, out translate);
+                return $"s {scale}\nr {rotation}\nt {translate}"; } }
+        public LDrawDatFile CurrentDatFile => selectedPart;
         public List<LDrawDatNode> CurrentPart { get => new List<LDrawDatNode>() { new LDrawDatNode { File = selectedPart } }; }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -71,6 +80,7 @@ namespace partmake
                 OnSelectedItem(selectedItem);
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItem"));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItemDesc"));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItemMatrix"));
             }
         }
 

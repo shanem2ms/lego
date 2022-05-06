@@ -298,6 +298,30 @@ namespace sam
         }
     }
 
+    void Player::ReplaceCurrentPart(const PartId& partname)
+    {
+        int slotIdx = GetCurrentSlotIdx();
+        SlotPart sp = GetSlots()[slotIdx];
+        sp.id = partname;
+        SetSlot(slotIdx, sp);
+
+        PartInst pi = GetRightHandPart();
+        pi.id = partname;
+        SetRightHandPart(pi);
+    }
+
+    void Player::ReplaceCurrentPartColor(const BrickColor& bc)
+    {
+        int slotIdx = GetCurrentSlotIdx();
+        SlotPart sp = GetSlots()[slotIdx];
+        sp.colorCode = bc.code;
+        SetSlot(slotIdx, sp);
+
+        PartInst pi = GetRightHandPart();
+        pi.atlasidx = bc.atlasidx;
+        SetRightHandPart(pi);
+    }
+
     Player::~Player()
     {
 

@@ -270,13 +270,15 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="30" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="2*" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="20" />
                     </Grid.RowDefinitions>
                     <TextBlock Height="30" Text="{Binding Path=SelectedItemDesc}" />
-                    <TreeView Grid.Row="1" Background="AliceBlue" ItemsSource="{Binding Path=CurrentPart}" 
+                    <TextBlock Grid.Row="1" Text="{Binding Path=SelectedItemMatrix}" />
+                    <TreeView Grid.Row="2" Background="AliceBlue" ItemsSource="{Binding Path=CurrentPart}" 
                       SelectedItemChanged="TreeView_SelectedItemChanged">
                         <TreeView.Resources>
                             <HierarchicalDataTemplate DataType="{x:Type local:LDrawDatNode}"
@@ -294,7 +296,7 @@
                             </HierarchicalDataTemplate>
                         </TreeView.Resources>
                     </TreeView>
-                    <TreeView Grid.Row="2" ItemsSource="{Binding Path=SelectedNode.TopoFaces}" SelectedItemChanged="TreeView_SelectedINodeChanged">
+                    <TreeView Grid.Row="3" ItemsSource="{Binding Path=SelectedNode.TopoFaces}" SelectedItemChanged="TreeView_SelectedINodeChanged">
                         <TreeView.Resources>
                             <HierarchicalDataTemplate DataType="{x:Type topo:Face}"
                                    ItemsSource="{Binding Path=Children}">
@@ -316,8 +318,8 @@
                             </HierarchicalDataTemplate>
                         </TreeView.Resources>
                     </TreeView>
-                    <ListBox Grid.Row="3" ItemsSource="{Binding Path=SelectedNode.ReverseLookup}" />
-                    <StackPanel Grid.Row="4" Orientation="Horizontal">
+                    <ListBox Grid.Row="4" ItemsSource="{Binding Path=SelectedNode.ReverseLookup}" />
+                    <StackPanel Grid.Row="5" Orientation="Horizontal">
                         <Button Content="Filter on Subpart" Click="SubPartFilter_Click" Width="120"  />
                         <TextBlock Text="{Binding Path=SelectedNode.WorldScale}" />
                     </StackPanel>

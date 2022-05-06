@@ -129,6 +129,11 @@ extern "C" __declspec(dllexport) void FindOrientation(Vec3f *vertices0, int32_t 
     float bestScore = 0;
     for (int sx = 0; sx < 8; ++sx)
     {
+        int numneg = ((sx & 1) ? 1 : 0) +
+            ((sx & 2) ? 1 : 0) +
+            ((sx & 4) ? 1 : 0);
+        if (numneg & 1) continue;
+
         for (int rotIdx = 0; rotIdx < 4; ++rotIdx)
         {
             Matrix44f mat =
@@ -156,6 +161,10 @@ extern "C" __declspec(dllexport) void FindOrientation(Vec3f *vertices0, int32_t 
     bestScore = 0;
     for (int sx = 0; sx < 8; ++sx)
     {
+        int numneg = ((sx & 1) ? 1 : 0) +
+            ((sx & 2) ? 1 : 0) +
+            ((sx & 4) ? 1 : 0);
+        if (numneg & 1) continue;
         for (int rotIdx = 0; rotIdx < 8; ++rotIdx)
         {
             Matrix44f mat =

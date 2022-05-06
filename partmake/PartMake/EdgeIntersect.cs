@@ -398,7 +398,7 @@ namespace partmake
 
         [DllImport("EdgeIntersect.dll")]
         static extern void LdrWriteFile(IntPtr basepath, IntPtr name, IntPtr matptr,
-            IntPtr outPath);
+            IntPtr outPath, bool force);
 
         [DllImport("EdgeIntersect.dll")]
         static extern void LdrLoadCachedFile(IntPtr filePath);
@@ -473,14 +473,14 @@ namespace partmake
         }
 
         public void Write(string basePath, string file, System.Numerics.Matrix4x4 matrix,
-            string outPath)
+            string outPath, bool force)
         {
             IntPtr basePathptr = Marshal.StringToHGlobalAnsi(basePath);
             IntPtr fileptr = Marshal.StringToHGlobalAnsi(file);
             IntPtr outPathPtr = Marshal.StringToHGlobalAnsi(outPath);
             IntPtr matptr = Marshal.AllocHGlobal(Marshal.SizeOf<System.Numerics.Matrix4x4>());
             Marshal.StructureToPtr(matrix, matptr, false);
-            LdrWriteFile(basePathptr, fileptr, matptr, outPathPtr);
+            LdrWriteFile(basePathptr, fileptr, matptr, outPathPtr, force);
             Marshal.FreeHGlobal(basePathptr);
             Marshal.FreeHGlobal(fileptr);
             Marshal.FreeHGlobal(matptr);

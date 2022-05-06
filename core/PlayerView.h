@@ -13,6 +13,7 @@ class btCollisionShape;
 
 namespace sam
 {
+    struct BrickColor;
     class Player
     {
         std::shared_ptr<SceneGroup> m_playerBody;
@@ -57,6 +58,9 @@ namespace sam
         { return m_currentSlotIdx; }
         void SetCurrentSlotIdx(int slotIdx)
         { m_currentSlotIdx = slotIdx; }
+
+        void ReplaceCurrentPart(const PartId& partname);
+        void ReplaceCurrentPartColor(const BrickColor& bc);
         void GetDirs(Vec3f& right, Vec3f& up, Vec3f& forward) const;
         bool FlyMode() const { return m_flymode; }
         bool InspectMode() const { return m_inspectmode; }
