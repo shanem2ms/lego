@@ -54,7 +54,7 @@ message ("FS ${CMAKE_BINARY_DIR}/${SHDRBIN}")
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/${SHDRBIN}
   COMMAND ${SHADERC} -f ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} --varyingdef ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
-                     -o ${CMAKE_BINARY_DIR}/${SHDRBIN} --type f --platform ${SHADERC_PLATFORM} --profile ${SHADERC_FPROF} -i ${BGFX_INCLUDE}
+                     -o ${CMAKE_BINARY_DIR}/${SHDRBIN} --type f --platform ${SHADERC_PLATFORM} --profile ${SHADERC_FPROF} -i ${BGFX_INCLUDE} --debug -O 0
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} ${CMAKE_CURRENT_SOURCE_DIR}/uniforms.sh ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
   VERBATIM)
   
@@ -67,7 +67,7 @@ string(REPLACE "\.sc" ".bin" SHDRBIN ${SHDR})
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/${SHDRBIN}
   COMMAND ${SHADERC} -f ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} --varyingdef ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
-                     -o ${CMAKE_BINARY_DIR}/${SHDRBIN} --type c --platform ${SHADERC_PLATFORM} --profile ${SHADERC_CPROF} -i ${BGFX_INCLUDE}
+                     -o ${CMAKE_BINARY_DIR}/${SHDRBIN} --type c --platform ${SHADERC_PLATFORM} --profile ${SHADERC_CPROF} -i ${BGFX_INCLUDE} --debug -O 0
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} ${CMAKE_CURRENT_SOURCE_DIR}/uniforms.sh ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
   VERBATIM)
   
@@ -80,7 +80,7 @@ string(REPLACE "\.sc" ".bin" SHDRBIN ${SHDR})
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/${SHDRBIN}
   COMMAND ${SHADERC} -f ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} --varyingdef ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
-                     -o ${CMAKE_BINARY_DIR}/${SHDRBIN} --type v --platform ${SHADERC_PLATFORM} --profile ${SHADERC_VPROF} -i ${BGFX_INCLUDE}
+                     -o ${CMAKE_BINARY_DIR}/${SHDRBIN} --type v --platform ${SHADERC_PLATFORM} --profile ${SHADERC_VPROF} -i ${BGFX_INCLUDE} --debug -O 0
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} ${CMAKE_CURRENT_SOURCE_DIR}/uniforms.sh ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
   VERBATIM)
   

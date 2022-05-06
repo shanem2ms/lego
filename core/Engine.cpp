@@ -106,6 +106,8 @@ namespace sam
             m_eyePosRef = bgfx::createUniform("u_eyePos", bgfx::UniformType::Vec4);
             m_texelSizeRef = bgfx::createUniform("u_texelSize", bgfx::UniformType::Vec4);
             m_invViewProjRef = bgfx::createUniform("u_deferredViewProj", bgfx::UniformType::Mat4);
+            m_envTexRef = bgfx::createUniform("s_texCube", bgfx::UniformType::Sampler);
+            m_envIrrTexRef = bgfx::createUniform("s_texCubeIrr", bgfx::UniformType::Sampler);
             
         }
         nOctTilesTotal = nOctTilesDrawn = 0;
@@ -140,6 +142,8 @@ namespace sam
         bgfx::setTransform(m.getData());
         bgfx::setTexture(0, m_depthTexRef, m_depthTex, 0);
         bgfx::setTexture(1, m_gbufTexRef, m_gbufferTex, 0);
+        bgfx::setTexture(2, m_envTexRef, m_envTex, 0);
+        bgfx::setTexture(3, m_envIrrTexRef, m_envIrrTex, 0);
         Matrix44f invViewProj = proj0 * view;
         invert(invViewProj);
         bgfx::setUniform(m_invViewProjRef, invViewProj.getData());

@@ -5,14 +5,39 @@ $input v_texcoord0
  * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
  */
 
-#include "uniforms.sh"
 #include <bgfx_shader.sh>
+#include "shaderlib.sh"
+#include "uniforms.sh"
 
 SAMPLER2D(s_depthtex, 0);
 SAMPLER2D(s_gbuftex, 1);
+SAMPLERCUBE(s_texCube, 2);
+SAMPLERCUBE(s_texCubeIrr, 3);
 uniform vec4 u_texelSize;
 uniform mat4 u_deferredViewProj;
 uniform vec4 u_eyePos;
+
+vec3 calcFresnel(vec3 _cspec, float _dot, float _strength)
+{
+	return _cspec + (1.0 - _cspec)*pow(1.0 - _dot, 5.0) * _strength;
+}
+
+vec3 calcLambert(vec3 _cdiff, float _ndotl)
+{
+	return _cdiff*_ndotl;
+}
+
+vec3 calcBlinn(vec3 _cspec, float _ndoth, float _ndotl, float _specPwr)
+{
+	float norm = (_specPwr+8.0)*0.125;
+	float brdf = pow(_ndoth, _specPwr)*_ndotl*norm;
+	return _cspec*brdf;
+}
+
+float specPwr(float _gloss)
+{
+	return exp2(10.0*_gloss+2.0);
+}
 
 vec3 unpackColor(float f) {
     vec3 color;
@@ -57,17 +82,49 @@ void main()
     normal = (normal * 2.0) - vec3(1,1,1);
     vec3 lightdir = vec3(-.1,1,-.5);
     normalize(lightdir);
-    float diff = clamp(dot(lightdir, normal), 0, 1);
-
-    float specularStrength = 0.4;
     vec3 viewDir = normalize(u_eyePos - wpos.xyz);
-    vec3 reflectDir = reflect(-lightdir, normal);  
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 15);
-    vec3 specular = specularStrength * spec * 1;  
 
-    gl_FragColor.rgb = //color * ao * (diff * 0.5 + 0.5 + specular);
-    shane;
-	gl_FragColor.a = 1;
+    vec3 ld     = lightdir;
+	vec3 clight = vec3(1,1,1) * ao;
+
+	// Input.
+	vec3 nn = normalize(normal);
+	vec3 vv = viewDir;
+	vec3 hh = normalize(vv + ld);
+
+	float ndotv = clamp(dot(nn, vv), 0.0, 1.0);
+	float ndotl = clamp(dot(nn, ld), 0.0, 1.0);
+	float ndoth = clamp(dot(nn, hh), 0.0, 1.0);
+	float hdotv = clamp(dot(hh, vv), 0.0, 1.0);
+    vec3 vr = 2.0*ndotv*nn - vv; // Same as: -reflect(vv, nn);
+	vec3 cubeR = vr;
+	vec3 cubeN = nn;
+
+    float inReflectivity = 0.43;
+    vec3 inAlbedo = color;
+    vec3 refl = mix(vec3_splat(0.04), inAlbedo, inReflectivity);
+    vec3 albedo = inAlbedo * (1.0 - inReflectivity);
+
+    float inGloss = 0.25;
+	vec3 dirFresnel = calcFresnel(refl, hdotv, inGloss);
+	vec3 envFresnel = calcFresnel(refl, ndotv, inGloss);
+
+	vec3 lambert = calcLambert(albedo * (1.0 - dirFresnel), ndotl);
+	vec3 blinn   = calcBlinn(dirFresnel, ndoth, ndotl, specPwr(inGloss));
+	vec3 direct  = (lambert + blinn)*clight;
+
+    float mip = 1;//1.0 + 5.0*(1.0 - inGloss); // Use mip levels [1..6] for radiance.
+    vec3 radiance    = toLinear(textureCubeLod(s_texCube, cubeR, mip).xyz);
+	vec3 irradiance  = toLinear(textureCube(s_texCubeIrr, cubeN).xyz);
+    vec3 envDiffuse  = albedo     * irradiance;
+	vec3 envSpecular = envFresnel * radiance;
+	vec3 indirect    = envDiffuse + envSpecular;
+
+	// Color.
+	vec3 outColor = direct + indirect;
+	outColor = outColor * exp2(1);
+	gl_FragColor.xyz = outColor;
+	gl_FragColor.w = 1.0;
 } 
 
 
