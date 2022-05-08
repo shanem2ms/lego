@@ -26,7 +26,9 @@ namespace partmake
             public bool ismainpart;
             public string[] subparts;
             public bool includedInFilter;
+            public List<string> aliases;
             bool includedInGame;
+            public string mbxFilePath;
             public bool IncludeInGame
             {
                 get => includedInGame; set
@@ -49,9 +51,11 @@ namespace partmake
                 return string.Format("{0} {1} {2}", type, dimstr, desc);
             }
 
-            string MbxPath => Path.Combine(LDrawFolders.MdxFolder, Path.ChangeExtension(this.name, "json"));
-            string MbxV2Path => Path.Combine(LDrawFolders.MdxFolder, Path.GetFileNameWithoutExtension(this.name) + "v2.json");
-            public bool HasMbx => File.Exists(MbxPath) || File.Exists(MbxV2Path);
+            string mbxPath => Path.Combine(LDrawFolders.MdxFolder, Path.ChangeExtension(this.name, "json"));
+            string mbxV2Path => Path.Combine(LDrawFolders.MdxFolder, Path.GetFileNameWithoutExtension(this.name) + "v2.json");
+
+            public string MbxPath => File.Exists(mbxV2Path) ? mbxV2Path : mbxPath;
+            public bool HasMbx => File.Exists(mbxPath) || File.Exists(mbxV2Path);
 
         }
         static string rootFolder;
@@ -302,6 +306,8 @@ namespace partmake
                 }
             }
 
+        
+
             foreach (var pp in partPaths)
             {
                 if (pp.Value.subparts != null)
@@ -337,6 +343,7 @@ namespace partmake
                 File.Move(Path.Combine(folder, nomats + ".tmp"), Path.Combine(folder, nomats));
             }
 
+
             using (StreamReader sr = new StreamReader(Path.Combine(folder, nomats)))
             {
                 while (!sr.EndOfStream)
@@ -345,7 +352,56 @@ namespace partmake
                     ldrawParts.Add(partPaths[line]);
                 }
             }
+            /*
 
+            Dictionary<string, List<string>> reverseAliases = new Dictionary<string, List<string>>();
+            foreach (var kv in aliases)
+            {
+                List<string> aliases;
+                if (!reverseAliases.TryGetValue(kv.Value, out aliases))
+                {
+                    aliases = new List<string>();
+                    reverseAliases.Add(kv.Value, aliases);
+                }
+                aliases.Add(kv.Key);
+            }*/
+
+            Dictionary<string, Entry> partbyid = new Dictionary<string, Entry>();
+            Regex rmbx = new Regex(@"\d+");
+            foreach (var part in ldrawParts)
+            {
+                Match m = rmbx.Match(part.name);
+                string name = m.Groups[0].Value;
+                if (!partbyid.TryAdd(name, part))
+                {
+                    partbyid.TryAdd(name + "V2", part);
+                }
+                string pn = part.name.Substring(0, part.name.Length - 4);
+                partbyid.TryAdd(pn, part);
+
+
+            }
+
+            Regex aliasRegex = new Regex(@"parts\\(\d+)");
+            foreach (var kv in aliases)
+            {
+                Entry entry;
+                Match m = aliasRegex.Match(kv.Key);
+                if (!m.Success)
+                    continue;
+                Match m2 = rmbx.Match(kv.Value);
+                string vl = m2.Groups[0].Value;
+                if (partbyid.TryGetValue(kv.Value, out entry))
+                {
+                    string al = m.Groups[1].Value;
+                    partbyid.TryAdd(al, entry);
+                }
+                else if (partbyid.TryGetValue(vl, out entry))
+                {
+                    string al = m.Groups[1].Value;
+                    partbyid.TryAdd(al, entry);
+                }
+            }
             ldrawParts.Sort();
 
             foreach (var part in ldrawParts)
@@ -357,6 +413,24 @@ namespace partmake
                     lDrawGroups.Add(part.type, dictGroups);
                 }
                 dictGroups.Add(part);
+            }
+
+            HashSet<string> mbxFiles = new HashSet<string>();
+            DirectoryInfo mbxdir = new DirectoryInfo(LDrawFolders.MdxFolder);
+
+            List<string> badlist = new List<string>();
+            foreach (var fi in mbxdir.GetFiles("*.json"))
+            {
+                //string pname = fi.Name.Substring(0, fi.Name.Length-5).ToLower();
+                Entry entry;
+                Match m = rmbx.Match(fi.Name);
+                string pname = m.Groups[0].Value;
+                if (partbyid.TryGetValue(pname, out entry))
+                {
+                    entry.mbxFilePath = fi.Name;
+                }
+                else
+                    badlist.Add(pname);
             }
 
             var stayGrps = lDrawGroups.Where(kv => kv.Value.Count > 100);
