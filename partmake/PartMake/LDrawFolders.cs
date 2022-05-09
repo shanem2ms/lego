@@ -77,7 +77,7 @@ namespace partmake
                     lDrawGroups[selectedType]); }
 
         public static List<Entry> AllParts => ldrawParts;
-        public static IEnumerable<string> LDrawGroups => lDrawGroups.Keys;
+        public static IEnumerable<string> LDrawGroups => lDrawGroups.Where(kv => kv.Value.Any(v => v.includedInFilter)).Select(kv => kv.Key);
         static Dictionary<string, List<Entry>> lDrawGroups = new Dictionary<string, List<Entry>>();
         static void GetFilesRecursive(DirectoryInfo di, List<string> filepaths)
         {
