@@ -29,10 +29,16 @@ namespace partmake
             public List<string> aliases;
             bool includedInGame;
             public string mbxFilePath;
+            public string mbxNum;
             public bool IncludeInGame
             {
                 get => includedInGame; set
                 { includedInGame = value; LDrawFolders.WriteIncludedGame(); }
+            }
+
+            public string GetDesc()
+            {
+                return $"mbx: {mbxNum}";
             }
 
             float totalDim { get { float ret = 1; if (dims != null) { foreach (var d in dims) ret *= d; } return ret; } }
@@ -51,13 +57,13 @@ namespace partmake
                 return string.Format("{0} {1} {2}", type, dimstr, desc);
             }
 
-            string mbxPath => Path.Combine(LDrawFolders.MdxFolder, Path.ChangeExtension(this.name, "json"));
-            string mbxV2Path => Path.Combine(LDrawFolders.MdxFolder, Path.GetFileNameWithoutExtension(this.name) + "v2.json");
+            string mbxPath => mbxFilePath != null ? Path.Combine(LDrawFolders.MdxFolder, mbxFilePath) : null;
 
-            public string MbxPath => File.Exists(mbxV2Path) ? mbxV2Path : mbxPath;
-            public bool HasMbx => File.Exists(mbxPath) || File.Exists(mbxV2Path);
+            public string MbxPath => mbxPath;
+            public bool HasMbx => mbxPath?.Length > 0;
 
         }
+        public static string Root = @"C:\homep4\lego";
         static string rootFolder;
         public static string RootFolder => rootFolder ?? string.Empty;
         public static string MdxFolder => Path.Combine(RootFolder, "Mbx");
@@ -72,13 +78,26 @@ namespace partmake
             get => selectedType;
             set { selectedType = value; }
         }
-        public static List<Entry> LDrawParts { get => selectedType == null ? new List<Entry>() :
-                (FilterEnabled ? lDrawGroups[selectedType].Where(i => i.includedInFilter).ToList() :
-                    lDrawGroups[selectedType]); }
+
+        public static string SearchString;
+        public static IEnumerable<Entry> LDrawParts { get => SearchString?.Length > 0 ? GetSearchEntries() : GetCurrentGroupEntries(); }
 
         public static List<Entry> AllParts => ldrawParts;
-        public static IEnumerable<string> LDrawGroups => lDrawGroups.Where(kv => kv.Value.Any(v => v.includedInFilter)).Select(kv => kv.Key);
+        public static IEnumerable<string> LDrawGroups => 
+            lDrawGroups.Where(kv => kv.Value.Any(v => v.includedInFilter)).Select(kv => kv.Key).OrderBy(s => s);
         static Dictionary<string, List<Entry>> lDrawGroups = new Dictionary<string, List<Entry>>();
+
+
+        static IEnumerable<Entry> GetSearchEntries()
+        {
+            return ldrawParts.Where(e => e.name.StartsWith(SearchString));
+        }
+        static List<Entry> GetCurrentGroupEntries()
+        {
+            return selectedType == null ? new List<Entry>() :
+                (FilterEnabled ? lDrawGroups[selectedType].Where(i => i.includedInFilter).ToList() :
+                    lDrawGroups[selectedType]);
+        }
         static void GetFilesRecursive(DirectoryInfo di, List<string> filepaths)
         {
             foreach (DirectoryInfo dichild in di.GetDirectories())
@@ -367,10 +386,10 @@ namespace partmake
             }*/
 
             Dictionary<string, Entry> partbyid = new Dictionary<string, Entry>();
-            Regex rmbx = new Regex(@"\d+");
+            Regex rgnums = new Regex(@"\d+");
             foreach (var part in ldrawParts)
             {
-                Match m = rmbx.Match(part.name);
+                Match m = rgnums.Match(part.name);
                 string name = m.Groups[0].Value;
                 if (!partbyid.TryAdd(name, part))
                 {
@@ -382,6 +401,24 @@ namespace partmake
 
             }
 
+            {
+                string[] partRelText = File.ReadAllLines(Path.Combine(Root, @"rebrickable\part_relationships.csv"));
+                foreach (string prLine in partRelText)
+                {
+                    string[] vals = prLine.Split(',');
+                    Match m0 = rgnums.Match(vals[1]);
+                    Match m1 = rgnums.Match(vals[2]);
+                    if (m1.Success && m0.Success && m1.Value != m0.Value)
+                    {
+                        Entry entry;
+                        if (partbyid.TryGetValue(m0.Value, out entry))
+                        {
+                            partbyid.TryAdd(m1.Value, entry);
+                        }
+                    }
+                }
+            }
+
             Regex aliasRegex = new Regex(@"parts\\(\d+)");
             foreach (var kv in aliases)
             {
@@ -389,7 +426,7 @@ namespace partmake
                 Match m = aliasRegex.Match(kv.Key);
                 if (!m.Success)
                     continue;
-                Match m2 = rmbx.Match(kv.Value);
+                Match m2 = rgnums.Match(kv.Value);
                 string vl = m2.Groups[0].Value;
                 if (partbyid.TryGetValue(kv.Value, out entry))
                 {
@@ -423,11 +460,12 @@ namespace partmake
             {
                 //string pname = fi.Name.Substring(0, fi.Name.Length-5).ToLower();
                 Entry entry;
-                Match m = rmbx.Match(fi.Name);
+                Match m = rgnums.Match(fi.Name);
                 string pname = m.Groups[0].Value;
                 if (partbyid.TryGetValue(pname, out entry))
                 {
                     entry.mbxFilePath = fi.Name;
+                    entry.mbxNum = rgnums.Match(fi.Name).Value;
                 }
                 else
                     badlist.Add(pname);
@@ -441,7 +479,7 @@ namespace partmake
             lDrawGroups = newGrps;
 
             {
-                string path = @"C:\homep4\lego\ingame.txt";
+                string path = Path.Combine(LDrawFolders.Root, "ingame.txt");
                 string[] lines = File.ReadAllLines(path);
                 foreach (string line in lines)
                 {
@@ -472,7 +510,7 @@ namespace partmake
                 }
             }
 
-            string path = @"C:\homep4\lego\ingame.txt";
+            string path = Path.Combine(LDrawFolders.Root, "ingame.txt");
             File.WriteAllLines(path, fileLines);
         }
         public static void WriteAll()
@@ -481,7 +519,7 @@ namespace partmake
         }
         static void WriteAllCacheFiles()
         {
-            string path = @"C:\homep4\lego\cache";
+            string path = Path.Combine(LDrawFolders.Root, "cache");
             //if (Directory.Exists(path))
             //    Directory.Delete(path, true);
             Directory.CreateDirectory(path);
@@ -495,9 +533,11 @@ namespace partmake
                     LDrawDatFile df = GetPart(ldrawParts[idx]);
                     if (df.GetFaceCount() > 1000 && df.Name != "91405")
                         return;
-                    df.WriteConnectorFile(path);
-                    df.WriteCollisionFile(path);
-                    df.WriteMeshFile(path);
+                    string outname = ldrawParts[idx].mbxNum?.Length > 0 ?
+                        ldrawParts[idx].mbxNum : df.Name;
+                    df.WriteConnectorFile(path, outname);
+                    df.WriteCollisionFile(path, outname);
+                    df.WriteMeshFile(path, outname);
                 }, i);
             }
 
@@ -535,7 +575,7 @@ namespace partmake
             //ldrLoader.Load(rootFolder, e.name,
             //    transform,
             //    out vertices, out indices);
-            string path = @"C:\homep4\lego\cache\" + _name;
+            string path = Path.Combine(LDrawFolders.Root, "cache", _name);
             LDrWrite(_name, transform, path, true);
             path += ".hr_mesh";
             ldrLoader.LoadCached(path, out vertices, out indices);

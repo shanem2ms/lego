@@ -129,8 +129,15 @@
                 <RowDefinition Height="30" />
             </Grid.RowDefinitions>
             <ComboBox Height="20" ItemsSource="{Binding LDrawGroups}" SelectedItem="{Binding Path=SelectedType}" />
-            <CheckBox Grid.Row="1" Content="Filtered" x:Name="FilteredCheckbox" Checked="FilteredCheckbox_Checked" 
+            <Grid Grid.Row="1" >
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Row="1" Content="Filtered" x:Name="FilteredCheckbox" Checked="FilteredCheckbox_Checked" 
                       Unchecked="FilteredCheckbox_Checked" />
+                <TextBox Grid.Column="1" LostFocus="PartNumTB_LostFocus" Margin="10,0" />
+            </Grid>
             <ListBox Grid.Row="2" ItemsSource="{Binding LDrawParts}" SelectedItem="{Binding Path=SelectedItem}">
                 <ListBox.ItemTemplate>
                     <DataTemplate DataType="x:Type local:LDrawFolders.Entry" >

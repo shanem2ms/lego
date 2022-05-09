@@ -2,6 +2,7 @@
   "profiles": {
     "PartMake": {
       "commandName": "Project",
+      "commandLineArgs": "c:\\homp4\\lego",
       "nativeDebugging": false
     }
   }

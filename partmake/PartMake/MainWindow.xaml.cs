@@ -19,14 +19,13 @@ namespace partmake
     /// </summary>
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
-        public List<LDrawFolders.Entry> LDrawParts
+        public IEnumerable<LDrawFolders.Entry> LDrawParts
         {
             get
             {
                 return LDrawFolders.LDrawParts;
             }
         }
-
         public IEnumerable<string> LDrawGroups { get => LDrawFolders.LDrawGroups; }
 
         LDrawFolders.Entry selectedItem = null;
@@ -34,7 +33,7 @@ namespace partmake
         string textFilter = "";
         PartVis vis = null;
 
-        public string SelectedItemDesc { get { return selectedItem?.desc; } }
+        public string SelectedItemDesc { get { return selectedItem?.GetDesc(); } }
         public string SelectedItemMatrix { get {
                 if (selectedPart == null)
                     return "";
@@ -196,6 +195,7 @@ namespace partmake
         private void ImportMbx_Button_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog dlg = new OpenFileDialog();
+            dlg.Multiselect = true;
             dlg.FileName = "ZMBX Files"; // Default file name
             dlg.DefaultExt = ".zmbx"; // Default file extension
             dlg.Filter = "ZMBX (.zmbx)|*.zmbx"; // Filter files by extension
@@ -203,8 +203,11 @@ namespace partmake
             dlg.InitialDirectory = importDir;
             if (dlg.ShowDialog() == true)
             {
-                MbxImport mbxImport = new MbxImport(dlg.FileName);
-                mbxImport.WriteAll();
+                foreach (var filename in dlg.FileNames)
+                {
+                    MbxImport mbxImport = new MbxImport(filename);
+                    mbxImport.WriteAll();
+                }
             }
         }
 
@@ -417,6 +420,14 @@ namespace partmake
         private void FilteredCheckbox_Checked(object sender, RoutedEventArgs e)
         {
             LDrawFolders.FilterEnabled = FilteredCheckbox.IsChecked == true;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("LDrawParts"));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("LDrawGroups"));            
+        }
+
+        private void PartNumTB_LostFocus(object sender, RoutedEventArgs e)
+        {
+            string srchstr = (sender as TextBox).Text;
+            LDrawFolders.SearchString = srchstr;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("LDrawParts"));
         }
     }

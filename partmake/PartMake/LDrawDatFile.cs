@@ -627,30 +627,30 @@ namespace partmake
             }
         }
 
-        public void WriteConnectorFile(string folder)
+        public void WriteConnectorFile(string folder, string outname)
         {
             List<Tuple<Vector3, Vector3>> bisectors = new List<Tuple<Vector3, Vector3>>();
             List<Connector> connectors = GetConnectors(ref bisectors);
             if (connectors == null || connectors.Count == 0)
                 return;
             string jsonstr = JsonConvert.SerializeObject(connectors);
-            string outfile = Path.GetFileNameWithoutExtension(name) + ".json";
+            string outfile = outname + ".json";
             File.WriteAllText(Path.Combine(folder, outfile), jsonstr);
         }
-        public void WriteMeshFile(string outFolder)
+        public void WriteMeshFile(string outFolder, string outname)
         {
             LDrawFolders.LDrWrite(this.name, PartMatrix.ToM44(),
-                Path.Combine(outFolder, this.name), true);
+                Path.Combine(outFolder, outname), true);
         }
-        public void WriteCollisionFile(string folder)
+        public void WriteCollisionFile(string folder, string outname)
         {
             try
             {
                 DisableConnectors();
-                Debug.WriteLine(name);
+                Debug.WriteLine(outname);
                 Topology.Mesh tm = new Topology.Mesh();
                 GetTopoRecursive(false, PartMatrix, tm, "0");
-                string outfile = Path.GetFileNameWithoutExtension(name) + ".col";
+                string outfile = outname + ".col";
                 tm.WriteCollision(Path.Combine(folder, outfile));
             }
             catch (Exception ex)
