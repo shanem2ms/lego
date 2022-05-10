@@ -15,6 +15,16 @@ namespace sam
 
     static int partIdx = 0;
     static Vec3f pos;
+
+    inline std::string GetNumbers(const std::string& in)
+    {
+        std::string outstr;
+        for (auto itchar = in.begin(); itchar != in.end() && isdigit(*itchar); ++itchar)
+        {
+            outstr.push_back(*itchar);
+        }
+        return outstr;
+    }
     void MbxImport::ImportFile(const std::string& file, const Vec3f & partPos, std::vector<PartInst> &piList)
     {
         int err = 0;
@@ -51,6 +61,7 @@ namespace sam
             if (idx < partname.size())
                 partname = partname.substr(0, idx);
             partname = BrickManager::Inst().PartAlias(partname);
+            partname = GetNumbers(partname);
             json matrix = part["matrix"];
             float m[16];
             Matrix44f mat;
