@@ -158,28 +158,22 @@ extern "C" __declspec(dllexport) void FindOrientation(Vec3f *vertices0, int32_t 
         return;
     }
 
+    Matrix44f prevBest = bestMat;
+    prevBest.mData[12] = prevBest.mData[13] = prevBest.mData[14] = 0;
     bestScore = 0;
-    for (int sx = 0; sx < 8; ++sx)
+    int div = 32;
+    float angdiv = Math::TWO_PI / (float)div;
+    for (int rotIdx = 0; rotIdx < div; ++rotIdx)
     {
-        int numneg = ((sx & 1) ? 1 : 0) +
-            ((sx & 2) ? 1 : 0) +
-            ((sx & 4) ? 1 : 0);
-        if (numneg & 1) continue;
-        for (int rotIdx = 0; rotIdx < 8; ++rotIdx)
+        Matrix44f mat =
+            prevBest *
+            makeRot<Matrix44f>(AxisAnglef(angdiv * rotIdx, Vec3f(1, 0, 0)));
+        float score = GetOverlap(vertices0, numvertices0, indices0, numindices0,
+            vertices1, numvertices1, indices1, numindices1, mat);
+        if (score > bestScore)
         {
-            Matrix44f mat =
-                makeRot<Matrix44f>(AxisAnglef(Math::PI_OVER_4 * rotIdx, Vec3f(1, 0, 0))) *
-                makeScale<Matrix44f>(Vec3f(
-                    (sx & 1) == 0 ? 1 : -1,
-                    (sx & 2) == 0 ? 1 : -1,
-                    (sx & 4) == 0 ? 1 : -1));
-            float score = GetOverlap(vertices0, numvertices0, indices0, numindices0,
-                vertices1, numvertices1, indices1, numindices1, mat);
-            if (score > bestScore)
-            {
-                bestScore = score;
-                bestMat = mat;
-            }
+            bestScore = score;
+            bestMat = mat;
         }
     }
 

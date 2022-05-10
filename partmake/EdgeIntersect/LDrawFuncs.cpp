@@ -309,14 +309,20 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
     PosTexcoordNrmVertex* curVtx = (PosTexcoordNrmVertex*)vtx.data();
     uint32_t* curIdx = (uint32_t*)idx.data();
     uint32_t vtxOffset = 0;
+
     for (uint32_t i = 0; i < rmodel->num_instances; i++) {
         const LdrInstance& instance = model->instances[i];
         const LdrRenderPart& rpart = pLoader->getRenderPart(instance.part);
+        float scaleval = instance.transform.col[0][0] *
+            instance.transform.col[1][1] *
+            instance.transform.col[2][2];
+        bool invertdir = scaleval < 0;
         for (uint32_t idx = 0; idx < rpart.num_vertices; ++idx)
         {
             LdrMatrix mat = mat_mul(*matrix, instance.transform);
             LdrVector v = transform_point(mat, rpart.vertices[idx].position);
             LdrVector n = transform_vec(mat, rpart.vertices[idx].normal);
+            if (invertdir) n = vec_mul(n, -1);
             memcpy(&curVtx->m_x, &v, sizeof(LdrVector));
             memcpy(&curVtx->m_nx, &n, sizeof(LdrVector));
             curVtx->m_u = curVtx->m_v = -1;
@@ -338,7 +344,7 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
                 ldrvtxs[*(pIdx + 1)].position,
                 ldrvtxs[*(pIdx + 2)].position);
 
-            if (vec_dot(ldrvtxs[*pIdx].normal, n) < 0)
+            if ((vec_dot(ldrvtxs[*pIdx].normal, n) < 0) ^ invertdir)
             {
                 uint32_t tmp = *pIdx;
                 *pIdx = *(pIdx + 2);

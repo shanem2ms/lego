@@ -191,7 +191,7 @@ namespace sam
             {
             std::vector<PartInst> piImport;
                 MbxImport mbxImport;
-                mbxImport.ImportFile(Application::Inst().Documents() + "/Import/Home Alone.zmbx", 
+                mbxImport.ImportFile(Application::Inst().Documents() + "/Import/porkins.zmbx", 
                     m_player->Pos(), piImport);
                 m_octTileSelection.AddMultipleParts(this, piImport);
             }
