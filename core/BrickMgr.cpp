@@ -160,11 +160,18 @@ namespace sam
             ifs.read((char*)&numidx, sizeof(numidx));
             m_indicesHR.resize(numidx);
             ifs.read((char*)m_indicesHR.data(), sizeof(uint32_t) * numidx);
+            for (size_t idx = 0; idx < m_indicesHR.size(); idx += 3)
+            {
+                uint32_t tmp = m_indicesHR[idx];
+                m_indicesHR[idx] = m_indicesHR[idx + 2];
+                m_indicesHR[idx + 2] = tmp;
+            }
             PosTexcoordNrmVertex* curVtx = m_verticesHR.data();
             PosTexcoordNrmVertex* endVtx = curVtx + numvtx;
             for (; curVtx != endVtx; ++curVtx)
             {
                 curVtx->m_y = -curVtx->m_y;
+                curVtx->m_x = -curVtx->m_x;
                 if (curVtx->m_u == 16)
                     curVtx->m_u = -1;
             }

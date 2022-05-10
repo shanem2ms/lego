@@ -144,6 +144,31 @@ public:
     }
 };
 
+inline LdrMatrix mat_mul(const LdrMatrix& a, const LdrMatrix& b)
+{
+    LdrMatrix out;
+    out.values[0] = a.values[0] * b.values[0] + a.values[4] * b.values[1] + a.values[8] * b.values[2];
+    out.values[1] = a.values[1] * b.values[0] + a.values[5] * b.values[1] + a.values[9] * b.values[2];
+    out.values[2] = a.values[2] * b.values[0] + a.values[6] * b.values[1] + a.values[10] * b.values[2];
+    out.values[3] = 0;
+
+    out.values[4] = a.values[0] * b.values[4] + a.values[4] * b.values[5] + a.values[8] * b.values[6];
+    out.values[5] = a.values[1] * b.values[4] + a.values[5] * b.values[5] + a.values[9] * b.values[6];
+    out.values[6] = a.values[2] * b.values[4] + a.values[6] * b.values[5] + a.values[10] * b.values[6];
+    out.values[7] = 0;
+
+    out.values[8] = a.values[0] * b.values[8] + a.values[4] * b.values[9] + a.values[8] * b.values[10];
+    out.values[9] = a.values[1] * b.values[8] + a.values[5] * b.values[9] + a.values[9] * b.values[10];
+    out.values[10] = a.values[2] * b.values[8] + a.values[6] * b.values[9] + a.values[10] * b.values[10];
+    out.values[11] = 0;
+
+    out.values[12] = a.values[0] * b.values[12] + a.values[4] * b.values[13] + a.values[8] * b.values[14] + a.values[12];
+    out.values[13] = a.values[1] * b.values[12] + a.values[5] * b.values[13] + a.values[9] * b.values[14] + a.values[13];
+    out.values[14] = a.values[2] * b.values[12] + a.values[6] * b.values[13] + a.values[10] * b.values[14] + a.values[14];
+    out.values[15] = 1;
+    return out;
+}
+
 inline LdrVector transform_point(const LdrMatrix& transform, const LdrVector& vec)
 {
     LdrVector    out;
@@ -289,8 +314,9 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
         const LdrRenderPart& rpart = pLoader->getRenderPart(instance.part);
         for (uint32_t idx = 0; idx < rpart.num_vertices; ++idx)
         {
-            LdrVector v = transform_point(*matrix, rpart.vertices[idx].position);
-            LdrVector n = transform_vec(*matrix, rpart.vertices[idx].normal);
+            LdrMatrix mat = mat_mul(*matrix, instance.transform);
+            LdrVector v = transform_point(mat, rpart.vertices[idx].position);
+            LdrVector n = transform_vec(mat, rpart.vertices[idx].normal);
             memcpy(&curVtx->m_x, &v, sizeof(LdrVector));
             memcpy(&curVtx->m_nx, &n, sizeof(LdrVector));
             curVtx->m_u = curVtx->m_v = -1;
