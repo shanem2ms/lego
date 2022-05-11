@@ -29,7 +29,7 @@ namespace sam
         m_rightHand = std::make_shared<SceneGroup>();
         m_rightHand->SetOffset(Vec3f(-1.3f, -1.65f, 1.005f));
         m_rightHand->SetRotate(
-            //make<Quatf>(AxisAnglef(gmtl::Math::PI, 1.0f, 0.0f, 0.0f)) *
+            make<Quatf>(AxisAnglef(gmtl::Math::PI, 1.0f, 0.0f, 0.0f)) *
             make<Quatf>(AxisAnglef(gmtl::Math::PI, 0.0f, 0.0f, 1.0f)));
             //make<Quatf>(AxisAnglef(gmtl::Math::PI / 8.0f, 1.0f, 0.0f, 0.0f)));
         PartInst pi;

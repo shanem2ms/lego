@@ -510,8 +510,8 @@ namespace partmake
                 }
             }
 
-            string path = Path.Combine(LDrawFolders.Root, "ingame.txt");
-            File.WriteAllLines(path, fileLines);
+            //string path = Path.Combine(LDrawFolders.Root, "ingame.txt");
+            //File.WriteAllLines(path, fileLines);
         }
         public static void WriteAll()
         {            
