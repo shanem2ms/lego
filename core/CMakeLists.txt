@@ -74,7 +74,6 @@ set(Source_Files
     "LegoUI.cpp"
     "MbxImport.cpp"
     "LoresTile.cpp"
-    "ldrawloader.cpp"
     "imgui/imgui.cpp"
     "imgui/dear-imgui/imgui.cpp"
     "imgui/dear-imgui/imgui_draw.cpp"

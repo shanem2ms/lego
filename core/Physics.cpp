@@ -6,6 +6,7 @@
 #include "Mesh.h"
 #include "OctTile.h"
 #include "Frustum.h"
+#include "LegoBrick.h"
 #include "gmtl/PlaneOps.h"
 #include "bullet/btBulletCollisionCommon.h"
 #include "bullet/btBulletDynamicsCommon.h"
@@ -216,12 +217,21 @@ namespace sam
     {
     public:
         bool collision;
-        MyContactTest()
+        float m_overlap;
+        MyContactTest() :
+            m_overlap(0)
         {
             collision = false;
         }
         btScalar addSingleResult(btManifoldPoint& cp, const btCollisionObjectWrapper* colObj0Wrap, int partId0, int index0, const btCollisionObjectWrapper* colObj1Wrap, int partId1, int index1) override
         {
+            LegoBrick *pBrick0 = (LegoBrick *)colObj0Wrap->getCollisionObject()->getUserPointer();
+            LegoBrick* pBrick1 = (LegoBrick*)colObj1Wrap->getCollisionObject()->getUserPointer();
+            if (pBrick0 != nullptr)
+                pBrick0->SetDbgCollided(true);
+            if (pBrick1 != nullptr)
+                pBrick1->SetDbgCollided(true);
+            m_overlap = std::min(cp.getDistance(), m_overlap);
             collision = true;
             return 0;
         }
@@ -231,7 +241,7 @@ namespace sam
     {
         MyContactTest contactTest;
         m_discreteDynamicsWorld->contactTest(pObj, contactTest);
-        return contactTest.collision;
+        return contactTest.collision && contactTest.m_overlap < -0.1f;
         
     }
 

@@ -12,8 +12,6 @@
 #include "indexed_map.h"
 
 struct CubeList;
-struct LdrRenderModel;
-typedef const LdrRenderModel* LdrRenderModelHDL;
 class btCompoundShape;
 namespace ldr
 {
@@ -164,12 +162,11 @@ namespace sam
 
 
     private:
-        void LoadLores(ldr::Loader* pLoader,
+        void LoadLores(
             const std::string& name, std::filesystem::path& cachePath);
         void LoadHires(const std::string& name, std::filesystem::path& cachePath);
         void LoadConnectors(const std::filesystem::path &connectorPath);
         bool LoadCollisionMesh(const std::filesystem::path& collisionPath);
-        void LoadPrimitives(ldr::Loader* pLoader);
         friend class BrickManager;
     };
 
@@ -215,7 +212,6 @@ namespace sam
         void MruUpdate(Brick* pBrick);        
         void LoadConnectors(Brick* pBrick);
         bool LoadCollision(Brick* pBrick);
-        void LoadPrimitives(Brick* pBrick);
         const std::vector<PartId>& PartsForType(
             const std::string typestr)
         {
@@ -265,8 +261,6 @@ namespace sam
 
         std::map<PartId, Brick> m_bricks;
         bgfxh<bgfx::UniformHandle> m_paletteHandle;
-        std::shared_ptr<ldr::Loader> m_ldrLoaderHR;
-        std::shared_ptr<ldr::Loader> m_ldrLoaderLR;
         index_map<PartId, PartDesc> m_partsMap;
         index_map<std::string, std::vector<PartId>> m_typesMap;
         std::filesystem::path m_cachePath;

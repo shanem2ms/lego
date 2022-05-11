@@ -6,7 +6,6 @@
 #include "gmtl/AxisAngle.h"
 #include "Mesh.h"
 #include "BrickMgr.h"
-#include "ldrawloader.hpp"
 #include <bx/bx.h>
 #include <queue>
 #include <sstream>
@@ -90,7 +89,7 @@ namespace sam
         }
     }
 
-    void Brick::LoadLores(ldr::Loader* pLoader, const std::string& name, std::filesystem::path& cachePath)
+    void Brick::LoadLores(const std::string& name, std::filesystem::path& cachePath)
     {
         m_name = name;
         m_connectorsLoaded = false;
@@ -117,6 +116,8 @@ namespace sam
             for (; curVtx != endVtx; ++curVtx)
             {
                 curVtx->m_y = -curVtx->m_y;
+                curVtx->m_x = -curVtx->m_x;
+                curVtx->m_z = -curVtx->m_z;
                 if (curVtx->m_u == 16)
                     curVtx->m_u = -1;
                 m_bounds += Vec3f(curVtx->m_x, curVtx->m_y, curVtx->m_z);
@@ -126,10 +127,7 @@ namespace sam
             m_center = (m_bounds.mMax + m_bounds.mMin) * 0.5f;
 
             InitConnectorNames();
-            LdrBbox bbox = pLoader->getBboxWithExlcusions(name.c_str(), sConnectorNames);
-            m_collisionBox.mEmpty = false;
-            m_collisionBox.mMin = Vec3f(bbox.min.x, bbox.min.y, bbox.min.z);
-            m_collisionBox.mMax = Vec3f(bbox.max.x, bbox.max.y, bbox.max.z);
+            m_collisionBox = m_bounds;
 
             Vec3f bnd = m_bounds.mMax - m_bounds.mMin;
             Vec3f col = m_collisionBox.mMax - m_collisionBox.mMin;
@@ -232,42 +230,13 @@ namespace sam
 
 #define tricount (hires ? rpart.num_trianglesC : rpart.num_triangles)
 #define tris (hires ? rpart.trianglesC : rpart.triangles)
-
-    void Brick::LoadPrimitives(ldr::Loader* pLoader)
-    {
-        std::vector<ldr::LdrPrimitive> primitives;
-        pLoader->loadPrimitives(m_name.c_str(),
-            std::set<std::string>(), true, primitives);
-    }
-
+    
     inline bool epEquals(float a, float b)
     {
         constexpr float epsilon = 1e-5f;
         float c = (a - b);
         return c < epsilon || c >(-epsilon);
     }
-    inline bool BoundsXZSizeEq(const LdrBbox& bb, const Vec2f& v)
-    {
-        if (epEquals(bb.max.x - bb.min.x, v[0]) &&
-            epEquals(bb.max.z - bb.min.z, v[1]))
-            return true;
-        else
-            return false;
-    }
-
-    ConnectorInfo GetConnectorForPrimitive(ldr::Loader* pLoader, const ldr::LdrPrimitive& prim)
-    {
-        const std::string& name = pLoader->getPrimitiveName(prim.idx);
-        auto itconnection = sConnectorMap.find(name);
-        if (itconnection != sConnectorMap.end())
-            return itconnection->second;
-
-        if (name == "box5.dat" && prim.inverted && BoundsXZSizeEq(prim.bbox, Vec2f(12, 12)))
-            return ConnectorInfo{ ConnectorType::InvStud, { Vec3f(0,0,0) } };
-
-        return ConnectorInfo{ ConnectorType::Unknown };
-    }
-
 
     void Brick::LoadConnectors(const std::filesystem::path& connectorPath)
     {
@@ -315,7 +284,7 @@ namespace sam
             vals[14] = mat["M43"];
             vals[15] = mat["M44"];
             trans.mState = Matrix44f::AFFINE;
-            trans = makeScale<Matrix44f>(Vec3f(1, -1, 1)) * trans;
+            trans = makeScale<Matrix44f>(Vec3f(-1, -1, -1)) * trans;
             c.pos = Vec3f(vals[12], vals[13], vals[14]);
             Vec4f out;
             xform(out, trans, Vec4f(0, -1, 0, 0));
@@ -348,31 +317,9 @@ namespace sam
     constexpr int iconH = 256;
     static BrickManager* spMgr = nullptr;
     BrickManager::BrickManager(const std::string& _ldrpath) :
-        m_ldrLoaderHR(std::make_shared<ldr::Loader>()),
-        m_ldrLoaderLR(std::make_shared<ldr::Loader>()),
         m_mruCtr(0)
     {
         std::string ldrpath = Application::Inst().Documents() + "/ldraw";
-        // initialize library
-        LdrLoaderCreateInfo  createInfo = {};
-        // while parts are not directly fixed, we will implicitly create a fixed version
-        // for renderparts
-        createInfo.partFixMode = LDR_PART_FIX_NONE;
-        createInfo.renderpartBuildMode = LDR_RENDERPART_BUILD_ONLOAD;
-        // required for chamfering
-        createInfo.partFixTjunctions = LDR_TRUE;
-        // optionally look for higher subdivided ldraw primitives
-        createInfo.partHiResPrimitives = LDR_TRUE;
-        // leave 0 to disable
-        createInfo.renderpartChamfer = 0.35f;
-        // installation path of the LDraw Part Library
-        createInfo.basePath = ldrpath.c_str();
-        m_ldrLoaderHR->init(&createInfo);
-
-        createInfo.partFixTjunctions = LDR_FALSE;
-        createInfo.partHiResPrimitives = LDR_FALSE;
-        createInfo.renderpartChamfer = 0.2f;
-        m_ldrLoaderLR->init(&createInfo);
         spMgr = this;
         m_cachePath = Application::Inst().Documents() + "/cache";
         m_connectorPath = Application::Inst().Documents() + "/cache";
@@ -404,10 +351,6 @@ namespace sam
         if (std::filesystem::exists(collisionPath))
             return pBrick->LoadCollisionMesh(collisionPath);
         return false;
-    }
-    void BrickManager::LoadPrimitives(Brick* pBrick)
-    {
-        pBrick->LoadPrimitives(m_ldrLoaderLR.get());
     }
     void BrickManager::LoadColors(const std::string& ldrpath)
     {
@@ -780,7 +723,7 @@ namespace sam
         Brick& b = m_bricks[name];
         if (!b.m_vbhLR.isValid())
         {
-            b.LoadLores(m_ldrLoaderLR.get(), name.GetFilename(), m_cachePath);
+            b.LoadLores(name.GetFilename(), m_cachePath);
         }
         if (hires && (!b.m_vbhHR.isValid()))
         {

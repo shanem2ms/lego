@@ -15,7 +15,7 @@ namespace sam
         std::shared_ptr<CubeList> m_connnectorsCL;
     public:
         void PlaceBrick(std::shared_ptr<Player> player, std::shared_ptr<LegoBrick> pickedBrick,
-            OctTileSelection &octTileSelection, bool doCollisionCheck);
+            OctTileSelection &octTileSelection, std::shared_ptr<Physics> physics, bool doCollisionCheck);
 
         void GetAlignmentDomain(const PartInst& pi, float sweepDist);
         void Draw(DrawContext& dc) override;

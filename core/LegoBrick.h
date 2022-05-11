@@ -33,6 +33,9 @@ namespace sam
         { return m_connectorPickIdx; }
         const PartInst &GetPartInst() const
         { return m_partinst; }
+        void SetDbgCollided(bool c) {
+            m_dbgCollided = c;
+        }
     private:
         Matrix44f CalcMat() const override;
         PartInst m_partinst;
@@ -41,6 +44,7 @@ namespace sam
         bool m_showConnectors;
         bool m_hires;
         int m_connectorPickIdx;
+        bool m_dbgCollided;
         Physics m_physicsType;
         std::shared_ptr<SceneItem> m_connectorPickWidget;
         std::shared_ptr<btDefaultMotionState> m_initialState;

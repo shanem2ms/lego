@@ -134,6 +134,7 @@ namespace sam
             m_rigidBody->setFriction(0.0f);
 
             btVector3 p = m_rigidBody->getCenterOfMassPosition();
+            p[1] = std::max(p[1], -32.0f);
             m_pos = Vec3f(p[0], p[1], p[2]);
             m_playerBody->SetOffset(m_pos);
 

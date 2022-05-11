@@ -87,7 +87,7 @@ namespace sam
         if (buttonId == 1 && m_pPickedBrick != nullptr)
         {
             m_connectionLogic.PlaceBrick(m_player, m_pPickedBrick,
-                m_octTileSelection, !m_disableCollisionCheck);
+                m_octTileSelection, m_physics, !m_disableCollisionCheck);
         }
         else if (buttonId == 0 && m_pPickedBrick != nullptr)
         {
@@ -154,10 +154,6 @@ namespace sam
     {
         switch (k)
         {
-        case 'P':
-            BrickManager::Inst().LoadPrimitives(
-                BrickManager::Inst().GetBrick(m_player->GetRightHandPart().id));
-            break;
         case 'B':
             m_debugDraw = (m_debugDraw + 1) % 3;
             break;

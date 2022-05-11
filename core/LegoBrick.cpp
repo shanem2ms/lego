@@ -25,7 +25,8 @@ namespace sam
         m_rigidBody(nullptr),
         m_initialState(nullptr),
         m_physicsType(physics),
-        m_hires(hires)
+        m_hires(hires),
+        m_dbgCollided(false)
     {
 
     }
@@ -78,6 +79,7 @@ namespace sam
             btRigidBody::btRigidBodyConstructionInfo constructInfo(mass, m_initialState.get(),
                 m_pBrick->m_collisionShape.get());
             m_rigidBody = std::make_shared<btRigidBody>(constructInfo);
+            m_rigidBody->setUserPointer(this);
             //dc.m_physics->TestCollision(m_rigidBody.get());
             dc.m_physics->AddRigidBody(m_rigidBody.get());
         }

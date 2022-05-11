@@ -17,6 +17,8 @@
 #include "PlayerView.h"
 #include "gmtl/AABoxOps.h"
 #include "ConnectionLogic.h"
+#include "bullet/btBulletCollisionCommon.h"
+#include "bullet/btBulletDynamicsCommon.h"
 #define NOMINMAX
 
 namespace sam
@@ -45,7 +47,7 @@ namespace sam
         float zDist;
     };
     void ConnectionLogic::PlaceBrick(std::shared_ptr<Player> player, std::shared_ptr<LegoBrick> pickedBrick,
-        OctTileSelection& octTileSelection, bool doCollisionCheck)
+        OctTileSelection& octTileSelection, std::shared_ptr<Physics> physics, bool doCollisionCheck)
     {
         Engine& e = Engine::Inst();
         Camera::Fly la = e.ViewCam().GetFly();
@@ -191,16 +193,40 @@ namespace sam
                     cbox = RotateAABox(cbox, wsPickedConnectorDir * pi.rot);
                     cbox.mMin += pi.pos;
                     cbox.mMax += pi.pos;
+                    {
+                        static std::shared_ptr<btRigidBody> sRigidBody;
+                        sam::Brick* pBrick = BrickManager::Inst().GetBrick(pi.id);
+                        if (BrickManager::Inst().LoadCollision(pBrick))
+                        {                            
+                            Matrix44f m =
+                                makeTrans<Matrix44f>(pi.pos) *
+                                makeRot<Matrix44f>(pi.rot);
+
+                            btTransform mat4;
+                            mat4.setFromOpenGLMatrix(m.getData());
+                            auto initialState = std::make_shared<btDefaultMotionState>(mat4);
+                            btScalar mass = 0;
+                            btRigidBody::btRigidBodyConstructionInfo constructInfo(mass, initialState.get(),
+                                pBrick->m_collisionShape.get());
+                            sRigidBody = std::make_shared<btRigidBody>(constructInfo);
+                            if (!doCollisionCheck || !physics->TestCollision(sRigidBody.get()))
+                            {
+                                octTileSelection.AddPartInst(pi);
+                                Application::Inst().GetAudio().PlayOnce("click-7.wav");
+                            }
+                            //physics->AddRigidBody(sRigidBody.get());
+                        }
+                    }
+                    /*
                     if (!doCollisionCheck || octTileSelection.CanAddPart(pi, cbox))
                     {
                         octTileSelection.AddPartInst(pi);
                         Application::Inst().GetAudio().PlayOnce("click-7.wav");
-                    }
+                    }*/
                     break;
                 }
             }
         }
-
     }
 
     void ConnectionLogic::GetAlignmentDomain(const PartInst& pi, float sweepDist)
