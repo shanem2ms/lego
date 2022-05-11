@@ -213,6 +213,7 @@ namespace sam
                             {
                                 octTileSelection.AddPartInst(pi);
                                 Application::Inst().GetAudio().PlayOnce("click-7.wav");
+                                break;
                             }
                             //physics->AddRigidBody(sRigidBody.get());
                         }
@@ -223,7 +224,6 @@ namespace sam
                         octTileSelection.AddPartInst(pi);
                         Application::Inst().GetAudio().PlayOnce("click-7.wav");
                     }*/
-                    break;
                 }
             }
         }

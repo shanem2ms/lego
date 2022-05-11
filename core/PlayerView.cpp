@@ -56,6 +56,9 @@ namespace sam
             m_dir = Vec2f(1.24564195f, -0.455399066f);
         }
     }
+    constexpr float pi = 3.14159265358979323846f;
+    constexpr float pi_over_two = pi * 0.5f;
+    constexpr float pi_over_two_thresh = 3.14159265358979323846f * 0.5f - 0.001f;
 
     void Player::SetRightHandPart(const PartInst& part)
     {
@@ -69,7 +72,7 @@ namespace sam
         {
             m_rightHandPart = std::make_shared<LegoBrick>(part, part.atlasidx, true, LegoBrick::Physics::None, true);
             m_rightHandPart->SetOffset(part.pos + Vec3f(0,0,-1.2f));
-            m_rightHandPart->SetRotate(part.rot);
+            m_rightHandPart->SetRotate(part.rot * gmtl::make<Quatf>((AxisAnglef(pi, Vec3f(0,1,0)))));
             float s = 0.25f;
             m_rightHandPart->SetScale(Vec3f(s, s, s));
             m_rightHand->AddItem(m_rightHandPart);
@@ -180,8 +183,6 @@ namespace sam
         
     }
 
-    constexpr float pi_over_two = 3.14159265358979323846f * 0.5f;
-    constexpr float pi_over_two_thresh = 3.14159265358979323846f * 0.5f - 0.001f;
     void Player::RawMove(float dx, float dy)
     {
         Engine& e = Engine::Inst();
