@@ -5,6 +5,7 @@
 #include "UIControl.h"
 #include "World.h"
 #include "imgui.h"
+#include "dear-imgui/ImGuiFileDialog.h"
 #include <chrono>
 
 namespace sam
@@ -23,7 +24,8 @@ namespace sam
         m_background(1.0f, 1.0f, 1.0f, 1.0f), 
         m_touchDown(0, 0),
         m_touchPos(0, 0),
-        m_buttonDown(false)
+        m_buttonDown(false),
+        m_isVisible(true)
     {
 
     }
@@ -123,6 +125,13 @@ namespace sam
     inline ImVec2 ToIM(const UIContext &ctx, const float &x, const float &y)
     { return ImVec2(x * ctx.scaleW, y * ctx.scaleH); }
 
+    inline ImVec2 ToIMScl(const UIContext& ctx, const float& x, const float& y)
+    {
+        return ImVec2(
+            (x < 0 ? x + ctx.width : x) * ctx.scaleW,
+            (y < 0 ? y + ctx.height : y) * ctx.scaleH);
+    }
+
     inline ImVec2 ToIMPos(const UIContext& ctx, const float& x, const float& y)
     {
         return ImVec2(
@@ -165,6 +174,13 @@ namespace sam
         m_controls.push_back(ctrl);
     }
 
+    void UIGroup::RemoveControl(const UIControl* ctrl)
+    {
+        auto itctrl = std::find_if(m_controls.begin(), m_controls.end(), 
+            [ctrl](const std::shared_ptr<UIControl>& item) { return item.get() == ctrl; });
+        if (itctrl != m_controls.end()) m_controls.erase(itctrl);
+    }
+
     void UIGroup::DrawUI(UIContext &ctx)
     {
         UILayout oldLayout = ctx.layout;
@@ -180,7 +196,6 @@ namespace sam
         bool invisible) :
         UIGroup(x, y, w, h),
         m_name(name),
-        m_isopen(true),
         m_isinvisible(invisible)
     {
 
@@ -201,7 +216,7 @@ namespace sam
 
     void UIWindow::DrawUI(UIContext& ctx)
     {
-        if (!m_isopen)
+        if (!m_isVisible)
             return;
         
         int x = m_x < 0 ? unitWidth + m_x : m_x;
@@ -215,7 +230,7 @@ namespace sam
                 m_isinvisible ? ImGuiCond_Always : ImGuiCond_Appearing
             );
         }
-        bool isopen = m_isopen;
+        bool isopen = m_isVisible;
         ImGui::Begin(m_name.c_str(), &isopen,
             m_isinvisible ? (
             ImGuiWindowFlags_NoBackground |
@@ -223,10 +238,10 @@ namespace sam
             ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoMove) : ImGuiWindowFlags_NoTitleBar |
             ImGuiWindowFlags_NoResize);
-        if (isopen != m_isopen && m_onOpenChangedFn != nullptr)
+        if (isopen != m_isVisible && m_onOpenChangedFn != nullptr)
         {
             m_onOpenChangedFn(isopen);
-            m_isopen = false;
+            m_isVisible = false;
         }
 
         ImGui::SetWindowFontScale(ctx.scaleW);
@@ -238,7 +253,7 @@ namespace sam
         m_width = size.x / ctx.scaleW;
         m_height = size.y / ctx.scaleH;
 
-        m_isopen = isopen;
+        m_isVisible = isopen;
         UIContext subCtx = ctx;
         subCtx.width = m_width;
         subCtx.height = m_height;
@@ -255,6 +270,9 @@ namespace sam
        
     void UIPanel::DrawUI(UIContext& ctx)
     {
+        if (!m_isVisible)
+            return;
+
         if (ctx.layout == UILayout::Horizontal)
             ImGui::SameLine();
 
@@ -264,9 +282,15 @@ namespace sam
         float y = ImGui::GetCursorPosY();
         ImGui::SetCursorPosX(x + (float)m_x * ctx.scaleW);
         ImGui::SetCursorPosY(y + (float)m_y * ctx.scaleH);
-        ImGui::BeginChild(m_name.c_str(), ToIM(ctx, m_width, m_height), true, window_flags);
-        
+        ImVec2 size = ToIMScl(ctx, m_width, m_height);
+        ImGui::BeginChild(m_name.c_str(), size, true, window_flags);
+        float oldW = ctx.width;
+        float oldH = ctx.height;
+        ctx.width = size.x;
+        ctx.height = size.y;
         UIGroup::DrawUI(ctx);
+        ctx.width = oldW;
+        ctx.height = oldH;
         ImGui::EndChild();
         ImGui::PopStyleVar();
     }
@@ -346,5 +370,47 @@ namespace sam
         ImGui::Columns(1);
     }
 
-    
+    UIFileDialog::UIFileDialog(float x, float y, float w, float h,
+        const std::string &dir,
+        std::function<void(bool, const std::string& file)> resultFunc) :
+        UIControl(x, y, w, h),
+        m_isOpen(false),
+        m_dir(dir),
+        m_resultFunc(resultFunc)
+    {
+
+    }
+
+    void UIFileDialog::DrawUI(UIContext& ctx)
+    {
+        if (!m_isVisible)
+            return;
+        if (!m_isOpen)
+        {
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Import File", ".zmbx", m_dir.c_str(),
+                1, nullptr, ImGuiFileDialogFlags_NoDialog);
+        }
+        ImVec2 size = ToIMScl(ctx, m_width, m_height);
+        if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey",
+            ImGuiWindowFlags_NoCollapse, size, size))
+        {
+            bool isOk = false;
+            std::string filename;
+            if (ImGuiFileDialog::Instance()->IsOk())
+            {
+                isOk = true;
+                filename = ImGuiFileDialog::Instance()->GetFilePathName();
+            }
+            ImGuiFileDialog::Instance()->Close();
+            m_isOpen = false;
+            m_isVisible = false;
+            m_resultFunc(isOk, filename);
+        }
+    }
+
+    UIControl* UIFileDialog::IsHit(float x, float y, int buttonId)
+    {
+        return nullptr;
+    }
+
 }

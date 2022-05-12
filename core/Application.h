@@ -59,6 +59,10 @@ public:
     static void DebugMsg(const std::string& str);
     void OpenInventory();
     void OpenMainMenu();
+
+    void UIImportMbx(const std::string& name);
+
+    void UIQuit();
 };
 
 std::shared_ptr< bgfx::CallbackI> CreateCallback();

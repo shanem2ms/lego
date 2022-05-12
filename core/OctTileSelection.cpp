@@ -139,6 +139,19 @@ namespace sam
             pts[7] = Point3f(u[0], u[1], u[2]);
         }
 
+        static inline float clampf(float v, float vmin, float vmax)
+        {
+            return std::max(vmin, std::min(vmax, v));
+        }
+        static float DistanceToAAbb(const Point3f& v, const AABoxf& bbox)
+        {
+            Point3f closestpt(clampf(v[0], bbox.mMin[0], bbox.mMax[0]),
+                clampf(v[1], bbox.mMin[1], bbox.mMax[1]),
+                clampf(v[2], bbox.mMin[2], bbox.mMax[2]));
+            Vec3f closestVec = v - closestpt;
+            return length(closestVec);
+        }
+
     public:
 
         static int TargetLodForLoc(const Loc& curLoc, const Matrix44f& viewProj, const Vec3f &camFwd, const Point3f &camPos)
@@ -175,16 +188,24 @@ namespace sam
             return std::max(log2(maxlen) + 9, 0.0f);
         }
 
+        static int TargetLodForLoc2(const Loc& curLoc, const Point3f& camPos)
+        {
+            float dist = DistanceToAAbb(camPos, curLoc.GetBBox());
+            if (dist == 0)
+                return -1;
+            return (int)9 - log10(dist);
+        }
+
 
         static bool GetLocsInView(std::vector<Loc>& locs, const Loc& curLoc,
             const Frustumf& frustum, const Matrix44f& viewProj, const Point3f& camPos, const Vec3f& camRight, const Vec3f& camFwd, float pixelDist, int maxlod, const AABoxf& playerBounds, bool behindCamera)
         {
             static int minLod = -1;
             static bool dobreak = false;
-            int targetLod = TargetLodForLoc(curLoc, viewProj, camFwd, camPos);
-
-            //if (dobreak && curLoc == Loc(0, 0, 1, 1))
-            //    __debugbreak();
+            //int targetLod = TargetLodForLoc(curLoc, viewProj, camFwd, camPos);
+            int targetLod = TargetLodForLoc2(curLoc, camPos);
+            if (dobreak && curLoc == Loc(64, 64, 64, 7))
+                __debugbreak();
             if (targetLod >= 0)
             {
                

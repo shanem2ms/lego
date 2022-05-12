@@ -1,10 +1,10 @@
+1) Missing oct tiles
 2) Shadow artifacts
-11) missing pieces
 3) Lod changes cause popping
-4) Fix part placement
 5) Player body selection
 6) Network play
 7) Download parts from cloud
 9) Turn on/off player collision
 10) falling through ground bug
 1) Print part name on slot bar
+11) missing pieces

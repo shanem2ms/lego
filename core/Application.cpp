@@ -126,7 +126,7 @@ namespace sam
     {
         m_hideMouseCursorFn = fn;
     }
-    
+
     void Application::RawMouseMoved(int32_t rx, int32_t ry)
     {
         static const float mScale = 1.0f / 256.0f;
@@ -205,14 +205,14 @@ namespace sam
         m_engine->Tick(time);
     }
 
-   
-    void Application::Initialize(const char *folder)
+
+    void Application::Initialize(const char* folder)
     {
         m_documentsPath = folder;
         std::string dbPath = m_documentsPath + "/testlvl";
         m_world->Open(dbPath);
         imguiCreate(32.0f);
-        m_brickManager = std::make_unique<BrickManager>("c:\\ldraw");
+        m_brickManager = std::make_unique<BrickManager>();
         m_engine->AddExternalDraw(m_brickManager.get());
         m_legoUI = std::make_unique<LegoUI>();
         m_world->OnShowInventory([this]()
@@ -269,6 +269,17 @@ namespace sam
             counter = 0;
 #endif
     }
+
+    void Application::UIImportMbx(const std::string& name)
+    {
+        m_world->ImportMbx(name);
+    }
+
+    void Application::UIQuit()
+    {
+
+    }
+
     Application::~Application()
     {
 

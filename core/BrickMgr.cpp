@@ -316,7 +316,7 @@ namespace sam
     constexpr int iconW = 256;
     constexpr int iconH = 256;
     static BrickManager* spMgr = nullptr;
-    BrickManager::BrickManager(const std::string& _ldrpath) :
+    BrickManager::BrickManager() :
         m_mruCtr(0)
     {
         std::string ldrpath = Application::Inst().Documents() + "/ldraw";

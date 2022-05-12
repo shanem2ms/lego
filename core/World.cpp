@@ -183,15 +183,6 @@ namespace sam
             m_player->SetRightHandPart(part);
             break;
         }
-        case 'I':
-            {
-            std::vector<PartInst> piImport;
-                MbxImport mbxImport;
-                mbxImport.ImportFile(Application::Inst().Documents() + "/Import/porkins.zmbx", 
-                    m_player->Pos(), piImport);
-                m_octTileSelection.AddMultipleParts(this, piImport);
-            }
-            break;
         case 'E':
         {
             m_showInventoryFn();
@@ -204,6 +195,13 @@ namespace sam
         m_player->KeyDown(k);
     } 
 
+    void World::ImportMbx(const std::string& path)
+    {
+        std::vector<PartInst> piImport;
+        MbxImport mbxImport;
+        mbxImport.ImportFile(path, m_player->Pos(), piImport);
+        m_octTileSelection.AddMultipleParts(this, piImport);
+    }
     void World::KeyUp(int k)
     {
         switch (k)

@@ -200,16 +200,39 @@ namespace sam
         menu->OnOpenChanged([this, parent](bool isopen) {
             if (!isopen) Deactivate(); });
         menu->SetLayout(UILayout::Horizontal);
+        auto panel = std::make_shared<UIPanel>(0, 0, -30, -30);
+        menu->AddControl(panel);
 
-        menu->AddControl(std::make_shared<UIStateBtn>(20, 100, 165, 85, "Import",
-            [](bool isBtnDown)
+        std::shared_ptr<UIFileDialog> importFileBrowser;
+        importFileBrowser = std::make_shared<UIFileDialog>(0, 0, -30, -30, Application::Inst().Documents() + "/Import/.",
+            [menu, panel](bool isOk, const std::string& filepath) 
             {
+                if (isOk)
+                {
+                    Application::Inst().UIImportMbx(filepath);
+                }
+                panel->SetVisible(true);                
+            });
+        importFileBrowser->SetVisible(false);
+        menu->AddControl(importFileBrowser);
+
+        panel->AddControl(std::make_shared<UIStateBtn>(20, 100, 165, 85, "Import",
+            [menu, panel, importFileBrowser](bool isBtnDown)
+            {
+                if (isBtnDown) {
+                    panel->SetVisible(false);
+                    importFileBrowser->SetVisible(true);
+                }
             }));
 
-        menu->AddControl(std::make_shared<UIStateBtn>(20, -105, 165, 85, "Quit",
+        
+
+        panel->AddControl(std::make_shared<UIStateBtn>(20, -105, 165, 85, "Quit",
             [](bool isBtnDown)
             {
+                Application::Inst().UIQuit();
             }));
+        
         m_root = menu;
         return menu;
     }

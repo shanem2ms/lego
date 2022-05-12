@@ -9,6 +9,8 @@ elseif (APPLE)
 set(BX_INC_DIR_COMPAT ${BGFX_INCLUDE_ROOT}/compat/osx)
 endif()
 
+STRING(REPLACE "O2" "Od" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
+
 add_subdirectory(shaders)
 
 ################################################################################
@@ -75,6 +77,7 @@ set(Source_Files
     "MbxImport.cpp"
     "LoresTile.cpp"
     "imgui/imgui.cpp"
+    "imgui/dear-imgui/ImGuiFileDialog.cpp"
     "imgui/dear-imgui/imgui.cpp"
     "imgui/dear-imgui/imgui_draw.cpp"
     "imgui/dear-imgui/imgui_widgets.cpp"

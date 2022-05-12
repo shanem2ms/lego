@@ -32,6 +32,7 @@ namespace sam
         bool m_isInit;
         Vec4f m_background;
         Vec4f m_border;
+        bool m_isVisible;
         UIControl(float x, float y, float w, float h);    
         gmtl::Vec2f m_touchDown;
         gmtl::Vec2f m_touchPos;
@@ -42,6 +43,7 @@ namespace sam
         void SetBackgroundColor(const Vec4f& color);
         void SetBorderColor(const Vec4f& color);
         virtual void DrawUI(UIContext &ctx) = 0;
+        void SetVisible(bool v) { m_isVisible = v; }
     };
 
 
@@ -69,12 +71,12 @@ namespace sam
     public:
         void SetLayout(UILayout layout) { m_layout = layout; }
         void AddControl(std::shared_ptr<UIControl> ctrl);
+        void RemoveControl(const UIControl *ctrl);
     };
 
     class UIWindow : public UIGroup
     {
         std::string m_name;
-        bool m_isopen;
         bool m_isinvisible;
         std::function<void(bool)> m_onOpenChangedFn;
     public:
@@ -84,13 +86,13 @@ namespace sam
             bool invisible);
         UIControl* IsHit(float x, float y, int buttonId) override;
         void DrawUI(UIContext& ctx) override;
-        void Show() { m_isopen = true; }
+        void Show() { m_isVisible = true; }
         void Close() { 
-            if (!m_isopen)
+            if (!m_isVisible)
                 return;
             if (m_onOpenChangedFn != nullptr)
                 m_onOpenChangedFn(false);
-            m_isopen = false; }
+            m_isVisible = false; }
     };
 
     class UIPanel : public UIGroup
@@ -132,6 +134,18 @@ namespace sam
         { m_tooltipFn = tooltipFn; }
         void OnItemSelected(const std::function<void(int)> &itemSelectedFn)
         { m_itemSelectedFn = itemSelectedFn; }
+    };
+
+    class UIFileDialog : public UIControl
+    {
+        bool m_isOpen;
+        std::string m_dir;
+        std::function<void(bool, const std::string& file)> m_resultFunc;
+    public:
+        UIFileDialog(float x, float y, float w, float h,
+            const std::string &directory, std::function<void(bool, const std::string &file)> resultFunc);
+        void DrawUI(UIContext& ctx) override;
+        UIControl* IsHit(float x, float y, int buttonId) override;
     };
 
     class UIManager

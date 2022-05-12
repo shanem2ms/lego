@@ -59,6 +59,7 @@ namespace sam
         void WheelScroll(float delta);
         void Open(const std::string &path);
 
+        void ImportMbx(const std::string& path);
         void OnShowInventory(const std::function<void()> &fn)
         { m_showInventoryFn = fn; }
     };
