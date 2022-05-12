@@ -18,6 +18,7 @@ namespace sam
         return Vec3f(v3[0], v3[1], v3[2]);
     }
 
+    float g_overlap = 0;
     class PhysicsDebugDraw : public btIDebugDraw
     {
         struct Line
@@ -241,7 +242,8 @@ namespace sam
     {
         MyContactTest contactTest;
         m_discreteDynamicsWorld->contactTest(pObj, contactTest);
-        return contactTest.collision && contactTest.m_overlap < -0.1f;
+        g_overlap = contactTest.m_overlap;
+        return contactTest.collision && contactTest.m_overlap < -0.15f;
         
     }
 
