@@ -27,7 +27,8 @@ set (PLATFORMLIBS
 
 find_package(Bullet CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
- find_package(libzip CONFIG REQUIRED)
+find_package(libzip CONFIG REQUIRED)
+find_package(CURL CONFIG REQUIRED)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(LIBDBG "debug/")
   set(CMAKE_DEBUG_POSTFIX "_Debug")
@@ -44,6 +45,7 @@ target_link_libraries(${PROJECT_NAME} LINK_PUBLIC
     ${VCPKG_INSTALL_PATH}/${LIBDBG}lib/BulletInverseDynamics${CMAKE_DEBUG_POSTFIX}.lib
     ${VCPKG_INSTALL_PATH}/${LIBDBG}lib/LinearMath${CMAKE_DEBUG_POSTFIX}.lib
     fmt::fmt-header-only
+    CURL::libcurl
     core 
     ${PLATFORMLIBS}
     zlibstatic
