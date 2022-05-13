@@ -204,8 +204,8 @@ namespace sam
             static bool dobreak = false;
             //int targetLod = TargetLodForLoc(curLoc, viewProj, camFwd, camPos);
             int targetLod = TargetLodForLoc2(curLoc, camPos);
-            if (dobreak && curLoc == Loc(64, 64, 64, 7))
-                __debugbreak();
+            //if (dobreak && curLoc == Loc(64, 64, 64, 7))
+            //    __debugbreak();
             if (targetLod >= 0)
             {
                
