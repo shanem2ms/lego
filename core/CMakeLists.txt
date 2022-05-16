@@ -74,6 +74,7 @@ set(Source_Files
     "ConnectionWidget.cpp"
     "ConnectionLogic.cpp"
     "LegoUI.cpp"
+    "ZipFile.cpp"
     "MbxImport.cpp"
     "LoresTile.cpp"
     "imgui/imgui.cpp"

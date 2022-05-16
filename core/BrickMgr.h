@@ -4,7 +4,6 @@
 #include <set>
 #include <list>
 #include <filesystem>
-#include <mutex>
 #include "SceneItem.h"
 #include "Engine.h"
 #include "Loc.h"
@@ -14,7 +13,6 @@
 
 struct CubeList;
 class btCompoundShape;
-struct zip;
 namespace ldr
 {
     struct Loader;
@@ -27,6 +25,8 @@ namespace sam
 
 namespace sam
 {       
+    class ZipFile;
+    class vecstream;
     struct PartDesc
     {
         PartDesc()
@@ -138,10 +138,9 @@ namespace sam
         return lhs.pos == rhs.pos;
     }
 
-    class vecstream;
     struct Brick
     {
-        std::string m_name;
+        PartId m_name;
         std::vector<PosTexcoordNrmVertex> m_verticesLR;
         std::vector<uint32_t> m_indicesLR;
         bgfxh<bgfx::VertexBufferHandle> m_vbhLR;
@@ -168,8 +167,8 @@ namespace sam
         void LoadLores(
             const vecstream &data);
         void LoadHires(const vecstream& data);
-        void LoadConnectors(const std::filesystem::path &connectorPath);
-        bool LoadCollisionMesh(const std::filesystem::path& collisionPath);
+        void LoadConnectors(const vecstream &stream);
+        bool LoadCollisionMesh(const vecstream& stream);
         friend class BrickManager;
     };
 
@@ -258,8 +257,9 @@ namespace sam
 
         const std::string& PartAlias(const std::string& name);
     private:
-        void LoadColors(const std::string& ldrpath);
-        void LoadAllParts(const std::string& ldrpath);
+        void LoadColors();
+        void LoadAllParts();
+        void DownloadCacheFile();
         void CleanCache();
 
         std::map<PartId, Brick> m_bricks;
@@ -267,16 +267,12 @@ namespace sam
         index_map<PartId, PartDesc> m_partsMap;
         index_map<std::string, std::vector<PartId>> m_typesMap;
         std::filesystem::path m_cachePath;
-        std::filesystem::path m_connectorPath;
-        std::filesystem::path m_collisionPath;
         std::vector<Brick*> m_brickRenderQueue;
         bgfxh<bgfx::TextureHandle> m_iconDepth;
         bgfxh<bgfx::TextureHandle> m_colorPalette;
         size_t m_mruCtr;
         index_map<int, BrickColor> m_colors;
         std::map<std::string, std::string> m_aliasParts;
-        zip* m_cacheZip;
-        std::mutex m_zipmutex;
-        std::map<std::string, std::pair<int, uint64_t>> m_cacheZipIndices;
+        std::shared_ptr<ZipFile> m_cacheZip;
     };
 }

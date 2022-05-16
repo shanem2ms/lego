@@ -18,8 +18,8 @@
 #include "bullet/btBulletDynamicsCommon.h"
 #include "rapidxml/rapidxml.hpp"
 #include "nlohmann/json.hpp"
+#include "ZipFile.h"
 #include <curl/curl.h>
-#include "zip.h"
 
 using namespace gmtl;
 using namespace nlohmann;
@@ -89,27 +89,10 @@ namespace sam
         }
     }
 
-    class vecstream
-    {
-        std::vector<uint8_t>& m_data;
-        mutable size_t m_offset;
-    public:
-        vecstream(std::vector<uint8_t>& data) :
-            m_data(data),
-            m_offset(0)
-        {
-
-        }
-
-        void read(char* outData, size_t size) const
-        {
-            memcpy(outData, m_data.data() + m_offset, size);
-            m_offset += size;
-        }
-    };
 
     void Brick::LoadLores(const vecstream& ifs)
     {
+        PosTexcoordNrmVertex::init();
         uint32_t numvtx = 0;
         uint32_t numidx = 0;
         ifs.read((char*)&numvtx, sizeof(numvtx));
@@ -184,28 +167,25 @@ namespace sam
         m_ibhHR = bgfx::createIndexBuffer(bgfx::makeRef(m_indicesHR.data(), m_indicesHR.size() * sizeof(uint32_t)), BGFX_BUFFER_INDEX32);
     }
 
-    bool Brick::LoadCollisionMesh(const std::filesystem::path& collisionPath)
+    bool Brick::LoadCollisionMesh(const vecstream& stream)
     {
         if (m_collisionShape != nullptr)
             return true;
 
         std::vector<std::vector<Vec3d>> meshes;
-        if (std::filesystem::exists(collisionPath))
+
+        uint32_t nummeshes = 0;
+        stream.read((char*)&nummeshes, sizeof(nummeshes));
+        std::vector<uint32_t> triCount(nummeshes);
+        stream.read((char*)triCount.data(), sizeof(triCount[0]) * triCount.size());
+        size_t tricntPrev = 0;
+        for (int idx = 0; idx < nummeshes; ++idx)
         {
-            std::ifstream ifs(collisionPath, std::ios_base::binary);
-            uint32_t nummeshes = 0;
-            ifs.read((char*)&nummeshes, sizeof(nummeshes));
-            std::vector<uint32_t> triCount(nummeshes);
-            ifs.read((char*)triCount.data(), sizeof(triCount[0]) * triCount.size());
-            size_t tricntPrev = 0;
-            for (int idx = 0; idx < nummeshes; ++idx)
-            {
-                meshes.push_back(std::vector<Vec3d>());
-                std::vector<Vec3d>& pts = meshes.back();
-                pts.resize(triCount[idx] - tricntPrev);
-                ifs.read((char*)pts.data(), sizeof(pts[0]) * pts.size());
-                tricntPrev = triCount[idx];
-            }
+            meshes.push_back(std::vector<Vec3d>());
+            std::vector<Vec3d>& pts = meshes.back();
+            pts.resize(triCount[idx] - tricntPrev);
+            stream.read((char*)pts.data(), sizeof(pts[0]) * pts.size());
+            tricntPrev = triCount[idx];
         }
         m_collisionShape = std::make_shared<btCompoundShape>();
         for (auto& mesh : meshes)
@@ -235,7 +215,7 @@ namespace sam
         return c < epsilon || c >(-epsilon);
     }
 
-    void Brick::LoadConnectors(const std::filesystem::path& connectorPath)
+    void Brick::LoadConnectors(const vecstream& stream)
     {
         if (m_connectorsLoaded)
             return;
@@ -246,15 +226,12 @@ namespace sam
             { 4, ConnectorType::Unknown },
             { 8, ConnectorType::InvStud } };
         //open file
-        std::ifstream infile(connectorPath);
 
         //get length of file
-        infile.seekg(0, std::ios::end);
-        size_t length = infile.tellg();
-        infile.seekg(0, std::ios::beg);
+        size_t length = stream.length();
         std::string str;
         str.resize(length);
-        infile.read(str.data(), length);
+        stream.read(str.data(), length);
         json doc = json::parse(str);
 
         for (json elem : doc)
@@ -316,14 +293,11 @@ namespace sam
     BrickManager::BrickManager() :
         m_mruCtr(0)
     {
-        std::string ldrpath = Application::Inst().Documents() + "/ldraw";
         spMgr = this;
-        m_cachePath = Application::Inst().Documents() + "/cache";
-        m_connectorPath = Application::Inst().Documents() + "/cache";
-        m_collisionPath = Application::Inst().Documents() + "/cache";
-        std::filesystem::create_directory(m_cachePath);
-        LoadColors(ldrpath);
-        LoadAllParts(ldrpath);
+        m_cachePath = Application::Inst().Documents() + "/cache.zip";
+        DownloadCacheFile();
+        LoadColors();
+        LoadAllParts();
     }
     // trim from start (in place)
     static inline void ltrim(std::string& s) {
@@ -333,31 +307,26 @@ namespace sam
     }
     void BrickManager::LoadConnectors(Brick* pBrick)
     {
-        std::filesystem::path connectorPath = m_connectorPath / pBrick->m_name;
-        connectorPath.replace_extension("json");
-
-        if (std::filesystem::exists(connectorPath))
-            pBrick->LoadConnectors(connectorPath);
+        vecstream stream = m_cacheZip->ReadFile(pBrick->m_name.Name() + ".json");
+        if (stream.valid())
+            pBrick->LoadConnectors(stream);
     }
 
     bool BrickManager::LoadCollision(Brick* pBrick)
     {
-        std::filesystem::path collisionPath = m_collisionPath / pBrick->m_name;
-        collisionPath.replace_extension("col");
-
-        if (std::filesystem::exists(collisionPath))
-            return pBrick->LoadCollisionMesh(collisionPath);
+        vecstream stream = m_cacheZip->ReadFile(pBrick->m_name.Name() + ".col");
+        if (stream.valid())
+            return pBrick->LoadCollisionMesh(stream);
         return false;
     }
-    void BrickManager::LoadColors(const std::string& ldrpath)
+    void BrickManager::LoadColors()
     {
-        std::filesystem::path configpath =
-            std::filesystem::path(ldrpath) / "LDConfig.ldr";
-        std::ifstream ifs(configpath);
+        vecstream stream = m_cacheZip->ReadFile("LDConfig.ldr");
         std::regex colorrg("0\\s!COLOUR\\s(\\w+)\\s+CODE\\s+(\\d+)\\s+VALUE\\s#([\\dA-F]+)\\s+EDGE\\s+#([\\dA-F]+)");
         std::regex legoidrg("0\\s+\\/\\/\\sLEGOID\\s+(\\d+)\\s-\\s([\\w\\s]+)");
         int legoidCur;
         std::string legoNameCur;
+        std::istringstream ifs = stream.readText();
         while (!ifs.eof())
         {
             std::string line;
@@ -403,42 +372,37 @@ namespace sam
         m_colorPalette = bgfx::createTexture2D(16, 16, false, 1, bgfx::TextureFormat::RGBA8, BGFX_SAMPLER_POINT, m);
     }
 
-    std::vector<uint8_t> data;
-    size_t write_data(void* ptr, size_t size, size_t nmemb, FILE* stream) {
-        uint8_t* pbytes = (uint8_t*)ptr;
-        data.insert(data.end(), pbytes, pbytes + size * nmemb);
+    size_t write_data(void* ptr, size_t size, size_t nmemb, std::ofstream* pwf) {
+        const char* pbytes = (const char*)ptr;
+        pwf->write(pbytes, size * nmemb);
         return size * nmemb;
     }
     const char* url = "https://mybricks.s3.us-east-2.amazonaws.com/cache.zip";
 
-    void BrickManager::LoadAllParts(const std::string& ldrpath)
+    void BrickManager::DownloadCacheFile()
     {
-        std::string cacheFile = Application::Inst().Documents() + "/cache.zip";
-        if (!std::filesystem::exists(cacheFile))
+        if (!std::filesystem::exists(m_cachePath))
         {
+            std::ofstream* pwf = new std::ofstream(m_cachePath, std::ios::out | std::ios::binary);
             CURL* curl;
             CURLcode res;
             curl = curl_easy_init();
             curl_easy_setopt(curl, CURLOPT_URL, url);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, nullptr);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, pwf);
             res = curl_easy_perform(curl);
             /* always cleanup */
             curl_easy_cleanup(curl);
+            pwf->close();
+            delete pwf;
         }
 
 
-        int err;
-        if ((m_cacheZip = zip_open(cacheFile.c_str(), 0, &err)) == NULL) {
-            return;
-        }
-        struct zip_stat sb;
-        for (int i = 0; i < zip_get_num_entries(m_cacheZip, 0); i++) {
-            if (zip_stat_index(m_cacheZip, i, 0, &sb) == 0) {
-                m_cacheZipIndices.insert(std::make_pair(sb.name, std::make_pair(sb.index, sb.size)));
-            }
-        }
+        m_cacheZip = std::make_shared<ZipFile>(m_cachePath.string());
+    }
 
+    void BrickManager::LoadAllParts()
+    {        
         auto itcol = m_colors.end();
         std::advance(itcol, -1);
         std::vector<int> codeIdx(itcol->second.code + 1, -1);
@@ -447,181 +411,14 @@ namespace sam
             codeIdx[col.second.code] = col.second.atlasidx;
         }
 
-        std::string partnamefile = Application::Inst().Documents() + "/partnames.txt";
-        std::string aliasfile = Application::Inst().Documents() + "/aliases.txt";
-        if (std::filesystem::exists(partnamefile))
+        std::vector<std::string> allfiles = m_cacheZip->ListFiles("json");
+        for (const std::string& file : allfiles)
         {
-            std::ifstream ifs(partnamefile);
-            while (!ifs.eof())
-            {
-                std::string filename, ptype;
-                std::getline(ifs, filename, ' ');
-                std::getline(ifs, ptype, ' ');
-                std::string dv[4];
-                for (int i = 0; i < 4; ++i)
-                {
-                    std::getline(ifs, dv[i], ' ');
-                }
-                std::string desc;
-                std::getline(ifs, desc);
-
-
-                std::filesystem::path filepath = m_cachePath / filename;
-                std::filesystem::path connectorPath = m_connectorPath / filename;
-                connectorPath.replace_extension("json");
-                filepath.replace_extension("lr_mesh");
-                char* p_end;
-                int val = std::strtol(filename.data(), &p_end, 10);
-                if (std::filesystem::exists(filepath) &&
-                    std::filesystem::exists(connectorPath))
-                {
-                    PartDesc pd;
-                    pd.index = val;
-                    pd.type = ptype;
-                    pd.filename = filename;
-                    pd.ndims = std::stoi(dv[0]);
-                    for (int i = 0; i < 3; ++i)
-                        pd.dims[i] = std::stof(dv[i + 1]);
-                    pd.desc = desc;
-                    ltrim(pd.desc);
-                    m_partsMap.insert(std::make_pair(pd.filename, pd));
-                }
-            }
-
-            m_partsMap.sort();
-
-            std::ifstream ifa(aliasfile);
-            while (!ifa.eof())
-            {
-                std::string aliasline;
-                std::getline(ifa, aliasline);
-                size_t offset = aliasline.find(' ');
-                std::string w1 = aliasline.substr(0, offset);
-                std::string w2 = aliasline.substr(offset + 1);
-                m_aliasParts.insert(std::pair(w1, w2));
-            }
-        }
-        else
-        {
-            std::set<std::string> includeParts;
-            {
-                std::string ingamefile = Application::Inst().Documents() + "/ingame.txt";
-                std::ifstream ifs(ingamefile);
-                while (!ifs.eof())
-                {
-                    std::string partnm;
-                    std::getline(ifs, partnm);
-                    includeParts.insert(partnm);
-                }
-            }
-            std::string tmpfile = Application::Inst().Documents() + "/pn.tmp";
-            std::ofstream of(tmpfile);
-            std::filesystem::path partspath(ldrpath);
-            partspath /= "parts";
-
-            std::regex partsizes("[\\d\\.]+(\\s+x\\s+([\\d\\.]+))+");
-            std::regex partnames("0\\s[~=]?(\\w+)");
-            std::regex dimen("[\\d\\.]+");
-
-            for (const auto& entry : std::filesystem::directory_iterator(partspath))
-            {
-                std::string ext = entry.path().extension().string();
-                if (ext == ".dat")
-                {
-                    std::string name = entry.path().filename().string();
-                    std::string namenoext = name.substr(0, name.size() - 4);
-                    //if (includeParts.find(name) == includeParts.end())
-                    //    continue;
-                    {
-                        std::ifstream ifs(entry.path());
-                        std::string line;
-                        std::getline(ifs, line);
-                        std::string movedLine("0 ~Moved to ");
-                        if (line._Starts_with(movedLine))
-                        {
-                            std::string aliasPart = line.substr(movedLine.size());
-                            m_aliasParts.insert(
-                                std::make_pair(namenoext, aliasPart));
-                            continue;
-                        }
-                        try
-                        {
-                            PartDesc pd;
-                            pd.filename = name;
-                            pd.ndims = 0;
-
-                            std::smatch match;
-                            std::string matchtest = line;
-                            if (std::regex_search(matchtest, match, partsizes))
-                            {
-                                std::string nextmatch = match.prefix().str();
-                                std::string sizestr = match[0].str();
-                                pd.desc = match.suffix().str();
-
-                                std::vector<float> dims;
-                                while (std::regex_search(sizestr, match, dimen))
-                                {
-                                    std::string dstr = match[0].str();
-                                    dims.push_back(std::stof(dstr));
-                                    sizestr = match.suffix().str();
-                                }
-
-                                pd.ndims = dims.size();
-                                for (int i = 0; i < dims.size(); ++i)
-                                {
-                                    pd.dims[i] = dims[i];
-                                }
-
-                                matchtest = nextmatch;
-                            }
-
-                            if (std::regex_search(matchtest, match, partnames))
-                            {
-                                pd.type = match[1].str();
-                                if (pd.desc.empty())
-                                    pd.desc = match.suffix().str();
-                            }
-
-                            int val = std::stoi(name);
-                            if (match[2].matched)
-                            {
-                                for (int i = 0; i < 3; ++i)
-                                {
-                                    if (match[4 + i].matched)
-                                    {
-                                        pd.ndims++;
-                                        pd.dims[i] = std::stoi(match[4 + i].str());
-                                    }
-                                }
-                            }
-                            of << pd.filename << " " << pd.type << " " << pd.ndims << " ";
-                            for (int i = 0; i < 3; ++i)
-                            {
-                                of << pd.dims[i] << " ";
-                            }
-                            of << pd.desc << std::endl;
-
-                            Brick b;
-                            std::filesystem::path meshfilepath = m_cachePath / name;
-                            meshfilepath.replace_extension("lr_mesh");
-
-                            m_partsMap.insert(std::make_pair(pd.filename, pd));
-                            Application::DebugMsg(pd.filename + "\n");
-                        }
-                        catch (...)
-                        {
-                        }
-                    }
-                }
-            }
-            std::ofstream ofa(aliasfile, std::ios::binary);
-            for (auto& pair : m_aliasParts)
-            {
-                ofa << pair.first << " " << pair.second << std::endl;
-            }
-            ofa.close();
-            of.close();
-            std::filesystem::rename(tmpfile, partnamefile);
+            std::string partname = file.substr(0, file.length() - 5);
+            PartDesc pd;
+            pd.filename = partname;
+            pd.type = "nn";
+            m_partsMap.insert(std::make_pair(PartId(partname), pd));
         }
         const auto& keys = m_partsMap.keys();
         for (const auto& key : keys)
@@ -752,47 +549,21 @@ namespace sam
     Brick* BrickManager::GetBrick(const PartId& name, bool hires)
     {
         Brick& b = m_bricks[name];
+        if (b.m_name.IsNull())
+            b.m_name = name;
         if (!b.m_vbhLR.isValid())
         {
             std::string lores = name.GetFilename() + ".lr_mesh";
-            auto itlores = m_cacheZipIndices.find(lores);
-            if (itlores != m_cacheZipIndices.end())
-            {
-                m_zipmutex.lock();
-                zip_file_t* zf = zip_fopen_index(m_cacheZip, itlores->second.first, 0);
-                std::vector<uint8_t> data;
-                uint64_t filesize = itlores->second.second;
-                data.resize(filesize);
-                int64_t len = zip_fread(zf, data.data(), data.size());
-                zip_fclose(zf);
-                m_zipmutex.unlock();
-                if (data.size() > 0)
-                {
-                    vecstream vs(data);
-                    b.LoadLores(vs);
-                }
-            }
+            vecstream stream = m_cacheZip->ReadFile(lores);
+            if (stream.valid())
+                b.LoadLores(stream);
         }
         if (hires && (!b.m_vbhHR.isValid()))
         {
             std::string hires = name.GetFilename() + ".hr_mesh";
-            auto ithires = m_cacheZipIndices.find(hires);
-            if (ithires != m_cacheZipIndices.end())
-            {
-                m_zipmutex.lock();
-                zip_file_t* zf = zip_fopen_index(m_cacheZip, ithires->second.first, 0);
-                std::vector<uint8_t> data;
-                uint64_t filesize = ithires->second.second;
-                data.resize(filesize);
-                int64_t len = zip_fread(zf, data.data(), data.size());
-                zip_fclose(zf);
-                m_zipmutex.unlock();
-                if (data.size() > 0)
-                {
-                    vecstream vs(data);
-                    b.LoadHires(vs);
-                }
-            }
+            vecstream stream = m_cacheZip->ReadFile(hires);
+            if (stream.valid())
+                b.LoadHires(stream);
         }
         MruUpdate(&b);
         CleanCache();
