@@ -32,6 +32,7 @@ namespace partmake
         LDrawDatFile selectedPart = null;
         string textFilter = "";
         PartVis vis = null;
+        AWS aws = new AWS();
 
         public string SelectedItemDesc { get { return selectedItem?.GetDesc(); } }
         public string SelectedItemMatrix { get {
@@ -108,6 +109,8 @@ namespace partmake
             LDrawFolders.FilterEnabled = true;
             FilteredCheckbox.IsChecked = true;
 
+            
+            aws.DoWork();
         }
 
         private void Vis_OnLogUpdated(object sender, string e)

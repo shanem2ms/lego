@@ -38,6 +38,7 @@
     <EmbeddedResource Include="vs.glsl" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="3.7.9.2" />
     <PackageReference Include="KdTree" Version="1.4.1" />
     <PackageReference Include="MathNet.Numerics" Version="4.15.0" />
     <PackageReference Include="MIConvexHull" Version="1.1.19.1019" />

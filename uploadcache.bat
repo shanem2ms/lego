@@ -1,0 +1,1 @@
+aws s3api put-object --bucket mybricks --key cache.zip --body cache.zip

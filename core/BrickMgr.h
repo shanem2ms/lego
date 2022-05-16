@@ -4,6 +4,7 @@
 #include <set>
 #include <list>
 #include <filesystem>
+#include <mutex>
 #include "SceneItem.h"
 #include "Engine.h"
 #include "Loc.h"
@@ -13,6 +14,7 @@
 
 struct CubeList;
 class btCompoundShape;
+struct zip;
 namespace ldr
 {
     struct Loader;
@@ -136,6 +138,7 @@ namespace sam
         return lhs.pos == rhs.pos;
     }
 
+    class vecstream;
     struct Brick
     {
         std::string m_name;
@@ -163,8 +166,8 @@ namespace sam
 
     private:
         void LoadLores(
-            const std::string& name, std::filesystem::path& cachePath);
-        void LoadHires(const std::string& name, std::filesystem::path& cachePath);
+            const vecstream &data);
+        void LoadHires(const vecstream& data);
         void LoadConnectors(const std::filesystem::path &connectorPath);
         bool LoadCollisionMesh(const std::filesystem::path& collisionPath);
         friend class BrickManager;
@@ -272,5 +275,8 @@ namespace sam
         size_t m_mruCtr;
         index_map<int, BrickColor> m_colors;
         std::map<std::string, std::string> m_aliasParts;
+        zip* m_cacheZip;
+        std::mutex m_zipmutex;
+        std::map<std::string, std::pair<int, uint64_t>> m_cacheZipIndices;
     };
 }

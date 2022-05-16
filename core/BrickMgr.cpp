@@ -18,6 +18,8 @@
 #include "bullet/btBulletDynamicsCommon.h"
 #include "rapidxml/rapidxml.hpp"
 #include "nlohmann/json.hpp"
+#include <curl/curl.h>
+#include "zip.h"
 
 using namespace gmtl;
 using namespace nlohmann;
@@ -42,8 +44,6 @@ namespace sam
         }
         else
             name.assign(_id);
-
-        name += ".dat";
         return name;
     }
     std::string PartId::Name() const
@@ -89,96 +89,93 @@ namespace sam
         }
     }
 
-    void Brick::LoadLores(const std::string& name, std::filesystem::path& cachePath)
+    class vecstream
     {
-        m_name = name;
-        m_connectorsLoaded = false;
-        static bool sEnableDirectLoad = true;
-        PosTexcoordNrmVertex::init();
-        std::filesystem::path filepath = cachePath / name;
-        filepath.replace_extension("lr_mesh");
-        if (std::filesystem::exists(filepath))
+        std::vector<uint8_t>& m_data;
+        mutable size_t m_offset;
+    public:
+        vecstream(std::vector<uint8_t>& data) :
+            m_data(data),
+            m_offset(0)
         {
-            std::ifstream ifs(filepath, std::ios_base::binary);
-            uint32_t numvtx = 0;
-            uint32_t numidx = 0;
-            ifs.read((char*)&numvtx, sizeof(numvtx));
-            if (numvtx == 0)
-                return;
-            m_verticesLR.resize(numvtx);
-            ifs.read((char*)m_verticesLR.data(), sizeof(PosTexcoordNrmVertex) * numvtx);
-            ifs.read((char*)&numidx, sizeof(numidx));
-            m_indicesLR.resize(numidx);
-            ifs.read((char*)m_indicesLR.data(), sizeof(uint32_t) * numidx);
 
-            PosTexcoordNrmVertex* curVtx = m_verticesLR.data();
-            PosTexcoordNrmVertex* endVtx = curVtx + numvtx;
-            for (; curVtx != endVtx; ++curVtx)
-            {
-                curVtx->m_y = -curVtx->m_y;
-                curVtx->m_x = -curVtx->m_x;
-                curVtx->m_z = -curVtx->m_z;
-                if (curVtx->m_u == 16)
-                    curVtx->m_u = -1;
-                m_bounds += Vec3f(curVtx->m_x, curVtx->m_y, curVtx->m_z);
-            }
-            Vec3f ext = m_bounds.mMax - m_bounds.mMin;
-            m_scale = std::max(std::max(ext[0], ext[1]), ext[2]);
-            m_center = (m_bounds.mMax + m_bounds.mMin) * 0.5f;
-
-            InitConnectorNames();
-            m_collisionBox = m_bounds;
-
-            Vec3f bnd = m_bounds.mMax - m_bounds.mMin;
-            Vec3f col = m_collisionBox.mMax - m_collisionBox.mMin;
         }
-        else
+
+        void read(char* outData, size_t size) const
+        {
+            memcpy(outData, m_data.data() + m_offset, size);
+            m_offset += size;
+        }
+    };
+
+    void Brick::LoadLores(const vecstream& ifs)
+    {
+        uint32_t numvtx = 0;
+        uint32_t numidx = 0;
+        ifs.read((char*)&numvtx, sizeof(numvtx));
+        if (numvtx == 0)
             return;
+        m_verticesLR.resize(numvtx);
+        ifs.read((char*)m_verticesLR.data(), sizeof(PosTexcoordNrmVertex) * numvtx);
+        ifs.read((char*)&numidx, sizeof(numidx));
+        m_indicesLR.resize(numidx);
+        ifs.read((char*)m_indicesLR.data(), sizeof(uint32_t) * numidx);
+
+        PosTexcoordNrmVertex* curVtx = m_verticesLR.data();
+        PosTexcoordNrmVertex* endVtx = curVtx + numvtx;
+        for (; curVtx != endVtx; ++curVtx)
+        {
+            curVtx->m_y = -curVtx->m_y;
+            curVtx->m_x = -curVtx->m_x;
+            curVtx->m_z = -curVtx->m_z;
+            if (curVtx->m_u == 16)
+                curVtx->m_u = -1;
+            m_bounds += Vec3f(curVtx->m_x, curVtx->m_y, curVtx->m_z);
+        }
+        Vec3f ext = m_bounds.mMax - m_bounds.mMin;
+        m_scale = std::max(std::max(ext[0], ext[1]), ext[2]);
+        m_center = (m_bounds.mMax + m_bounds.mMin) * 0.5f;
+
+        InitConnectorNames();
+        m_collisionBox = m_bounds;
+
+        Vec3f bnd = m_bounds.mMax - m_bounds.mMin;
+        Vec3f col = m_collisionBox.mMax - m_collisionBox.mMin;
 
         //LoadConnectors(pLoader, name);
         m_vbhLR = bgfx::createVertexBuffer(bgfx::makeRef(m_verticesLR.data(), m_verticesLR.size() * sizeof(PosTexcoordNrmVertex)), PosTexcoordNrmVertex::ms_layout);
         m_ibhLR = bgfx::createIndexBuffer(bgfx::makeRef(m_indicesLR.data(), m_indicesLR.size() * sizeof(uint32_t)), BGFX_BUFFER_INDEX32);
     }
 
-    void Brick::LoadHires(const std::string& name, std::filesystem::path& cachePath)
+    void Brick::LoadHires(const vecstream& ifs)
     {
-        PosTexcoordNrmVertex::init();
-        std::filesystem::path filepath = cachePath / name;
-        filepath.replace_extension("hr_mesh");
-        if (std::filesystem::exists(filepath))
-        {
-            std::ifstream ifs(filepath, std::ios_base::binary);
-            uint32_t numvtx = 0;
-            uint32_t numidx = 0;
-            ifs.read((char*)&numvtx, sizeof(numvtx));
-            if (numvtx == 0)
-                return;
-            m_verticesHR.resize(numvtx);
-            ifs.read((char*)m_verticesHR.data(), sizeof(PosTexcoordNrmVertex) * numvtx);
-            ifs.read((char*)&numidx, sizeof(numidx));
-            m_indicesHR.resize(numidx);
-            ifs.read((char*)m_indicesHR.data(), sizeof(uint32_t) * numidx);
-            /*
-            for (size_t idx = 0; idx < m_indicesHR.size(); idx += 3)
-            {
-                uint32_t tmp = m_indicesHR[idx];
-                m_indicesHR[idx] = m_indicesHR[idx + 2];
-                m_indicesHR[idx + 2] = tmp;
-            }*/
-            PosTexcoordNrmVertex* curVtx = m_verticesHR.data();
-            PosTexcoordNrmVertex* endVtx = curVtx + numvtx;
-            for (; curVtx != endVtx; ++curVtx)
-            {
-                curVtx->m_y = -curVtx->m_y;
-                curVtx->m_x = -curVtx->m_x;
-                curVtx->m_z = -curVtx->m_z;
-                if (curVtx->m_u == 16)
-                    curVtx->m_u = -1;
-            }
-        }
-        else
+        uint32_t numvtx = 0;
+        uint32_t numidx = 0;
+        ifs.read((char*)&numvtx, sizeof(numvtx));
+        if (numvtx == 0)
             return;
-
+        m_verticesHR.resize(numvtx);
+        ifs.read((char*)m_verticesHR.data(), sizeof(PosTexcoordNrmVertex) * numvtx);
+        ifs.read((char*)&numidx, sizeof(numidx));
+        m_indicesHR.resize(numidx);
+        ifs.read((char*)m_indicesHR.data(), sizeof(uint32_t) * numidx);
+        /*
+        for (size_t idx = 0; idx < m_indicesHR.size(); idx += 3)
+        {
+            uint32_t tmp = m_indicesHR[idx];
+            m_indicesHR[idx] = m_indicesHR[idx + 2];
+            m_indicesHR[idx + 2] = tmp;
+        }*/
+        PosTexcoordNrmVertex* curVtx = m_verticesHR.data();
+        PosTexcoordNrmVertex* endVtx = curVtx + numvtx;
+        for (; curVtx != endVtx; ++curVtx)
+        {
+            curVtx->m_y = -curVtx->m_y;
+            curVtx->m_x = -curVtx->m_x;
+            curVtx->m_z = -curVtx->m_z;
+            if (curVtx->m_u == 16)
+                curVtx->m_u = -1;
+        }
         if (m_verticesHR.size() == 0 ||
             m_indicesHR.size() == 0)
             return;
@@ -211,9 +208,9 @@ namespace sam
             }
         }
         m_collisionShape = std::make_shared<btCompoundShape>();
-        for (auto &mesh : meshes)
+        for (auto& mesh : meshes)
         {
-            btConvexHullShape* pCvxShape = new btConvexHullShape();            
+            btConvexHullShape* pCvxShape = new btConvexHullShape();
             for (auto& pt : mesh)
             {
                 pCvxShape->addPoint(btVector3(-pt[0], -pt[1], -pt[2]) * BrickManager::Scale, false);
@@ -222,7 +219,7 @@ namespace sam
             m_collisionShape->addChildShape(btTransform::getIdentity(), pCvxShape);
         }
 
-        
+
         btVector3 min, max;
         m_collisionShape->getAabb(btTransform::getIdentity(), min, max);
         return true;
@@ -230,7 +227,7 @@ namespace sam
 
 #define tricount (hires ? rpart.num_trianglesC : rpart.num_triangles)
 #define tris (hires ? rpart.trianglesC : rpart.triangles)
-    
+
     inline bool epEquals(float a, float b)
     {
         constexpr float epsilon = 1e-5f;
@@ -406,8 +403,42 @@ namespace sam
         m_colorPalette = bgfx::createTexture2D(16, 16, false, 1, bgfx::TextureFormat::RGBA8, BGFX_SAMPLER_POINT, m);
     }
 
+    std::vector<uint8_t> data;
+    size_t write_data(void* ptr, size_t size, size_t nmemb, FILE* stream) {
+        uint8_t* pbytes = (uint8_t*)ptr;
+        data.insert(data.end(), pbytes, pbytes + size * nmemb);
+        return size * nmemb;
+    }
+    const char* url = "https://mybricks.s3.us-east-2.amazonaws.com/cache.zip";
+
     void BrickManager::LoadAllParts(const std::string& ldrpath)
     {
+        std::string cacheFile = Application::Inst().Documents() + "/cache.zip";
+        if (!std::filesystem::exists(cacheFile))
+        {
+            CURL* curl;
+            CURLcode res;
+            curl = curl_easy_init();
+            curl_easy_setopt(curl, CURLOPT_URL, url);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, nullptr);
+            res = curl_easy_perform(curl);
+            /* always cleanup */
+            curl_easy_cleanup(curl);
+        }
+
+
+        int err;
+        if ((m_cacheZip = zip_open(cacheFile.c_str(), 0, &err)) == NULL) {
+            return;
+        }
+        struct zip_stat sb;
+        for (int i = 0; i < zip_get_num_entries(m_cacheZip, 0); i++) {
+            if (zip_stat_index(m_cacheZip, i, 0, &sb) == 0) {
+                m_cacheZipIndices.insert(std::make_pair(sb.name, std::make_pair(sb.index, sb.size)));
+            }
+        }
+
         auto itcol = m_colors.end();
         std::advance(itcol, -1);
         std::vector<int> codeIdx(itcol->second.code + 1, -1);
@@ -582,7 +613,7 @@ namespace sam
                         }
                     }
                 }
-            }            
+            }
             std::ofstream ofa(aliasfile, std::ios::binary);
             for (auto& pair : m_aliasParts)
             {
@@ -615,7 +646,7 @@ namespace sam
                 ++itType;
         }
 
-        m_typesMap.insert(std::make_pair("misc", misc));        
+        m_typesMap.insert(std::make_pair("misc", misc));
     }
 
     static bgfx::ProgramHandle sShader(BGFX_INVALID_HANDLE);
@@ -723,13 +754,45 @@ namespace sam
         Brick& b = m_bricks[name];
         if (!b.m_vbhLR.isValid())
         {
-            b.LoadLores(name.GetFilename(), m_cachePath);
+            std::string lores = name.GetFilename() + ".lr_mesh";
+            auto itlores = m_cacheZipIndices.find(lores);
+            if (itlores != m_cacheZipIndices.end())
+            {
+                m_zipmutex.lock();
+                zip_file_t* zf = zip_fopen_index(m_cacheZip, itlores->second.first, 0);
+                std::vector<uint8_t> data;
+                uint64_t filesize = itlores->second.second;
+                data.resize(filesize);
+                int64_t len = zip_fread(zf, data.data(), data.size());
+                zip_fclose(zf);
+                m_zipmutex.unlock();
+                if (data.size() > 0)
+                {
+                    vecstream vs(data);
+                    b.LoadLores(vs);
+                }
+            }
         }
         if (hires && (!b.m_vbhHR.isValid()))
         {
-            std::filesystem::path meshfilepath = m_cachePath / name.GetFilename();
-            meshfilepath.replace_extension("hr_mesh");
-            b.LoadHires(name.GetFilename(), m_cachePath);
+            std::string hires = name.GetFilename() + ".hr_mesh";
+            auto ithires = m_cacheZipIndices.find(hires);
+            if (ithires != m_cacheZipIndices.end())
+            {
+                m_zipmutex.lock();
+                zip_file_t* zf = zip_fopen_index(m_cacheZip, ithires->second.first, 0);
+                std::vector<uint8_t> data;
+                uint64_t filesize = ithires->second.second;
+                data.resize(filesize);
+                int64_t len = zip_fread(zf, data.data(), data.size());
+                zip_fclose(zf);
+                m_zipmutex.unlock();
+                if (data.size() > 0)
+                {
+                    vecstream vs(data);
+                    b.LoadHires(vs);
+                }
+            }
         }
         MruUpdate(&b);
         CleanCache();
