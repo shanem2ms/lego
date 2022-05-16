@@ -121,11 +121,12 @@
             <ColumnDefinition Width="5" />
             <ColumnDefinition Width="150"/>
         </Grid.ColumnDefinitions>
-        <Grid>
+        <Grid Margin="0,2,0,-2">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="30" />
                 <RowDefinition Height="30" />
             </Grid.RowDefinitions>
             <ComboBox Height="20" ItemsSource="{Binding LDrawGroups}" SelectedItem="{Binding Path=SelectedType}" />
@@ -151,6 +152,9 @@
             <StackPanel Orientation="Horizontal" Grid.Row="3" >
                 <Button Content="Write All" Click="WriteAll_Button_Click" Margin="10,4"/>
                 <Button Content="Import MBX" Click="ImportMbx_Button_Click" Margin="10,4"/>
+            </StackPanel>
+            <StackPanel Grid.Row="4" Orientation="Horizontal">
+                <TextBlock x:Name="StatusTb" />
             </StackPanel>
         </Grid>
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />

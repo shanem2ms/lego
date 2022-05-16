@@ -513,31 +513,38 @@ namespace partmake
             //string path = Path.Combine(LDrawFolders.Root, "ingame.txt");
             //File.WriteAllLines(path, fileLines);
         }
-        public static void WriteAll()
+        public static void WriteAll(Func<int, int, string, bool> updateFunc)
         {            
-            WriteAllCacheFiles();
+            WriteAllCacheFiles(updateFunc);
         }
-        static void WriteAllCacheFiles()
+        static void WriteAllCacheFiles(Func<int, int, string, bool> updateFunc)
         {
             string path = Path.Combine(LDrawFolders.Root, "cache");
             //if (Directory.Exists(path))
             //    Directory.Delete(path, true);
             Directory.CreateDirectory(path);
-            for (int i = 0; i < ldrawParts.Count; i++)
+
+            List<Entry> partsToWrite = ldrawParts.Where(ld => ld.HasMbx).ToList();
+            int completCnt = 0;
+            int totalCnt = partsToWrite.Count;
+
+            for (int i = 0; i < partsToWrite.Count; i++)
             {
                 ThreadPool.QueueUserWorkItem((object o) =>
                 {
                     int idx = (int)o;
-                    if (!ldrawParts[idx].HasMbx)
-                        return;
                     LDrawDatFile df = GetPart(ldrawParts[idx]);
-                    if (df.GetFaceCount() > 1000 && df.Name != "91405")
-                        return;
-                    string outname = ldrawParts[idx].mbxNum?.Length > 0 ?
-                        ldrawParts[idx].mbxNum : df.Name;
-                    df.WriteConnectorFile(path, outname);
-                    df.WriteCollisionFile(path, outname);
-                    df.WriteMeshFile(path, outname);
+                    if (df.GetFaceCount() < 1000 || df.Name == "91405")
+                    {
+                        Entry e = ldrawParts[idx];
+                        string outname = e.mbxNum?.Length > 0 ?
+                            e.mbxNum : df.Name;
+                        df.WriteDescriptorFile(e, path, outname);
+                        df.WriteCollisionFile(path, outname);
+                        df.WriteMeshFile(path, outname);
+                    }
+                    int completed = Interlocked.Increment(ref completCnt);
+                    updateFunc(completed, totalCnt, ldrawParts[idx].name);
                 }, i);
             }
 

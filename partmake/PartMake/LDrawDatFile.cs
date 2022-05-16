@@ -31,6 +31,7 @@ namespace partmake
 
         Topology.Mesh topoMesh;
         MbxImport.Mesh mbxMesh;
+        string description;
         string topoId;
         public List<Topology.Face> TopoFaces => topoMesh?.FacesFromId(topoId);
         public Topology.BSPTree BSPTree => topoMesh?.bSPTree;
@@ -103,6 +104,8 @@ namespace partmake
                     continue;
                 if (lt[0] == '0')
                 {
+                    if (this.description == null)
+                        this.description = lt.Substring(2);
                     if (lt.Trim() == @"0 BFC INVERTNEXT")
                     {
                         invertnext = true;
@@ -627,16 +630,31 @@ namespace partmake
             }
         }
 
-        public void WriteConnectorFile(string folder, string outname)
+        class Descriptor
+        {
+            public string type;
+            public string subtype;
+            public string name;
+            public string desc;
+            public float[] dims;
+            public List<string> aliases;
+            public List<Connector> Connectors;
+        }
+        public void WriteDescriptorFile(LDrawFolders.Entry e, string folder, string outname)
         {
             string outPath = Path.Combine(folder, outname + ".json");
             if (File.Exists(outPath))
                 return;
             List<Tuple<Vector3, Vector3>> bisectors = new List<Tuple<Vector3, Vector3>>();
-            List<Connector> connectors = GetConnectors(ref bisectors);
-            if (connectors == null || connectors.Count == 0)
-                return;
-            string jsonstr = JsonConvert.SerializeObject(connectors);
+            Descriptor desc = new Descriptor();
+            desc.type = e.type;
+            desc.subtype = e.subtype;
+            desc.name = e.name;
+            desc.desc = e.desc;
+            desc.dims = e.dims;
+            desc.aliases = e.aliases;
+            desc.Connectors = GetConnectors(ref bisectors);
+            string jsonstr = JsonConvert.SerializeObject(desc);
             File.WriteAllText(outPath, jsonstr);
         }
         public void WriteMeshFile(string outFolder, string outname)

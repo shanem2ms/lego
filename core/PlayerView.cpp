@@ -232,6 +232,7 @@ namespace sam
     const int LeftShift = 16;
     const int LeftCtrl = 17;
     const int SpaceBar = 32;
+    const int Home = 0x24;
     const int AButton = 'A';
     const int DButton = 'D';
     const int WButton = 'W';
@@ -265,7 +266,14 @@ namespace sam
         case SButton:
             m_posVel[2] -= speed;
             break;
-
+        case Home:
+        {
+            m_pos = Point3f(0.0f, -10.0f, 0.0f);
+            btTransform t = m_rigidBody->getCenterOfMassTransform();
+            t.setOrigin(btVector3(m_pos[0], m_pos[1], m_pos[2]));
+            m_rigidBody->setCenterOfMassTransform(t);
+        }
+            break;
         case FButton:
             m_flymode = !m_flymode;
             m_rigidBody->setGravity(btVector3(0, m_flymode ? 0 : 10, 0));

@@ -338,8 +338,13 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
         uint32_t* endIdx = curIdx + tricount * 3;
 
         auto ldrvtxs = rpart.vertices;
+        uint32_t invalidIdx = (uint32_t)(-1);
         for (uint32_t* pIdx = curIdx; pIdx < endIdx; pIdx += 3)
         {
+            if (*pIdx == invalidIdx ||
+                *(pIdx + 1) == invalidIdx ||
+                *(pIdx + 2) == invalidIdx)
+                continue;
             LdrVector n = getTriangleNormal(ldrvtxs[*pIdx].position,
                 ldrvtxs[*(pIdx + 1)].position,
                 ldrvtxs[*(pIdx + 2)].position);

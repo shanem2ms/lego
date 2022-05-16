@@ -233,8 +233,9 @@ namespace sam
         str.resize(length);
         stream.read(str.data(), length);
         json doc = json::parse(str);
+        json connectors = doc["Connectors"];
 
-        for (json elem : doc)
+        for (json elem : connectors)
         {
             Connector c;
             Matrix44f trans;

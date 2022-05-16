@@ -32,7 +32,6 @@ namespace partmake
         LDrawDatFile selectedPart = null;
         string textFilter = "";
         PartVis vis = null;
-        AWS aws = new AWS();
 
         public string SelectedItemDesc { get { return selectedItem?.GetDesc(); } }
         public string SelectedItemMatrix { get {
@@ -86,6 +85,8 @@ namespace partmake
 
         public MainWindow()
         {
+            System.IO.Directory.CreateDirectory(
+                LDrawFolders.Root + "\\cache");
             Topology.Mesh.settings = this.TopoSettings;
             Topology.Mesh.settings.SettingsChanged += Settings_SettingsChanged;
             LDrawFolders.SetRoot(@"C:\homep4\lego\ldraw");
@@ -108,9 +109,6 @@ namespace partmake
             LDrawFolders.ApplyFilterMdx();
             LDrawFolders.FilterEnabled = true;
             FilteredCheckbox.IsChecked = true;
-
-            
-            aws.DoWork();
         }
 
         private void Vis_OnLogUpdated(object sender, string e)
@@ -193,7 +191,11 @@ namespace partmake
 
         private void WriteAll_Button_Click(object sender, RoutedEventArgs e)
         {
-            LDrawFolders.WriteAll();
+            LDrawFolders.WriteAll((completed, total, name) => {
+                Dispatcher.BeginInvoke(new Action(() =>
+                    StatusTb.Text = $"[{completed} / {total}]  [{name}]"));
+                return true;
+            });
         }
         private void ImportMbx_Button_Click(object sender, RoutedEventArgs e)
         {
