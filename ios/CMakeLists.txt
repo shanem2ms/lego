@@ -62,7 +62,7 @@ find_library(METALKITLIB MetalKit)
 find_library(UIKITLIB UIKit)
 find_library(MODELIOLIB ModelIO)
 find_library(OPENGL OpenGLES)
-
+find_package(libzip CONFIG REQUIRED)
 
 set (PLATFORMLIBS 
 "${FOUNDATIONLIB};"
@@ -98,6 +98,7 @@ target_link_libraries(${IOSAPPNAME} LINK_PUBLIC
     fmt
     leveldb
     zlibstatic
+    libzip::zip
     ${BGFX_LIB}/${CMAKE_STATIC_LIBRARY_PREFIX}bgfx${CMAKE_STATIC_LIBRARY_SUFFIX}
     ${BGFX_LIB}/${CMAKE_STATIC_LIBRARY_PREFIX}astc-codec${CMAKE_STATIC_LIBRARY_SUFFIX}
     ${BGFX_LIB}/${CMAKE_STATIC_LIBRARY_PREFIX}bimg${CMAKE_STATIC_LIBRARY_SUFFIX}
