@@ -533,10 +533,10 @@ namespace partmake
                 ThreadPool.QueueUserWorkItem((object o) =>
                 {
                     int idx = (int)o;
-                    LDrawDatFile df = GetPart(ldrawParts[idx]);
+                    LDrawDatFile df = GetPart(partsToWrite[idx]);
                     if (df.GetFaceCount() < 1000 || df.Name == "91405")
                     {
-                        Entry e = ldrawParts[idx];
+                        Entry e = partsToWrite[idx];
                         string outname = e.mbxNum?.Length > 0 ?
                             e.mbxNum : df.Name;
                         df.WriteDescriptorFile(e, path, outname);
@@ -544,7 +544,7 @@ namespace partmake
                         df.WriteMeshFile(path, outname);
                     }
                     int completed = Interlocked.Increment(ref completCnt);
-                    updateFunc(completed, totalCnt, ldrawParts[idx].name);
+                    updateFunc(completed, totalCnt, partsToWrite[idx].name);
                 }, i);
             }
 
