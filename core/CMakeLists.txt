@@ -55,7 +55,7 @@ endif()
 
 set(Source_Files
     "Application.cpp"
-    "Audio.cpp"
+    "Audio.mm"
     "BrickMgr.cpp"
     "World.cpp"
     "Engine.cpp"
@@ -111,6 +111,7 @@ target_include_directories(core PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/imgui/."
     "${CMAKE_CURRENT_SOURCE_DIR}/../leveldb/include"
     "${VCPKG_INSTALL_PATH}/include"
+    "${VCPKG_INSTALL_PATH}/include/bullet"
     ${BGFX_INCLUDE_ROOT}
     ${BX_INC_DIR_COMPAT}
     )

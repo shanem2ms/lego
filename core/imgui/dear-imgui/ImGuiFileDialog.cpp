@@ -636,7 +636,7 @@ namespace IGFD
 #elif defined(_IGFD_UNIX_)
 				char buffer[PATH_MAX] = {};
 				snprintf(buffer, PATH_MAX, "mkdir -p %s", name.c_str());
-				const int dir_err = std::system(buffer);
+                const int dir_err = 0;//std::system(buffer);
 				if (dir_err != -1)
 				{
 					res = true;

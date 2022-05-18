@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include "SceneItem.h"
 
 struct ma_engine;
 namespace sam
