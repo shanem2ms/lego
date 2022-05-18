@@ -53,9 +53,15 @@ set(Coroutine_Files
 )
 endif()
 
+if (APPLE)
+    set (Audio_Src "Audio.mm")
+else ()
+    set (Audio_Src "Audio.cpp")
+endif()
+
 set(Source_Files
+    ${Audio_Src}
     "Application.cpp"
-    "Audio.mm"
     "BrickMgr.cpp"
     "World.cpp"
     "Engine.cpp"

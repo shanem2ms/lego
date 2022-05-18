@@ -147,9 +147,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
     hInst = hInstance; // Store instance handle in our global variable
 
-    char curdir[2048];
-    GetCurrentDirectoryA(2048, curdir);
-    app = std::make_shared<sam::Application>(curdir);
+    app = std::make_shared<sam::Application>();
     int pro12maxW = 1284;
     int pro12maxH = 2778;
     int startW = 1280;
@@ -198,9 +196,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     CHAR my_documents[MAX_PATH];
     HRESULT result = SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, SHGFP_TYPE_CURRENT, my_documents);
 
+    char curdir[2048];
+    GetCurrentDirectoryA(2048, curdir);
     app->SetDebugMsgFunc(WriteDbgMessage);
     GetCurrentDirectory(MAX_PATH, my_documents);
-    app->Initialize("C:\\homep4\\lego");
+    app->Initialize(curdir, "C:\\homep4\\lego");
     app->Resize(rect.right, rect.bottom);
     app->SetHideMouseCursorFn(OnHideOrShowMouse);
     return TRUE;

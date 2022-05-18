@@ -33,7 +33,7 @@ class Application
 
 public:    
     UIManager& UIMgr();
-    Application(const std::string &startupPath);
+    Application();
     ~Application();
     static Application& Inst();
     int FrameIdx() const { return m_frameIdx; }
@@ -49,7 +49,7 @@ public:
     void Draw();
     Audio &GetAudio() 
     { return *m_audio; }
-    void Initialize(const char *folder);
+    void Initialize(const char* startFolder, const char *docFolder);
     const std::string &Documents() const
     { return m_documentsPath; }    
     const std::string &StartupPath() const

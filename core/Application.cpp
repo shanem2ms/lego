@@ -40,11 +40,10 @@ namespace sam
     void WatchDogFunc();
 #endif
 
-    Application::Application(const std::string& startupPath) :
+    Application::Application() :
         m_height(0),
         m_width(0),
         m_frameIdx(0),
-        m_startupPath(startupPath),
         m_rawMouseMode(false)
     {
         s_pInst = this;
@@ -206,9 +205,10 @@ namespace sam
     }
 
 
-    void Application::Initialize(const char* folder)
+    void Application::Initialize(const char* startFolder, const char* docFolder)
     {
-        m_documentsPath = folder;
+        m_startupPath = startFolder;
+        m_documentsPath = docFolder;
         std::string dbPath = m_documentsPath + "/testlvl";
         m_world->Open(dbPath);
         imguiCreate(32.0f);
