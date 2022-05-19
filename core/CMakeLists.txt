@@ -123,3 +123,10 @@ target_include_directories(core PUBLIC
     )
 
 add_compile_definitions(DLLX=;PRId64="I64d";BX_CONFIG_DEBUG=${BX_CONFIG_DEBUG})
+
+file(GLOB LEGOSOUNDS RELATIVE ${CMAKE_SOURCE_DIR}/legosounds ${CMAKE_SOURCE_DIR}/legosounds/*.wav)
+
+set (All_RESOURCES 
+    ${ALL_SHADERS}
+    ${LEGOSOUNDS}
+    ${CMAKE_SOURCE_DIR}/ldraw/LDConfig.ldr)
