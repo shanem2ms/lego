@@ -346,7 +346,10 @@ static    void* m_device = NULL;
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
     BX_UNUSED(application, launchOptions);
-
+    
+    float scaleFactor = [[UIScreen mainScreen] scale];
+    float offset = 0;
+    CGRect rect2 = CGRectMake(0, 0, 896, 414);
     CGRect rect = [ [UIScreen mainScreen] bounds];
     m_window = [ [UIWindow alloc] initWithFrame: rect];
     m_view = [ [View alloc] initWithFrame: rect];
@@ -361,8 +364,9 @@ static    void* m_device = NULL;
 
     [m_window makeKeyAndVisible];
 
-    float scaleFactor = [[UIScreen mainScreen] scale];
     [m_view setContentScaleFactor: scaleFactor ];
+    auto f = [m_view frame];
+    //rect = [ [UIScreen mainScreen] bounds];
 
     s_ctx = new Context((uint32_t)(scaleFactor*rect.size.width), (uint32_t)(scaleFactor*rect.size.height));
     return YES;

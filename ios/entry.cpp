@@ -543,7 +543,7 @@ BX_PRAGMA_DIAGNOSTIC_POP();
             , 0
             );
         
-        app.Initialize(docPath, docPath);
+        app.Initialize(".", docPath);
         app.Resize(s_width, s_height);
         bgfx::frame();
 
