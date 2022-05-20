@@ -1,10 +1,9 @@
-1) Missing oct tiles
-2) Shadow artifacts
-3) Lod changes cause popping
-5) Player body selection
-6) Network play
-7) Download parts from cloud
+1) Shadow artifacts
+2) Lod changes cause popping
+3) Player body selection
+4) Network play
 9) Turn on/off player collision
 10) falling through ground bug
 1) Print part name on slot bar
 11) missing pieces
+12) Cache clearing leaves deleted objects

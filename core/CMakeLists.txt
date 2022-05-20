@@ -124,3 +124,24 @@ target_include_directories(core PUBLIC
     )
 
 add_compile_definitions(DLLX=;PRId64="I64d";BX_CONFIG_DEBUG=${BX_CONFIG_DEBUG})
+
+file(GLOB LEGOSOUNDS ${CMAKE_SOURCE_DIR}/legosounds/*.wav)
+
+set (All_RESOURCES 
+    ${CMAKE_SOURCE_DIR}/LDConfig.ldr
+    ${LEGOSOUNDS})
+
+foreach (RSRC ${All_RESOURCES})
+
+get_filename_component(OUTNAME ${RSRC} NAME)
+
+add_custom_command(
+    TARGET core POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${RSRC}
+        ${CMAKE_BINARY_DIR}/${OUTNAME})
+    set (OUTRC ${OUTRC}
+        ${CMAKE_BINARY_DIR}/${OUTNAME})
+endforeach()
+
+message(outrc ${OUTRC})
