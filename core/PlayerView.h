@@ -69,6 +69,7 @@ namespace sam
         void MouseDrag(float x, float y, int buttonId);
         void MouseUp(int buttonId);
         void KeyDown(int k);
+        void MovePad(float dx, float dy);
         void KeyUp(int k);
         void WheelScroll(float delta);
         ~Player();

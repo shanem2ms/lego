@@ -239,6 +239,12 @@ namespace sam
     const int SButton = 'S';
     const int FButton = 'F';
 
+    void Player::MovePad(float dx, float dy)
+    {
+        float speed = 3.0f;
+        m_posVel[2] = speed * dy;
+        m_posVel[0] = speed * dx;
+    }
     void Player::KeyDown(int k)
     {
         float speed = 3.0f;

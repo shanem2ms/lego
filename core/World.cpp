@@ -376,7 +376,48 @@ namespace sam
     };
 
 
-    
+    void World::TouchDown(float x, float y, uint64_t touchId)
+    {
+        TouchAction action =
+            (x > m_width / 2) ? TouchAction::RightPad : TouchAction::LeftPad;
+        m_activeTouches.insert(std::make_pair(touchId,
+            Touch{ x, y, x, y, action }));
+    }
+
+    void World::TouchMove(float x, float y, uint64_t touchId)
+    {
+        auto itTouch = m_activeTouches.find(touchId);
+        if (itTouch != m_activeTouches.end())
+        {
+            Touch& touch = itTouch->second;
+            if (touch.action == TouchAction::LeftPad)
+            {
+                float accel = 0.01f;
+                m_player->MovePad((x - touch.startX) * accel, (touch.startY - y) * accel);
+            }
+            else if (touch.action == TouchAction::RightPad)
+            {
+                float accel = 0.001f;
+                m_player->RawMove((x - touch.startX) * accel, (touch.startY - y) * accel);
+            }
+            touch.prevX = x;
+            touch.prevY = y;
+        }
+    }
+
+    void World::TouchUp(float x, float y, uint64_t touchId)
+    {
+        auto itTouch = m_activeTouches.find(touchId);
+        if (itTouch != m_activeTouches.end())
+        {
+            Touch& touch = itTouch->second;
+            if (touch.action == TouchAction::LeftPad)
+            {
+                m_player->MovePad(0, 0);
+            }
+            m_activeTouches.erase(itTouch);
+        }        
+    }    
 
     World::~World()
     {

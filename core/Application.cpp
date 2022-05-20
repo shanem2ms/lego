@@ -270,6 +270,31 @@ namespace sam
 #endif
     }
 
+    void Application::TouchDown(float x, float y, uint64_t touchId)
+    {
+        if (!m_legoUI->MouseDown(x, y, 0))
+        { 
+            m_world->TouchDown(x, y, touchId);
+        }
+    }
+
+    void Application::TouchMove(float x, float y, uint64_t touchId)
+    {
+        if (!m_legoUI->MouseDrag(x, y, 0))
+        {
+            m_world->TouchMove(x, y, touchId);
+        }
+
+    }
+
+    void Application::TouchUp(float x, float y, uint64_t touchId)
+    {
+        if (!m_legoUI->MouseUp(0))
+        {
+            m_world->TouchUp(x, y, touchId);
+        }
+    }
+
     void Application::UIImportMbx(const std::string& name)
     {
         m_world->ImportMbx(name);

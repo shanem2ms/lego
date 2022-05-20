@@ -19,6 +19,10 @@
 #include <vector>
 
 #define MAX_LOADSTRING 100
+bool simulateTouchMode = true;
+uint64_t nextTouchId = 1;
+uint64_t activeoTouch = 0;
+
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
@@ -61,13 +65,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     {
         return FALSE;
     }
-   
+
     RAWINPUTDEVICE rid;
     rid.usUsagePage = 0x01;
     rid.usUsage = 0x02;
     rid.dwFlags = 0;
     rid.hwndTarget = nullptr;
-    if (RegisterRawInputDevices(&rid, 1, sizeof(rid)) == FALSE)
+    if (!simulateTouchMode && RegisterRawInputDevices(&rid, 1, sizeof(rid)) == FALSE)
         return -1;
     //SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHookproc, hInstance, 0);
 
@@ -235,11 +239,14 @@ static float tick = 0;
 
 bool OnHideOrShowMouse(bool enable)
 {
+    if (simulateTouchMode)
+        return false;
+
     if (enable)
     {
         POINT cursorPos;
         GetCursorPos(&cursorPos);
-        RECT r{ cursorPos.x, cursorPos.y, cursorPos.x+1, cursorPos.y+1 };
+        RECT r{ cursorPos.x, cursorPos.y, cursorPos.x + 1, cursorPos.y + 1 };
         ShowCursor(FALSE);
         return ClipCursor(&r) != 0;
     }
@@ -296,10 +303,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         PostQuitMessage(0);
         break;
     case WM_LBUTTONDOWN:
-        app->MouseDown((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 0);
+        if (simulateTouchMode)
+        {
+            activeoTouch = nextTouchId++;
+            app->TouchDown((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), activeoTouch);
+        }
+        else
+            app->MouseDown((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 0);
         break;
     case WM_LBUTTONUP:
-        app->MouseUp(0);
+        if (simulateTouchMode && activeoTouch != 0)
+            app->TouchUp((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), activeoTouch);
+        else if (!simulateTouchMode)
+            app->MouseUp(0);
         break;
     case WM_RBUTTONDOWN:
         app->MouseDown((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 1);
@@ -314,7 +330,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         app->MouseUp(3);
         break;
     case WM_MOUSEMOVE:
-        app->MouseMove((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 0);
+        if (simulateTouchMode && activeoTouch != 0)
+            app->TouchMove((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), activeoTouch);
+        else if (!simulateTouchMode)
+            app->MouseMove((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam), 0);
         break;
     case WM_MOUSEWHEEL:
     {

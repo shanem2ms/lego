@@ -37,6 +37,11 @@ public:
     ~Application();
     static Application& Inst();
     int FrameIdx() const { return m_frameIdx; }
+
+    void TouchDown(float x, float y, uint64_t touchId);
+    void TouchMove(float x, float y, uint64_t touchId);
+    void TouchUp(float x, float y, uint64_t touchId);
+
     void MouseDown(float x, float y, int buttonId);
     void MouseMove(float x, float y, int buttonId);
     void WheelScroll(float delta);
