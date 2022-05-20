@@ -322,12 +322,12 @@ namespace sam
     }
     void BrickManager::LoadColors()
     {
-        vecstream stream = m_cacheZip->ReadFile("LDConfig.ldr");
+        std::string lDConfigPath = Application::Inst().StartupPath() + "/LDConfig.ldr";
+        std::ifstream ifs(lDConfigPath);
         std::regex colorrg("0\\s!COLOUR\\s(\\w+)\\s+CODE\\s+(\\d+)\\s+VALUE\\s#([\\dA-F]+)\\s+EDGE\\s+#([\\dA-F]+)");
         std::regex legoidrg("0\\s+\\/\\/\\sLEGOID\\s+(\\d+)\\s-\\s([\\w\\s]+)");
         int legoidCur;
         std::string legoNameCur;
-        std::istringstream ifs = stream.readText();
         while (!ifs.eof())
         {
             std::string line;

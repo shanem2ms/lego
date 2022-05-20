@@ -69,8 +69,10 @@ namespace sam
                 bx::FileReader texReader;
                 bgfx::TextureInfo ti;
                 bimg::Orientation::Enum o;
-                m_envTex = loadTexture(&texReader, "C:\\homep4\\lego\\hdri\\bolonga_lod.dds", 0, 0, &ti, &o);
-                m_envIrrTex = loadTexture(&texReader, "C:\\homep4\\lego\\hdri\\bolonga_irr.dds", 0, 0, &ti, &o);
+                std::string path = Application::Inst().StartupPath() + "/bolonga_lod.dds";
+                m_envTex = loadTexture(&texReader, path.c_str(), 0, 0, &ti, &o);
+                path = Application::Inst().StartupPath() + "/bolonga_lod.dds";
+                m_envIrrTex = loadTexture(&texReader, path.c_str(), 0, 0, &ti, &o);
             }
             m_needRebuild = false;
 

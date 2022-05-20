@@ -128,6 +128,8 @@ add_compile_definitions(DLLX=;PRId64="I64d";BX_CONFIG_DEBUG=${BX_CONFIG_DEBUG})
 file(GLOB LEGOSOUNDS ${CMAKE_SOURCE_DIR}/legosounds/*.wav)
 
 set (All_RESOURCES 
+    ${CMAKE_SOURCE_DIR}/hdri/bolonga_irr.dds
+    ${CMAKE_SOURCE_DIR}/hdri/bolonga_lod.dds
     ${CMAKE_SOURCE_DIR}/LDConfig.ldr
     ${LEGOSOUNDS})
 
