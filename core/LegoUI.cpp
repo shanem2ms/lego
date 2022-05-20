@@ -233,6 +233,12 @@ namespace sam
                 Application::Inst().UIQuit();
             }));
         
+        panel->AddControl(std::make_shared<UIStateBtn>(-120, -105, 165, 85, "Close",
+            [menu](bool isBtnDown)
+            {
+                menu->Close();
+            }));
+
         m_root = menu;
         return menu;
     }
