@@ -84,8 +84,16 @@ set (PLATFORMLIBS
 
 set_target_properties(${IOSAPPNAME} PROPERTIES MACOSX_BUNDLE_GUI_IDENTIFIER ${BUNDLE_ID})
 
-foreach (SHDR ${ALL_SHADERS})
+file(GLOB LEGOSOUNDS ${CMAKE_SOURCE_DIR}/legosounds/*.wav)
 
+set (All_RESOURCES 
+    ${ALL_SHADERS}
+    ${CMAKE_SOURCE_DIR}/LDConfig.ldr
+    ${LEGOSOUNDS})
+
+foreach (SHDR ${All_RESOURCES})
+
+message(SHDR ${SHDR})
 set_source_files_properties(${SHDR} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 
 endforeach()
