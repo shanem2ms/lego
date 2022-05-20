@@ -798,6 +798,8 @@ restart:
 						}
 					}
 					break;
+                case Event::Touch:
+                        break;
 
 				case Event::Key:
 					{

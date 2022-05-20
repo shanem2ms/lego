@@ -90,6 +90,7 @@ namespace entry
 			Window,
 			Suspend,
 			DropFile,
+            Touch
 		};
 
 		Event(Enum _type)
@@ -148,11 +149,21 @@ namespace entry
 
 		int32_t m_mx;
 		int32_t m_my;
-		int32_t m_mz;
+        uint64_t m_mz;
 		MouseButton::Enum m_button;
 		bool m_down;
 		bool m_move;
 	};
+
+    struct TouchEvent : public Event
+    {
+        ENTRY_IMPLEMENT_EVENT(TouchEvent, Event::Touch);
+
+        int32_t m_mx;
+        int32_t m_my;
+        uint64_t m_id;
+        Touch::Enum m_type;
+    };
 
 	struct SizeEvent : public Event
 	{
@@ -243,7 +254,7 @@ namespace entry
 			m_queue.push(ev);
 		}
 
-		void postMouseEvent(WindowHandle _handle, int32_t _mx, int32_t _my, int32_t _mz)
+		void postMouseEvent(WindowHandle _handle, int32_t _mx, int32_t _my, uint64_t _mz)
 		{
 			MouseEvent* ev = BX_NEW(getAllocator(), MouseEvent)(_handle);
 			ev->m_mx     = _mx;
@@ -254,8 +265,19 @@ namespace entry
 			ev->m_move   = true;
 			m_queue.push(ev);
 		}
+        
+        void postTouchEvent(WindowHandle _handle, int32_t _mx, int32_t _my, uint64_t _id, Touch::Enum touchType)
+        {
+            TouchEvent* ev = BX_NEW(getAllocator(), TouchEvent)(_handle);
+            ev->m_mx     = _mx;
+            ev->m_my     = _my;
+            ev->m_id     = _id;
+            ev->m_type = touchType;
+            m_queue.push(ev);
+        }
 
-		void postMouseEvent(WindowHandle _handle, int32_t _mx, int32_t _my, int32_t _mz, MouseButton::Enum _button, bool _down)
+
+		void postMouseEvent(WindowHandle _handle, int32_t _mx, int32_t _my, uint64_t _mz, MouseButton::Enum _button, bool _down)
 		{
 			MouseEvent* ev = BX_NEW(getAllocator(), MouseEvent)(_handle);
 			ev->m_mx     = _mx;

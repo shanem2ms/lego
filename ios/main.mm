@@ -282,47 +282,50 @@ static    void* m_device = NULL;
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
-    BX_UNUSED(touches);
-    UITouch *touch = [[event allTouches] anyObject];
-    CGPoint touchLocation = [touch locationInView:self];
-    touchLocation.x *= self.contentScaleFactor;
-    touchLocation.y *= self.contentScaleFactor;
+    for(UITouch* touch in touches) {
+        NSUInteger hashval = [touch hash];
+        CGPoint touchLocation = [touch locationInView:self];
+        touchLocation.x *= self.contentScaleFactor;
+        touchLocation.y *= self.contentScaleFactor;
 
-    s_ctx->m_eventQueue.postMouseEvent(s_defaultWindow, touchLocation.x, touchLocation.y, 0);
-    s_ctx->m_eventQueue.postMouseEvent(s_defaultWindow, touchLocation.x, touchLocation.y, 0, MouseButton::Left, true);
+        s_ctx->m_eventQueue.postTouchEvent(s_defaultWindow, touchLocation.x, touchLocation.y, hashval, Touch::Begin);
+    }
 }
 
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
 {
-    BX_UNUSED(touches);
-    UITouch *touch = [[event allTouches] anyObject];
-    CGPoint touchLocation = [touch locationInView:self];
-    touchLocation.x *= self.contentScaleFactor;
-    touchLocation.y *= self.contentScaleFactor;
+    for(UITouch* touch in touches) {
+        NSUInteger hashval = [touch hash];
+        CGPoint touchLocation = [touch locationInView:self];
+        touchLocation.x *= self.contentScaleFactor;
+        touchLocation.y *= self.contentScaleFactor;
 
-    s_ctx->m_eventQueue.postMouseEvent(s_defaultWindow, touchLocation.x, touchLocation.y, 0, MouseButton::Left, false);
+        s_ctx->m_eventQueue.postTouchEvent(s_defaultWindow, touchLocation.x, touchLocation.y, hashval, Touch::End);
+    }
 }
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
 {
-    BX_UNUSED(touches);
-    UITouch *touch = [[event allTouches] anyObject];
-    CGPoint touchLocation = [touch locationInView:self];
-    touchLocation.x *= self.contentScaleFactor;
-    touchLocation.y *= self.contentScaleFactor;
+    for(UITouch* touch in touches) {
+        NSUInteger hashval = [touch hash];
+        CGPoint touchLocation = [touch locationInView:self];
+        touchLocation.x *= self.contentScaleFactor;
+        touchLocation.y *= self.contentScaleFactor;
 
-    s_ctx->m_eventQueue.postMouseEvent(s_defaultWindow, touchLocation.x, touchLocation.y, 0);
+        s_ctx->m_eventQueue.postTouchEvent(s_defaultWindow, touchLocation.x, touchLocation.y, hashval, Touch::Move);
+    }
 }
 
 - (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event
 {
-    BX_UNUSED(touches);
-    UITouch *touch = [[event allTouches] anyObject];
-    CGPoint touchLocation = [touch locationInView:self];
-    touchLocation.x *= self.contentScaleFactor;
-    touchLocation.y *= self.contentScaleFactor;
+    for(UITouch* touch in touches) {
+        NSUInteger hashval = [touch hash];
+        CGPoint touchLocation = [touch locationInView:self];
+        touchLocation.x *= self.contentScaleFactor;
+        touchLocation.y *= self.contentScaleFactor;
 
-    s_ctx->m_eventQueue.postMouseEvent(s_defaultWindow, touchLocation.x, touchLocation.y, 0, MouseButton::Left, false);
+        s_ctx->m_eventQueue.postTouchEvent(s_defaultWindow, touchLocation.x, touchLocation.y, hashval, Touch::Cancel);
+    }
 }
 
 @end
@@ -360,8 +363,6 @@ static    void* m_device = NULL;
     viewController.view = m_view;
 
     [m_window setRootViewController:viewController];
-    [m_window makeKeyAndVisible];
-
     [m_window makeKeyAndVisible];
 
     [m_view setContentScaleFactor: scaleFactor ];

@@ -55,6 +55,20 @@ namespace entry
 		};
 	};
 
+    struct Touch
+    {
+        enum Enum
+        {
+            None,
+            Begin,
+            Move,
+            End,
+            Cancel,
+
+            Count
+        };
+    };
+
 	struct GamepadAxis
 	{
 		enum Enum
