@@ -131,7 +131,8 @@ set (All_RESOURCES
     ${CMAKE_SOURCE_DIR}/hdri/bolonga_irr.dds
     ${CMAKE_SOURCE_DIR}/hdri/bolonga_lod.dds
     ${CMAKE_SOURCE_DIR}/LDConfig.ldr
-    ${LEGOSOUNDS})
+    ${LEGOSOUNDS}
+    )
 
 foreach (RSRC ${All_RESOURCES})
 
@@ -146,4 +147,5 @@ add_custom_command(
         ${CMAKE_BINARY_DIR}/${OUTNAME})
 endforeach()
 
-message(outrc ${OUTRC})
+set (OUT_RESOURCES ${OUTRC} CACHE INTERNAL "OUT_RESOURCES")
+

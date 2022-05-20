@@ -40,12 +40,15 @@ set(Source_Files
 
 source_group("Source Files" FILES ${Source_Files})
 
+set (IOSPROPS 
+    ${ALL_SHADERS}
+    ${OUT_RESOURCES})
 
-set_source_files_properties(${ALL_SHADERS} PROPERTIES GENERATED true)
+set_source_files_properties(${IOSPROPS} PROPERTIES GENERATED true)
 set(ALL_FILES    
     ${Header_Files} 
     ${Source_Files}
-    ${ALL_SHADERS}
+    ${IOSPROPS}
 )
 
 ################################################################################
@@ -84,14 +87,7 @@ set (PLATFORMLIBS
 
 set_target_properties(${IOSAPPNAME} PROPERTIES MACOSX_BUNDLE_GUI_IDENTIFIER ${BUNDLE_ID})
 
-file(GLOB LEGOSOUNDS ${CMAKE_SOURCE_DIR}/legosounds/*.wav)
-
-set (All_RESOURCES 
-    ${ALL_SHADERS}
-    ${CMAKE_SOURCE_DIR}/LDConfig.ldr
-    ${LEGOSOUNDS})
-
-foreach (SHDR ${All_RESOURCES})
+foreach (SHDR ${IOSPROPS})
 
 message(SHDR ${SHDR})
 set_source_files_properties(${SHDR} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
