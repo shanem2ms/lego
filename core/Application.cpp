@@ -52,6 +52,7 @@ namespace sam
         m_world = std::make_unique<World>();
         m_audio = std::make_unique<Audio>();
         m_gameController = std::make_unique<GameController>();
+        m_gameController->ConnectPlayer(m_world->GetPlayer());
 #if WATCHDOGTHREAD
         sWatchdogThread = std::thread(WatchDogFunc);
 #endif

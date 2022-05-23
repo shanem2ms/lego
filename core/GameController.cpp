@@ -1,5 +1,6 @@
 #include "StdIncludes.h"
 #include "GameController.h"
+#include "PlayerView.h"
 #include "Application.h"
 #include <bx/readerwriter.h>
 #include <bx/file.h>
@@ -14,10 +15,14 @@ namespace sam
     GameController::GameController() :
         m_padSize(0.25f)
     {
-        for (int i = 0; i < 2; ++i)
-        {
-            m_pads[i].m_active = false;
-        }
+        m_pads[0].m_active = false;
+        m_pads[0].m_color = Vec3f(1, 0, 1);
+        m_pads[0].m_hitbox = AABoxf(Vec3f(0, 0, 0), Vec3f(0.5f, 0.75f, 1));
+        m_pads[0].m_touch = TouchAction::LeftPad;
+        m_pads[1].m_active = false;
+        m_pads[1].m_color = Vec3f(0, 1, 0);
+        m_pads[1].m_hitbox = AABoxf(Vec3f(0.5f, 0, 0), Vec3f(1.0f, 0.75f, 1));
+        m_pads[1].m_touch = TouchAction::RightPad;
     }
 
     void GameController::Draw(DrawContext& ctx)
@@ -38,7 +43,6 @@ namespace sam
                 Matrix44f m = ctx.m_mat;
                 Engine& e = Engine::Inst();
 
-                //bgfx::setTransform(m.getData());
                 Quad::init();
 
                 uint64_t state = 0
@@ -76,7 +80,7 @@ namespace sam
                     m = makeTrans<Matrix44f>(Vec3f(px, py, 0.5f)) *
                         makeScale<Matrix44f>(Vec3f(aspect * size, size, size));
                     bgfx::setTransform(m.getData());
-                    Vec4f color(1, 0, 1, 0.5f);
+                    Vec4f color(pad.m_color, 0.5f);
                     bgfx::setUniform(sUparams, &color, 1);
                     bgfx::submit(DrawViewId::HUD, shader);
                 }
@@ -86,20 +90,35 @@ namespace sam
 
     void GameController::Update(DrawContext& ctx)
     {
+        float lookScale = 0.05f;
+        if (m_pads[0].m_active)
+            m_player->RawMove(m_pads[0].m_xaxis * lookScale, -m_pads[0].m_yaxis * lookScale);
+        else
+            m_player->RawMove(0, 0);
 
+        float moveScale = 2.0f;
+        if (m_pads[1].m_active)
+            m_player->MovePad(m_pads[1].m_xaxis * moveScale, -m_pads[1].m_yaxis * moveScale);
+        else 
+            m_player->MovePad(0, 0);
     }
 
     void GameController::TouchDown(float x, float y, uint64_t touchId)
     {
-        TouchAction action =
-            (x > m_width / 2) ? TouchAction::RightPad : TouchAction::LeftPad;
-        if (action == TouchAction::LeftPad || action == TouchAction::RightPad)
+        Point3f vpos(x / m_width, y / m_height, 0.5f);
+        TouchAction action = TouchAction::None;
+        for (int idx = 0; idx < 2; ++idx)
         {
-            int idx = (int)(action);
-            m_pads[idx].m_pos = Vec2f(x, y);
-            m_pads[idx].m_active = true;
-            m_pads[idx].m_xaxis = 0;
-            m_pads[idx].m_yaxis = 0;
+            Pad& pad = m_pads[idx];
+            if (isInVolume(pad.m_hitbox, vpos))
+            {
+                pad.m_pos = Vec2f(x, y);
+                pad.m_active = true;
+                pad.m_xaxis = 0;
+                pad.m_yaxis = 0;
+                action = pad.m_touch;
+                break;
+            }
         }
 
         m_activeTouches.insert(std::make_pair(touchId,
@@ -120,7 +139,6 @@ namespace sam
                 m_pads[padIdx].m_xaxis = std::max(-1.0f, std::min(1.0f, m_pads[padIdx].m_xaxis));
                 m_pads[padIdx].m_yaxis = (y - touch.startY) * 2 / (m_height * m_padSize);
                 m_pads[padIdx].m_yaxis = std::max(-1.0f, std::min(1.0f, m_pads[padIdx].m_yaxis));
-                //m_player->MovePad((x - touch.startX) * accel, (touch.startY - y) * accel);
             }
             touch.prevX = x;
             touch.prevY = y;
@@ -137,9 +155,14 @@ namespace sam
                 touch.action == TouchAction::RightPad)
             {
                 m_pads[(int)touch.action].m_active = false;
-                //m_player->MovePad(0, 0);
             }
             m_activeTouches.erase(itTouch);
         }
     }
+
+    void GameController::ConnectPlayer(std::shared_ptr<Player> player)
+    {
+        m_player = player;
+    }
+
 }

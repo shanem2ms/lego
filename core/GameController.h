@@ -2,6 +2,7 @@
 #include "Engine.h"
 
 class CubeList;
+class Player;
 namespace sam
 {
     class GameController : public IEngineDraw
@@ -9,7 +10,8 @@ namespace sam
         enum class TouchAction
         {
             LeftPad,
-            RightPad
+            RightPad,
+            None
         };
 
         struct Touch
@@ -24,9 +26,12 @@ namespace sam
         struct Pad
         {
             Vec2f m_pos;
+            Vec3f m_color;
             bool m_active;
             float m_xaxis;
             float m_yaxis;
+            AABoxf m_hitbox;
+            TouchAction m_touch;
         };
 
         std::map<uint64_t, Touch> m_activeTouches;    
@@ -34,8 +39,11 @@ namespace sam
         int m_height;
         float m_padSize;
         Pad m_pads[2];
+        std::shared_ptr<Player> m_player;
     public:
         GameController();
+
+        void ConnectPlayer(std::shared_ptr<Player> player);
         void SetSize(int width, int height) {
             m_width = width; m_height = height;
         }
@@ -44,5 +52,6 @@ namespace sam
         void TouchMove(float x, float y, uint64_t touchId);
         void TouchUp(float x, float y, uint64_t touchId);
         void Draw(DrawContext& dc) override;
+
     };
 }
