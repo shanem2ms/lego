@@ -172,6 +172,8 @@ namespace sam
 
         bgfx::setViewName(DrawViewId::HUD, "HUD");
         bgfx::setViewFrameBuffer(DrawViewId::HUD, BGFX_INVALID_HANDLE);
+        bgfx::setViewTransform(DrawViewId::HUD, view.getData(), proj0.getData());
+
         bgfx::setViewName(DrawViewId::PickObjects, "PickObjects");
         bgfx::setViewClear(DrawViewId::PickObjects,
             BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,

@@ -74,6 +74,7 @@ set(Source_Files
     "UIControl.cpp"
     "ConvexHull.cpp"
     "Mesh.cpp"
+    "GameController.cpp"
     "Physics.cpp"
     "Level.cpp"
     "LegoBrick.cpp"

@@ -15,6 +15,7 @@ class LegoUI;
 struct DrawContext;
 class BrickManager;
 class Audio;
+class GameController;
 class Application
 {
     std::unique_ptr<World> m_world;
@@ -22,6 +23,7 @@ class Application
     std::unique_ptr<LegoUI> m_legoUI;
     std::unique_ptr<Audio> m_audio;
     std::unique_ptr<BrickManager> m_brickManager;
+    std::unique_ptr<GameController> m_gameController;
     int m_width;
     int m_height;
     int m_frameIdx;

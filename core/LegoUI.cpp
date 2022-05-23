@@ -105,12 +105,10 @@ namespace sam
         auto hotbarPanel = std::make_shared<UIPanel>(0, 0, -100, 0);
         hotbarPanel->AddControl(hotbarTable);
         m_hotbar->AddControl(hotbarPanel);
-        m_hotbar->AddControl(std::make_shared<UIStateBtn>(825, 20, 85, 85, ICON_FA_ALIGN_JUSTIFY,
+        m_hotbar->AddControl(std::make_shared<UIStateBtn>(845, 20, 85, 85, ICON_FA_ALIGN_JUSTIFY,
             [pWorld](bool isBtnDown)
             {
-                char key = 16;
-                if (isBtnDown) pWorld->KeyDown(key);
-                else pWorld->KeyUp(key);
+                Application::Inst().OpenInventory();
             }));
 
         m_hotbar->Show();

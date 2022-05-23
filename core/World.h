@@ -40,22 +40,7 @@ namespace sam
         std::shared_ptr<Player> m_player;
         std::shared_ptr<Physics> m_physics;
         std::function<void()> m_showInventoryFn;
-        enum class TouchAction
-        {
-            LeftPad,
-            RightPad
-        };
-
-        struct Touch
-        {
-            float startX;
-            float startY;
-            float prevX;
-            float prevY;
-            TouchAction action;
-        };
-
-        std::map<uint64_t, Touch> m_activeTouches;
+        
     public:
 
         const std::shared_ptr<Player> &GetPlayer()
@@ -73,11 +58,6 @@ namespace sam
         void KeyDown(int k);
         void KeyUp(int k);
         void WheelScroll(float delta);
-
-        void TouchDown(float x, float y, uint64_t touchId);
-        void TouchMove(float x, float y, uint64_t touchId);
-        void TouchUp(float x, float y, uint64_t touchId);
-
         void Open(const std::string &path);
 
         void ImportMbx(const std::string& path);

@@ -6,6 +6,7 @@
 #include "LegoUI.h"
 #include "BrickMgr.h"
 #include "World.h"
+#include "GameController.h"
 #include "PlayerView.h"
 #include "Audio.h"
 #include "imgui.h"
@@ -50,6 +51,7 @@ namespace sam
         m_engine = std::make_unique<Engine>();
         m_world = std::make_unique<World>();
         m_audio = std::make_unique<Audio>();
+        m_gameController = std::make_unique<GameController>();
 #if WATCHDOGTHREAD
         sWatchdogThread = std::thread(WatchDogFunc);
 #endif
@@ -195,6 +197,7 @@ namespace sam
     {
         m_width = w;
         m_height = h;
+        m_gameController->SetSize(w, h);
         m_engine->Resize(w, h);
         m_world->Layout(w, h);
     }
@@ -214,6 +217,7 @@ namespace sam
         imguiCreate(32.0f);
         m_brickManager = std::make_unique<BrickManager>();
         m_engine->AddExternalDraw(m_brickManager.get());
+        m_engine->AddExternalDraw(m_gameController.get());
         m_legoUI = std::make_unique<LegoUI>();
         m_world->OnShowInventory([this]()
             {
@@ -239,12 +243,14 @@ namespace sam
         ctx.m_pickedItem = nullptr;
         ctx.debugDraw = false;
         m_engine->UpdatePickData(ctx);
+        m_gameController->Update(ctx);
         m_legoUI->Update(*m_engine, m_width, m_height, ctx);
         m_world->Update(*m_engine, ctx);
 
         bgfx::setViewRect(DrawViewId::MainObjects, 0, 0, uint16_t(m_width), uint16_t(m_height));
         bgfx::setViewRect(DrawViewId::DeferredLighting, 0, 0, uint16_t(m_width), uint16_t(m_height));
         bgfx::setViewRect(DrawViewId::ForwardRendered, 0, 0, uint16_t(m_width), uint16_t(m_height));
+        bgfx::setViewRect(DrawViewId::HUD, 0, 0, uint16_t(m_width), uint16_t(m_height));
 
         bgfx::setViewRect(DrawViewId::PickObjects, 0, 0, PickBufSize, PickBufSize);
         bgfx::setViewRect(DrawViewId::PickBlit, 0, 0, PickBufSize, PickBufSize);
@@ -274,7 +280,7 @@ namespace sam
     {
         if (!m_legoUI->MouseDown(x, y, 0))
         { 
-            m_world->TouchDown(x, y, touchId);
+            m_gameController->TouchDown(x, y, touchId);
         }
     }
 
@@ -282,7 +288,7 @@ namespace sam
     {
         if (!m_legoUI->MouseDrag(x, y, 0))
         {
-            m_world->TouchMove(x, y, touchId);
+            m_gameController->TouchMove(x, y, touchId);
         }
 
     }
@@ -291,7 +297,7 @@ namespace sam
     {
         if (!m_legoUI->MouseUp(0))
         {
-            m_world->TouchUp(x, y, touchId);
+            m_gameController->TouchUp(x, y, touchId);
         }
     }
 

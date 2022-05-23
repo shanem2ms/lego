@@ -1,0 +1,145 @@
+#include "StdIncludes.h"
+#include "GameController.h"
+#include "Application.h"
+#include <bx/readerwriter.h>
+#include <bx/file.h>
+#include <bimg/bimg.h>
+#include "Hud.h"
+#include "Mesh.h"
+#include "Physics.h"
+#include <bimg/decode.h>
+
+namespace sam
+{
+    GameController::GameController() :
+        m_padSize(0.25f)
+    {
+        for (int i = 0; i < 2; ++i)
+        {
+            m_pads[i].m_active = false;
+        }
+    }
+
+    void GameController::Draw(DrawContext& ctx)
+    {
+        static bgfxh<bgfx::ProgramHandle> shader;
+        static bgfxh<bgfx::UniformHandle> sUparams;
+
+        if (!shader.isValid())
+            shader = Engine::Inst().LoadShader("vs_gamecontroller.bin", "fs_gamecontroller.bin");
+        if (!sUparams.isValid())
+            sUparams = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 1);
+
+        for (auto& pad: m_pads)
+        {
+            if (pad.m_active)
+            {
+                float aspect = (float)m_height / (float)m_width;
+                Matrix44f m = ctx.m_mat;
+                Engine& e = Engine::Inst();
+
+                //bgfx::setTransform(m.getData());
+                Quad::init();
+
+                uint64_t state = 0
+                    | BGFX_STATE_WRITE_RGB
+                    | BGFX_STATE_WRITE_A
+                    | BGFX_STATE_MSAA
+                    | BGFX_STATE_BLEND_ALPHA;
+
+                float sx = (pad.m_pos[0] / m_width) * 2 - 1;
+                float sy = (pad.m_pos[1] / m_height) * -2 + 1;
+                {
+                    // Set vertex and index buffer.
+                    bgfx::setVertexBuffer(0, Quad::vbh);
+                    bgfx::setIndexBuffer(Quad::ibh);
+                    // Set render states.l
+                    bgfx::setState(state);
+                    float size = m_padSize;
+                    m = makeTrans<Matrix44f>(Vec3f(sx, sy, 0.5f)) *
+                        makeScale<Matrix44f>(Vec3f(aspect * size, size, size));
+                    bgfx::setTransform(m.getData());
+                    Vec4f color(1, 1, 1, 0.20f);
+                    bgfx::setUniform(sUparams, &color, 1);
+                    bgfx::submit(DrawViewId::HUD, shader);
+                }
+                float px = sx + pad.m_xaxis * m_padSize * 0.5f;
+                float py = sy + pad.m_yaxis * m_padSize / aspect * -0.5f;
+                {
+                    // Set vertex and index buffer.
+                    bgfx::setVertexBuffer(0, Quad::vbh);
+                    bgfx::setIndexBuffer(Quad::ibh);
+                    // Set render states.l
+                    bgfx::setState(state);
+
+                    float size = m_padSize / 3.5f;
+                    m = makeTrans<Matrix44f>(Vec3f(px, py, 0.5f)) *
+                        makeScale<Matrix44f>(Vec3f(aspect * size, size, size));
+                    bgfx::setTransform(m.getData());
+                    Vec4f color(1, 0, 1, 0.5f);
+                    bgfx::setUniform(sUparams, &color, 1);
+                    bgfx::submit(DrawViewId::HUD, shader);
+                }
+            }
+        }
+    }
+
+    void GameController::Update(DrawContext& ctx)
+    {
+
+    }
+
+    void GameController::TouchDown(float x, float y, uint64_t touchId)
+    {
+        TouchAction action =
+            (x > m_width / 2) ? TouchAction::RightPad : TouchAction::LeftPad;
+        if (action == TouchAction::LeftPad || action == TouchAction::RightPad)
+        {
+            int idx = (int)(action);
+            m_pads[idx].m_pos = Vec2f(x, y);
+            m_pads[idx].m_active = true;
+            m_pads[idx].m_xaxis = 0;
+            m_pads[idx].m_yaxis = 0;
+        }
+
+        m_activeTouches.insert(std::make_pair(touchId,
+            Touch{ x, y, x, y, action }));
+    }
+
+    void GameController::TouchMove(float x, float y, uint64_t touchId)
+    {
+        auto itTouch = m_activeTouches.find(touchId);
+        if (itTouch != m_activeTouches.end())
+        {
+            Touch& touch = itTouch->second;
+            if (touch.action == TouchAction::LeftPad ||
+                touch.action == TouchAction::RightPad)
+            {
+                int padIdx = (int)touch.action;
+                m_pads[padIdx].m_xaxis = (x - touch.startX) * 2 / (m_height * m_padSize);
+                m_pads[padIdx].m_xaxis = std::max(-1.0f, std::min(1.0f, m_pads[padIdx].m_xaxis));
+                m_pads[padIdx].m_yaxis = (y - touch.startY) * 2 / (m_height * m_padSize);
+                m_pads[padIdx].m_yaxis = std::max(-1.0f, std::min(1.0f, m_pads[padIdx].m_yaxis));
+                //m_player->MovePad((x - touch.startX) * accel, (touch.startY - y) * accel);
+            }
+            touch.prevX = x;
+            touch.prevY = y;
+        }
+    }
+
+    void GameController::TouchUp(float x, float y, uint64_t touchId)
+    {
+        auto itTouch = m_activeTouches.find(touchId);
+        if (itTouch != m_activeTouches.end())
+        {
+            Touch& touch = itTouch->second;
+            if (touch.action == TouchAction::LeftPad ||
+                touch.action == TouchAction::RightPad)
+            {
+                m_pads[(int)touch.action].m_active = false;
+                //m_player->MovePad(0, 0);
+            }
+            m_activeTouches.erase(itTouch);
+        }
+    }
+}
