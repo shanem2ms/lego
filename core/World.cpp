@@ -82,57 +82,39 @@ namespace sam
 
    
     bool cursormode = false;
-    void World::MouseDown(float x, float y, int buttonId)
-    {
-        if (buttonId == 1 && m_pPickedBrick != nullptr)
-        {
-            m_connectionLogic.PlaceBrick(m_player, m_pPickedBrick,
-                m_octTileSelection, m_physics, !m_disableCollisionCheck);
-        }
-        else if (buttonId == 0 && m_pPickedBrick != nullptr)
-        {
-            const PartInst &pi = m_pPickedBrick->GetPartInst();
-            if (pi.canBeDestroyed)
-            {
-                Matrix44f wm = m_pPickedBrick->GetWorldMatrix();
-                Vec4f offset;
-                xform(offset, wm, Vec4f(0, 0, 0, 1));                
-                Application::Inst().GetAudio().PlayOnce("break.mp3");
-                PartInst piAdj = pi;
-                piAdj.pos = Vec3f(offset);
-                m_octTileSelection.RemovePart(piAdj);
-            }
-        }
-        else if (buttonId == 3 && m_pPickedBrick != nullptr)
-        {            
-            const PartId &id = m_pPickedBrick->GetPartInst().id;
-            m_player->
-                ReplaceCurrentPart(id.Name());
-            
-            m_player->ReplaceCurrentPartColor(
-                BrickManager::Inst().GetColorFromIdx(m_pPickedBrick->GetPartInst().atlasidx));
-        }
-    }
-
+    
     constexpr float pi_over_two = 3.14159265358979323846f * 0.5f;
-    void World::RawMove(float dx, float dy)
+  
+
+    void World::PlaceBrick(Player* player)
     {
-        m_player->RawMove(dx, dy);
+        m_connectionLogic.PlaceBrick(player, m_pPickedBrick,
+            m_octTileSelection, m_physics, !m_disableCollisionCheck);
     }
 
-    void World::MouseDrag(float x, float y, int buttonId)
+    void World::DestroyBrick(Player* player)
     {
-      
+        const PartInst& pi = m_pPickedBrick->GetPartInst();
+        if (pi.canBeDestroyed)
+        {
+            Matrix44f wm = m_pPickedBrick->GetWorldMatrix();
+            Vec4f offset;
+            xform(offset, wm, Vec4f(0, 0, 0, 1));
+            Application::Inst().GetAudio().PlayOnce("break.mp3");
+            PartInst piAdj = pi;
+            piAdj.pos = Vec3f(offset);
+            m_octTileSelection.RemovePart(piAdj);
+        }
     }
 
-    void World::WheelScroll(float delta)
+    void World::UseBrick(Player* player)
     {
-        m_player->WheelScroll(delta);
-    }
+        const PartId& id = m_pPickedBrick->GetPartInst().id;
+        player->
+            ReplaceCurrentPart(id.Name());
 
-
-    void World::MouseUp(int buttonId)
-    {        
+        player->ReplaceCurrentPartColor(
+            BrickManager::Inst().GetColorFromIdx(m_pPickedBrick->GetPartInst().atlasidx));
     }
    
     static int curPartIdx = 0;
@@ -163,26 +145,10 @@ namespace sam
         case 'L':
             partChange = -1;
             break;
-        case 'Q':
-        {
-            PartInst part = m_player->GetRightHandPart();
-            part.rot *= make<Quatf>(AxisAnglef(
-                -Math::PI_OVER_2, Vec3f(1, 0, 0)));
-            m_player->SetRightHandPart(part);
-            break;
-        }
         case 'O':
             m_physics->SetPhysicsDbg(
                 !m_physics->GetPhysicsDbg());
             break;
-        case 'R':
-        {
-            PartInst part = m_player->GetRightHandPart();
-            part.rot *= make<Quatf>(AxisAnglef(
-                -Math::PI_OVER_2, Vec3f(0, 1, 0)));
-            m_player->SetRightHandPart(part);
-            break;
-        }
         case 'E':
         {
             m_showInventoryFn();

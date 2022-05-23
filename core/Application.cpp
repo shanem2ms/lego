@@ -52,7 +52,7 @@ namespace sam
         m_world = std::make_unique<World>();
         m_audio = std::make_unique<Audio>();
         m_gameController = std::make_unique<GameController>();
-        m_gameController->ConnectPlayer(m_world->GetPlayer());
+        m_gameController->ConnectPlayer(m_world->GetPlayer(), m_world.get());
 #if WATCHDOGTHREAD
         sWatchdogThread = std::thread(WatchDogFunc);
 #endif
@@ -134,7 +134,7 @@ namespace sam
         static const float mScale = 1.0f / 256.0f;
         if (m_rawMouseMode)
         {
-            m_world->RawMove((float)rx * mScale, (float)-ry * mScale);
+            m_world->GetPlayer()->RawMove((float)rx * mScale, (float)-ry * mScale);
         }
     }
 
@@ -145,26 +145,26 @@ namespace sam
             if (!m_rawMouseMode)
                 m_rawMouseMode = m_hideMouseCursorFn(true);
             else
-                m_world->MouseDown(x, y, buttonId);
+                m_world->GetPlayer()->MouseDown(x, y, buttonId);
         }
     }
 
     void Application::MouseMove(float x, float y, int buttonId)
     {
         if (!m_legoUI->MouseDrag(x, y, buttonId))
-            m_world->MouseDrag(x, y, buttonId);
+            m_world->GetPlayer()->MouseDrag(x, y, buttonId);
     }
 
     void Application::MouseUp(int buttonId)
     {
         if (!m_legoUI->MouseUp(buttonId))
-            m_world->MouseUp(buttonId);
+            m_world->GetPlayer()->MouseUp(buttonId);
     }
 
     void Application::WheelScroll(float delta)
     {
         if (!m_legoUI->WheelScroll(delta))
-            m_world->WheelScroll(delta);
+            m_world->GetPlayer()->WheelScroll(delta);
     }
 
     void Application::KeyDown(int keyId)

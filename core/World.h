@@ -51,15 +51,13 @@ namespace sam
         ~World();
         Level& Level() { return m_level; }
         void Update(Engine& engine, DrawContext& ctx);
-        void RawMove(float dx, float dy);
-        void MouseDown(float x, float y, int buttonId);
-        void MouseDrag(float x, float y, int buttonId);
-        void MouseUp(int buttonId);
         void KeyDown(int k);
         void KeyUp(int k);
-        void WheelScroll(float delta);
         void Open(const std::string &path);
 
+        void PlaceBrick(Player *);
+        void DestroyBrick(Player*);
+        void UseBrick(Player*);
         void ImportMbx(const std::string& path);
         void OnShowInventory(const std::function<void()> &fn)
         { m_showInventoryFn = fn; }

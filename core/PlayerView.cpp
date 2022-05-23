@@ -180,9 +180,8 @@ namespace sam
 
     void Player::MouseDown(float x, float y, int buttonId)
     {
-        
+       
     }
-
     void Player::RawMove(float dx, float dy)
     {
         Engine& e = Engine::Inst();
@@ -239,11 +238,22 @@ namespace sam
     const int SButton = 'S';
     const int FButton = 'F';
 
-    void Player::MovePad(float dx, float dy)
+    void Player::MovePadXY(float dx, float dy)
     {
         float speed = 3.0f;
         m_posVel[2] = speed * dy;
         m_posVel[0] = speed * dx;
+    }
+
+    void Player::MovePadZ(float dz)
+    {
+        float speed = 3.0f;
+        m_posVel[1] = speed * dz;
+    }
+
+    void Player::Jump()
+    {
+        m_jump = true;
     }
     void Player::KeyDown(int k)
     {
@@ -292,6 +302,23 @@ namespace sam
             m_inspectmode = true;
             Engine::Inst().SetDbgCam(m_inspectmode);
             break;
+        case 'Q':
+        {
+            PartInst part = GetRightHandPart();
+            part.rot *= make<Quatf>(AxisAnglef(
+                -Math::PI_OVER_2, Vec3f(1, 0, 0)));
+            SetRightHandPart(part);
+            break;
+        }
+        case 'R':
+        {
+            PartInst part = GetRightHandPart();
+            part.rot *= make<Quatf>(AxisAnglef(
+                -Math::PI_OVER_2, Vec3f(0, 1, 0)));
+            SetRightHandPart(part);
+            break;
+        }
+
         }
     }
 
