@@ -14,7 +14,7 @@ namespace sam
 {
     std::shared_ptr<UIControl> LegoUI::Build(DrawContext& ctx, int w, int h)
     {
-        auto topWnd = std::make_shared<UIWindow>(0, 0, 0, 0, "top", true);
+        auto topWnd = std::make_shared<UIWindow>(0, 0, 0, 0, "top", true, false);
         m_topctrl = topWnd;
         topWnd->AddControl(m_mainMenu.Build(this, ctx, w, h));
         topWnd->AddControl(m_inventory.Build(this, ctx, w, h));
@@ -26,7 +26,7 @@ namespace sam
         const int btnSize = 150;
         const int btnSpace = 10;        
         
-        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "bricks", false);
+        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "bricks", false, true);
         menu->OnOpenChanged([this, parent](bool isopen) {
             if (!isopen) Deactivate(); });
         menu->SetLayout(UILayout::Horizontal);
@@ -81,7 +81,7 @@ namespace sam
 
     std::shared_ptr<UIControl> LegoUI::BuildHotbar(DrawContext& ctx, int w, int h)
     {
-        m_hotbar = std::make_shared<UIWindow>(650, -200, 920, 130, "hotbar", false);
+        m_hotbar = std::make_shared<UIWindow>(650, -200, 920, 130, "hotbar", false, false);
         m_hotbar->SetLayout(UILayout::Horizontal);
         auto hotbarTable = std::make_shared<UITable>(8);
         const SlotPart* pSlots = ctx.m_pPlayer->GetSlots();
@@ -194,7 +194,7 @@ namespace sam
 
     std::shared_ptr<UIControl> LegoUI::MainMenu::Build(LegoUI* parent, DrawContext& ctx, int w, int h)
     {
-        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "mainmenu", false);
+        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "mainmenu", false, true);
         menu->OnOpenChanged([this, parent](bool isopen) {
             if (!isopen) Deactivate(); });
         menu->SetLayout(UILayout::Horizontal);
@@ -258,7 +258,7 @@ namespace sam
 
     std::shared_ptr<UIControl> LegoUI::ImportWindow::Build(LegoUI* parent, DrawContext& ctx, int w, int h)
     {
-        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "ImportWindow", false);
+        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "ImportWindow", false, true);
         menu->OnOpenChanged([this, parent](bool isopen) {
             if (!isopen) Deactivate(); });
         menu->SetLayout(UILayout::Horizontal);

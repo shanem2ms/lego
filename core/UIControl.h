@@ -78,12 +78,13 @@ namespace sam
     {
         std::string m_name;
         bool m_isinvisible;
+        bool m_titleBar;
         std::function<void(bool)> m_onOpenChangedFn;
     public:
         void OnOpenChanged(const std::function<void(bool)> &fn)
         { m_onOpenChangedFn = fn; }
         UIWindow(float x, float y, float w, float h, const std::string& name,
-            bool invisible);
+            bool invisible, bool titleBar);
         UIControl* IsHit(float x, float y, int buttonId) override;
         void DrawUI(UIContext& ctx) override;
         void Show() { m_isVisible = true; }

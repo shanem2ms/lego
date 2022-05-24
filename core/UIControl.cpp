@@ -193,8 +193,9 @@ namespace sam
     }
 
     UIWindow::UIWindow(float x, float y, float w, float h, const std::string& name,
-        bool invisible) :
+        bool invisible, bool titleBar) :
         UIGroup(x, y, w, h),
+        m_titleBar(titleBar),
         m_name(name),
         m_isinvisible(invisible)
     {
@@ -236,7 +237,8 @@ namespace sam
             ImGuiWindowFlags_NoBackground |
             ImGuiWindowFlags_NoTitleBar |
             ImGuiWindowFlags_NoResize |
-            ImGuiWindowFlags_NoMove) : ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoMove) : 
+            (m_titleBar ? 0 : ImGuiWindowFlags_NoTitleBar) |
             ImGuiWindowFlags_NoResize);
         if (isopen != m_isVisible && m_onOpenChangedFn != nullptr)
         {

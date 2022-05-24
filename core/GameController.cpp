@@ -24,18 +24,18 @@ namespace sam
         m_pads[0].m_touch = TouchAction::Pad0;
         m_pads[1].m_active = false;
         m_pads[1].m_color = Vec3f(0, 1, 0);
-        m_pads[1].m_hitbox = AABoxf(Vec3f(0.5f, 0, 0), Vec3f(1.0f, 0.55f, 1));
+        m_pads[1].m_hitbox = AABoxf(Vec3f(0.5f, 0, 0), Vec3f(1.0f, 0.65f, 1));
         m_pads[1].m_touch = TouchAction::Pad1;
 
-        Vec2f centerPos(0.8f, 0.70f);
-        float spread = 0.12f;
+        Vec2f centerPos(0.8f, 0.80f);
+        float spread = 0.08f;
         Vec2f offsets[4] = { Vec2f(-1,0), Vec2f(1, 0), Vec2f(0, -1), Vec2f(0, 1) };
         Vec3f colors[4] = { Vec3f(0.5f, 1, 0) , Vec3f(1, 0.2f, 0), Vec3f(1, 1, 0), Vec3f(0, 0.2f, 1) };
         for (int i = 0; i < 4; ++i)
         {
             m_buttons[i].m_color = colors[i];
             m_buttons[i].m_pos = centerPos + offsets[i] * spread;
-            m_buttons[i].m_size = 0.15f;
+            m_buttons[i].m_size = 0.14f;
             m_buttons[i].m_isPressed = false;
             m_buttons[i].m_isPressedPrev = false;
             m_buttons[i].m_touch = (TouchAction)((int)TouchAction::Button0 + i);
@@ -133,17 +133,17 @@ namespace sam
 
     void GameController::Update(DrawContext& ctx)
     {
-        float lookScale = 0.05f;
-        if (m_pads[0].m_active)
-            m_player->RawMove(m_pads[0].m_xaxis * lookScale, -m_pads[0].m_yaxis * lookScale);
-        else
-            m_player->RawMove(0, 0);
-
         float moveScale = 2.0f;
-        if (m_pads[1].m_active)
-            m_player->MovePadXY(m_pads[1].m_xaxis * moveScale, -m_pads[1].m_yaxis * moveScale);
+        if (m_pads[0].m_active)
+            m_player->MovePadXY(m_pads[0].m_xaxis * moveScale, -m_pads[0].m_yaxis * moveScale);
         else 
             m_player->MovePadXY(0, 0);
+
+        float lookScale = 0.05f;
+        if (m_pads[1].m_active)
+            m_player->RawMove(m_pads[1].m_xaxis * lookScale, -m_pads[1].m_yaxis * lookScale);
+        else
+            m_player->RawMove(0, 0);
 
         float zMove = 0;
         for (Button& btn : m_buttons)
@@ -158,7 +158,7 @@ namespace sam
                         m_world->DestroyBrick(m_player.get());
                     else if (btn.m_touch == TouchAction::Button2 && !m_player->FlyMode())
                     {
-
+                        m_player->Jump();
                     }
                 }
 
