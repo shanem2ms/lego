@@ -145,7 +145,7 @@ namespace sam
         else
             m_player->MovePadXY(0, 0);
 
-        float lookScale = 0.01f;
+        float lookScale = 0.005f;
         if (m_mousepad.m_active)
         {
             float vx = m_mousepad.m_xpos - m_mousepad.m_xprev;

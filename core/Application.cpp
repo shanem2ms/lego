@@ -261,7 +261,7 @@ namespace sam
 
         m_engine->Draw(ctx);
 
-        m_frameIdx = bgfx::frame() + 1;
+        m_frameIdx++;// = bgfx::frame() + 1;
         auto elapsed = std::chrono::high_resolution_clock::now() - sFrameStart;
         long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
         g_Fps = (float)1000000.0f / microseconds;
