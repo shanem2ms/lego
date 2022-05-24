@@ -165,6 +165,13 @@ namespace entry
         Touch::Enum m_type;
     };
 
+    struct TouchData {
+        int32_t m_mx;
+        int32_t m_my;
+        uint64_t m_id;
+        Touch::Enum m_type;
+    };
+
 	struct SizeEvent : public Event
 	{
 		ENTRY_IMPLEMENT_EVENT(SizeEvent, Event::Size);

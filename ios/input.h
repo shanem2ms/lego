@@ -78,6 +78,8 @@ void inputSetMouseResolution(uint16_t _width, uint16_t _height);
 ///
 void inputSetMousePos(int32_t _mx, int32_t _my, int32_t _mz);
 
+void inputSetTouch(int32_t _mx, int32_t _my, uint64_t _id, entry::Touch::Enum _touch);
+
 ///
 void inputSetMouseButtonState(entry::MouseButton::Enum _button, uint8_t _state);
 

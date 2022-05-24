@@ -38,7 +38,7 @@ namespace entry
 
 	static String s_currentDir;
 
-    entry::MouseState m_mouseState;
+    entry::TouchData m_touches[32];
 
 static uint32_t m_width;
 static uint32_t m_height;
@@ -573,28 +573,30 @@ bool update()
     int prevwidth = m_width;
     static uint8_t prevMouseLeftBtn = 0;
     static float prevX = 0, prevY = 0;
-    if (!entry::processEvents(m_width, m_height, m_debug, m_reset, &m_mouseState) )
+    int touchCnt = 0;
+    if (!entry::processEvents(m_width, m_height, m_debug, m_reset, m_touches, &touchCnt))
     {
         if (prevheight != m_height ||
             prevwidth != m_width)
             app.Resize(m_width, m_height);
         
-        if (m_mouseState.m_buttons[entry::MouseButton::Left] != prevMouseLeftBtn)
+        for (int idx = 0; idx < touchCnt; ++idx)
         {
-            prevMouseLeftBtn = m_mouseState.m_buttons[entry::MouseButton::Left];
-            
-            if (prevMouseLeftBtn > 0)
-                app.MouseDown(m_mouseState.m_mx, m_mouseState.m_my, 0);
-            else
-                app.MouseUp(0);
+            TouchData &td = m_touches[idx];
+            switch (td.m_type)
+            {
+                case Touch::Begin:
+                    app.TouchDown(td.m_mx, td.m_my, td.m_id);
+                    break;
+                case Touch::Move:
+                    app.TouchMove(td.m_mx, td.m_my, td.m_id);
+                    break;
+                case Touch::End:
+                    app.TouchUp(td.m_mx, td.m_my, td.m_id);
+                    break;
+            }
         }
-        else if (prevMouseLeftBtn > 0 && (prevX != m_mouseState.m_mx
-                                          || prevY != m_mouseState.m_my))
-        {
-            app.MouseMove(m_mouseState.m_mx, m_mouseState.m_my, 0);
-        }
-        prevX = m_mouseState.m_mx;
-        prevY = m_mouseState.m_my;
+        
         // Set view 0 default viewport.
         bgfx::setViewRect(0, 0, 0, uint16_t(m_width), uint16_t(m_height) );
 
@@ -729,10 +731,13 @@ restart:
 
 	WindowState s_window[ENTRY_CONFIG_MAX_WINDOWS];
 
-	bool processEvents(uint32_t& _width, uint32_t& _height, uint32_t& _debug, uint32_t& _reset, MouseState* _mouse)
+    
+
+	bool processEvents(uint32_t& _width, uint32_t& _height, uint32_t& _debug, uint32_t& _reset, TouchData* _touch, int *pTouchCnt)
 	{
 		bool needReset = s_reset != _reset;
 
+        *pTouchCnt = 0;
 		s_debug = _debug;
 		s_reset = _reset;
 
@@ -773,34 +778,19 @@ restart:
 //						DBG("gamepad %d, %d", gev->m_gamepad.idx, gev->m_connected);
 					}
 					break;
-
-				case Event::Mouse:
-					{
-						const MouseEvent* mouse = static_cast<const MouseEvent*>(ev);
-						handle = mouse->m_handle;
-
-						inputSetMousePos(mouse->m_mx, mouse->m_my, mouse->m_mz);
-						if (!mouse->m_move)
-						{
-							inputSetMouseButtonState(mouse->m_button, mouse->m_down);
-						}
-
-						if (NULL != _mouse
-						&&  !mouseLock)
-						{
-							_mouse->m_mx = mouse->m_mx;
-							_mouse->m_my = mouse->m_my;
-							_mouse->m_mz = mouse->m_mz;
-							if (!mouse->m_move)
-							{
-								_mouse->m_buttons[mouse->m_button] = mouse->m_down;
-							}
-						}
-					}
-					break;
+			
                 case Event::Touch:
+                    {
+                        const TouchEvent* touch = static_cast<const TouchEvent*>(ev);
+                        inputSetTouch(touch->m_mx, touch->m_my, touch->m_id, touch->m_type);
+                        TouchData *pTouch = _touch + *pTouchCnt;
+                        pTouch->m_type = touch->m_type;
+                        pTouch->m_id = touch->m_id;
+                        pTouch->m_mx = touch->m_mx;
+                        pTouch->m_my = touch->m_my;
+                        (*pTouchCnt)++;
                         break;
-
+                    }
 				case Event::Key:
 					{
 						const KeyEvent* key = static_cast<const KeyEvent*>(ev);
@@ -1076,8 +1066,3 @@ restart:
 	}
 
 } // namespace entry
-
-extern "C" bool entry_process_events(uint32_t* _width, uint32_t* _height, uint32_t* _debug, uint32_t* _reset)
-{
-	return entry::processEvents(*_width, *_height, *_debug, *_reset, NULL);
-}

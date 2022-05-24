@@ -255,7 +255,8 @@ namespace entry
 		int32_t m_axis[entry::GamepadAxis::Count];
 	};
 
-	bool processEvents(uint32_t& _width, uint32_t& _height, uint32_t& _debug, uint32_t& _reset, MouseState* _mouse = NULL);
+    struct TouchData;
+	bool processEvents(uint32_t& _width, uint32_t& _height, uint32_t& _debug, uint32_t& _reset, TouchData* _touch, int *pTouchCnt);
 
 	bx::FileReaderI* getFileReader();
 	bx::FileWriterI* getFileWriter();

@@ -391,6 +391,7 @@ namespace sam
             curl_easy_setopt(curl, CURLOPT_URL, url);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, pwf);
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
             res = curl_easy_perform(curl);
             /* always cleanup */
             curl_easy_cleanup(curl);

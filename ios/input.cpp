@@ -350,6 +350,11 @@ void inputSetMousePos(int32_t _mx, int32_t _my, int32_t _mz)
 	s_input->m_mouse.setPos(_mx, _my, _mz);
 }
 
+void inputSetTouch(int32_t _mx, int32_t _my, uint64_t _id, entry::Touch::Enum _touch)
+{
+    
+}
+
 void inputSetMouseButtonState(entry::MouseButton::Enum _button, uint8_t _state)
 {
 	s_input->m_mouse.setButtonState(_button, _state);
