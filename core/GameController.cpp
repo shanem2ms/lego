@@ -133,13 +133,13 @@ namespace sam
 
     void GameController::Update(DrawContext& ctx)
     {
-        float moveScale = 2.0f;
+        float moveScale = 4.0f;
         if (m_pads[0].m_active)
             m_player->MovePadXY(m_pads[0].m_xaxis * moveScale, -m_pads[0].m_yaxis * moveScale);
         else 
             m_player->MovePadXY(0, 0);
 
-        float lookScale = 0.05f;
+        float lookScale = 0.10f;
         if (m_pads[1].m_active)
             m_player->RawMove(m_pads[1].m_xaxis * lookScale, -m_pads[1].m_yaxis * lookScale);
         else
@@ -165,9 +165,9 @@ namespace sam
                 if (m_player->FlyMode())
                 {
                     if (btn.m_touch == TouchAction::Button2)
-                        zMove = -1;
+                        zMove = -moveScale;
                     else if (btn.m_touch == TouchAction::Button3)
-                        zMove = 1;
+                        zMove = moveScale;
                 }
             }
 

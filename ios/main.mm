@@ -230,6 +230,7 @@ static    void* m_device = NULL;
 - (id)initWithFrame:(CGRect)rect
 {
     self = [super initWithFrame:rect];
+    self.multipleTouchEnabled = true;
 
     if (nil == self)
     {
