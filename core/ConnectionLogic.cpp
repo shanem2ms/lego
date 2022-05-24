@@ -75,7 +75,7 @@ namespace sam
             Vec4f wsPickedConnectorPos;
             xform(wsPickedConnectorPos, wm, Vec4f(connector.pos, 1));
 
-            Brick* pRHandBrick = BrickManager::Inst().GetBrick(player->GetRightHandPart().id);
+            std::shared_ptr<Brick> pRHandBrick = BrickManager::Inst().GetBrick(player->GetRightHandPart().id);
             BrickManager::Inst().LoadConnectors(pBrick);
             for (auto& rhandconnect : pRHandBrick->m_connectors)
             {
@@ -144,7 +144,7 @@ namespace sam
                         std::vector<Vec3f> connectPts;
                         for (const PartInst& pi : nearbyParts)
                         {
-                            Brick* b = BrickManager::Inst().GetBrick(pi.id);
+                            std::shared_ptr<Brick> b = BrickManager::Inst().GetBrick(pi.id);
                             for (const Connector& c : b->m_connectors)
                             {
                                 if (c.type != ConnectorType::Stud)
@@ -195,8 +195,8 @@ namespace sam
                     cbox.mMax += pi.pos;
                     {
                         static std::shared_ptr<btRigidBody> sRigidBody;
-                        sam::Brick* pBrick = BrickManager::Inst().GetBrick(pi.id);
-                        if (BrickManager::Inst().LoadCollision(pBrick))
+                        std::shared_ptr<Brick> pBrick = BrickManager::Inst().GetBrick(pi.id);
+                        if (BrickManager::Inst().LoadCollision(pBrick.get()))
                         {                            
                             Matrix44f m =
                                 makeTrans<Matrix44f>(pi.pos) *

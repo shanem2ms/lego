@@ -26,10 +26,10 @@ namespace sam
         const int btnSize = 150;
         const int btnSpace = 10;        
         
-        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "bricks", false, true);
-        menu->OnOpenChanged([this, parent](bool isopen) {
+        std::shared_ptr<UIWindow> inventoryWnd = std::make_shared<UIWindow>(100, 100, -200, -200, "bricks", false, true);
+        inventoryWnd->OnOpenChanged([this, parent](bool isopen) {
             if (!isopen) Deactivate(); });
-        menu->SetLayout(UILayout::Horizontal);
+        inventoryWnd->SetLayout(UILayout::Horizontal);
 
 
         auto typesTable = std::make_shared<UITable>(1);
@@ -49,14 +49,14 @@ namespace sam
 
         auto typesPanel = std::make_shared<UIPanel>(0, 0, 150, 0);
         typesPanel->AddControl(typesTable);
-        menu->AddControl(typesPanel);
+        inventoryWnd->AddControl(typesPanel);
 
         int padding = 20;
         int numColumns = 1280 / (128 + padding);
         m_partsTable = std::make_shared<UITable>(numColumns);
-        auto partsPanel = std::make_shared<UIPanel>(0, 0, -150, 0);
+        auto partsPanel = std::make_shared<UIPanel>(0, 0, -300, 0);
         partsPanel->AddControl(m_partsTable);
-        menu->AddControl(partsPanel);
+        inventoryWnd->AddControl(partsPanel);
 
         auto colorsTable = std::make_shared<UITable>(2);
         int numcolors = BrickManager::Inst().NumColors();
@@ -73,15 +73,15 @@ namespace sam
 
         auto colorsPanel = std::make_shared<UIPanel>(0, 0, 150, 0);
         colorsPanel->AddControl(colorsTable);
-        menu->AddControl(colorsPanel);
-        m_root = menu;
+        inventoryWnd->AddControl(colorsPanel);
+        m_root = inventoryWnd;
         m_root->Close();
-        return menu;
+        return inventoryWnd;
     }
 
     std::shared_ptr<UIControl> LegoUI::BuildHotbar(DrawContext& ctx, int w, int h)
     {
-        m_hotbar = std::make_shared<UIWindow>(650, -200, 920, 130, "hotbar", false, false);
+        m_hotbar = std::make_shared<UIWindow>(250, -300, 1620, 230, "hotbar", false, false);
         m_hotbar->SetLayout(UILayout::Horizontal);
         auto hotbarTable = std::make_shared<UITable>(8);
         const SlotPart* pSlots = ctx.m_pPlayer->GetSlots();

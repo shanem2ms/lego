@@ -197,7 +197,7 @@ namespace sam
         static constexpr float Scale = 1 / 20.0f;
 
         static BrickManager& Inst();
-        Brick *GetBrick(const PartId& name, bool hires = false);
+        std::shared_ptr<Brick> GetBrick(const PartId& name, bool hires = false);
         bgfx::TextureHandle GetBrickThumbnail(const PartId& name);
         BrickManager();
         static Vec4f Color(uint32_t hex);
@@ -262,12 +262,12 @@ namespace sam
         void DownloadCacheFile();
         void CleanCache();
 
-        std::map<PartId, Brick> m_bricks;
+        std::map<PartId, std::shared_ptr<Brick>> m_bricks;
         bgfxh<bgfx::UniformHandle> m_paletteHandle;
         index_map<PartId, PartDesc> m_partsMap;
         index_map<std::string, std::vector<PartId>> m_typesMap;
         std::filesystem::path m_cachePath;
-        std::vector<Brick*> m_brickRenderQueue;
+        std::vector<std::shared_ptr<Brick>> m_brickRenderQueue;
         bgfxh<bgfx::TextureHandle> m_iconDepth;
         bgfxh<bgfx::TextureHandle> m_colorPalette;
         size_t m_mruCtr;

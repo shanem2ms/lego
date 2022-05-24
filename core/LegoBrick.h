@@ -27,7 +27,7 @@ namespace sam
         void Initialize(DrawContext& nvg) override;
         void Draw(DrawContext& ctx) override;
         void SetPickData(float data);
-        Brick* GetBrick() { return m_pBrick; }
+        Brick* GetBrick() { return m_pBrick.get(); }
         void CreateBulletMesh();
         int GetHighlightedConnector() const
         { return m_connectorPickIdx; }
@@ -39,7 +39,7 @@ namespace sam
     private:
         Matrix44f CalcMat() const override;
         PartInst m_partinst;
-        Brick* m_pBrick;
+        std::shared_ptr<Brick> m_pBrick;
         int m_paletteIdx;
         bool m_showConnectors;
         bool m_hires;

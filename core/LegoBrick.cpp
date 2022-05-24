@@ -53,7 +53,7 @@ namespace sam
 
         //SetRotate();
 
-        BrickManager::Inst().LoadConnectors(m_pBrick);
+        BrickManager::Inst().LoadConnectors(m_pBrick.get());
         if (m_showConnectors)
         {
             for (auto c : m_pBrick->m_connectors)
@@ -65,7 +65,7 @@ namespace sam
             }
         }
 
-        if (m_physicsType != Physics::None && BrickManager::Inst().LoadCollision(m_pBrick))
+        if (m_physicsType != Physics::None && BrickManager::Inst().LoadCollision(m_pBrick.get()))
         {
             Matrix44f m = dc.m_mat *
                 makeTrans<Matrix44f>(m_offset) *
@@ -121,7 +121,7 @@ namespace sam
         if (!bgfx::isValid(m_pBrick->m_vbhHR))
             return;
         if (m_pBrick != nullptr)
-            BrickManager::Inst().MruUpdate(m_pBrick);
+            BrickManager::Inst().MruUpdate(m_pBrick.get());
         PosTexcoordNrmVertex::init();
         Matrix44f m = ctx.m_mat *
             CalcMat();

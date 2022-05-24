@@ -396,6 +396,7 @@ void Tick()
     bgfx::touch(2);
     bgfx::touch(3);
     app->Draw();
+    bgfx::frame();
 }
 
 

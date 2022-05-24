@@ -270,52 +270,6 @@ namespace sam
                 bgfx::submit(DrawViewId::HUD, shader);
             }
         }
-
-        if (m_mousepad.m_active)
-        {
-            Matrix44f m = ctx.m_mat;
-            Quad::init();
-
-            uint64_t state = 0
-                | BGFX_STATE_WRITE_RGB
-                | BGFX_STATE_WRITE_A
-                | BGFX_STATE_MSAA
-                | BGFX_STATE_BLEND_ALPHA;
-
-            float sx = (m_mousepad.m_pos[0] / m_width) * 2 - 1;
-            float sy = (m_mousepad.m_pos[1] / m_height) * -2 + 1;
-            {
-                // Set vertex and index buffer.
-                bgfx::setVertexBuffer(0, Quad::vbh);
-                bgfx::setIndexBuffer(Quad::ibh);
-                // Set render states.l
-                bgfx::setState(state);
-                float size = m_padSize;
-                m = makeTrans<Matrix44f>(Vec3f(sx, sy, 0.5f)) *
-                    makeScale<Matrix44f>(Vec3f(m_aspect * size, size, size));
-                bgfx::setTransform(m.getData());
-                Vec4f color(1, 1, 1, 0.20f);
-                bgfx::setUniform(sUparams, &color, 1);
-                bgfx::submit(DrawViewId::HUD, shader);
-            }
-            float px = ((m_mousepad.m_pos[0] + m_mousepad.m_xpos) / m_width) * 2 - 1;;
-            float py = ((m_mousepad.m_pos[1] + m_mousepad.m_ypos) / m_height) * -2 + 1;
-            {
-                // Set vertex and index buffer.
-                bgfx::setVertexBuffer(0, Quad::vbh);
-                bgfx::setIndexBuffer(Quad::ibh);
-                // Set render states.l
-                bgfx::setState(state);
-
-                float size = m_padSize / 3.5f;
-                m = makeTrans<Matrix44f>(Vec3f(px, py, 0.5f)) *
-                    makeScale<Matrix44f>(Vec3f(m_aspect * size, size, size));
-                bgfx::setTransform(m.getData());
-                Vec4f color(m_mousepad.m_color, 0.5f);
-                bgfx::setUniform(sUparams, &color, 1);
-                bgfx::submit(DrawViewId::HUD, shader);
-            }
-        }
     }
 
 }

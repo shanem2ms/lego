@@ -475,7 +475,7 @@ namespace sam
 
         Vec4f color = Vec4f(15, 0, 0, 0);
         PosTexcoordNrmVertex::init();
-        std::vector<Brick*> brickRenderQueue;
+        std::vector<std::shared_ptr<Brick>> brickRenderQueue;
         std::swap(brickRenderQueue, m_brickRenderQueue);
         for (auto& brick : brickRenderQueue)
         {
@@ -548,11 +548,17 @@ namespace sam
     }
 
     BrickManager& BrickManager::Inst() { return *spMgr; }
-    Brick* BrickManager::GetBrick(const PartId& name, bool hires)
+
+    size_t g_brickCacheCnt = 0;
+    std::shared_ptr<Brick> BrickManager::GetBrick(const PartId& name, bool hires)
     {
-        Brick& b = m_bricks[name];
-        if (b.m_name.IsNull())
-            b.m_name = name;
+        auto itBrick = m_bricks.find(name);
+        if (itBrick == m_bricks.end())
+        {
+            itBrick = m_bricks.insert(std::make_pair(name,
+                std::make_shared<Brick>())).first;
+        }
+        Brick& b = *itBrick->second;
         if (!b.m_vbhLR.isValid())
         {
             std::string lores = name.GetFilename() + ".lr_mesh";
@@ -568,13 +574,14 @@ namespace sam
                 b.LoadHires(stream);
         }
         MruUpdate(&b);
+        g_brickCacheCnt = m_bricks.size();
         CleanCache();
-        return &b;
+        return itBrick->second;
     }
 
     bgfx::TextureHandle BrickManager::GetBrickThumbnail(const PartId& name)
     {
-        Brick* b = GetBrick(name);
+        std::shared_ptr<Brick> b = GetBrick(name);
         if (!b->m_icon.isValid())
             m_brickRenderQueue.push_back(b);
 
@@ -593,12 +600,14 @@ namespace sam
             mrulist.reserve(m_bricks.size());
             for (auto& pair : m_bricks)
             {
-                mrulist.push_back(std::make_pair(pair.second.m_mruCtr,
-                    pair.first));
+                if (pair.second.use_count() == 1) {
+                    mrulist.push_back(std::make_pair(pair.second->m_mruCtr,
+                        pair.first));
+                }
             }
 
             std::sort(mrulist.begin(), mrulist.end());
-            for (size_t idx = 0; idx < 64; ++idx)
+            for (size_t idx = 0; idx < std::min(mrulist.size(), (size_t)64); ++idx)
             {
                 m_bricks.erase(mrulist[idx].second);
             }

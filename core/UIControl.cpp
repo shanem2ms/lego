@@ -96,8 +96,8 @@ namespace sam
         );
 
         UIContext uictx;
-        uictx.width = w;
-        uictx.height = h;
+        uictx.width = unitWidth;
+        uictx.height = unitHeight;
         // Iphone 11pro max size as 1.0.
         uictx.scaleW = (float)w / unitWidth;
         uictx.scaleH = (float)h / unitHeight;        
@@ -220,14 +220,16 @@ namespace sam
         if (!m_isVisible)
             return;
         
-        int x = m_x < 0 ? unitWidth + m_x : m_x;
-        int y = m_y < 0 ? unitHeight + m_y : m_y;
+        int x = m_x < 0 ? ctx.width + m_x : m_x;
+        int y = m_y < 0 ? ctx.height + m_y : m_y;
+        int w = m_width <= 0 ? ctx.width + m_width : m_width;
+        int h = m_height <= 0 ? ctx.height + m_height : m_height;
         ImGui::SetNextWindowPos(
             ToIM(ctx, x, y), m_isinvisible ? ImGuiCond_Always : ImGuiCond_Appearing);
 
-        if (m_width > 0)
+        if (w > 0)
         {
-            ImGui::SetNextWindowSize(ToIM(ctx, m_width, m_height),
+            ImGui::SetNextWindowSize(ToIM(ctx, w, h),
                 m_isinvisible ? ImGuiCond_Always : ImGuiCond_Appearing
             );
         }
@@ -252,13 +254,13 @@ namespace sam
         m_y = pos.y / ctx.scaleH;
 
         ImVec2 size = ImGui::GetWindowSize();
-        m_width = size.x / ctx.scaleW;
-        m_height = size.y / ctx.scaleH;
+        int clientW = size.x / ctx.scaleW;
+        int clientH = size.y / ctx.scaleH;
 
         m_isVisible = isopen;
         UIContext subCtx = ctx;
-        subCtx.width = m_width;
-        subCtx.height = m_height;
+        subCtx.width = clientW;
+        subCtx.height = clientH;
         UIGroup::DrawUI(subCtx);
         ImGui::End();
     }
@@ -335,7 +337,7 @@ namespace sam
                 else if (m_selectedIdx == curIdx)
                     ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(0.6f, 0.2, 0.4, 0.75f));
                 if (bgfx::isValid(item.image))
-                    ImGui::ImageButton(item.image, ToIM(ctx, 80, 80), ImVec2(0,0), ImVec2(1,1), -1,
+                    ImGui::ImageButton(item.image, ToIM(ctx, 160, 160), ImVec2(0,0), ImVec2(1,1), -1,
                         ImVec4(0,0,0,0), (ImVec4)ImColor(item.imgTint));
                 else
                     ImGui::Button(item.text.c_str(), ImVec2(-1, 0));

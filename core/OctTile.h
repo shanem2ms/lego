@@ -35,7 +35,7 @@ namespace sam
         float m_intersects;
         bool m_isdecommissioned;
         std::vector<PartInst> m_parts;
-        std::vector<Brick*> m_bricks;
+        std::vector<std::shared_ptr<Brick>> m_bricks;
         bool m_needsPersist;
         bool m_needsRefresh;
 

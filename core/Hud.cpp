@@ -19,6 +19,7 @@ namespace sam
     extern int g_farTiles;
     extern int nOctTilesTotal;
     extern int nOctTilesDrawn;
+    extern size_t g_brickCacheCnt;
     extern float g_Fps;
     extern Loc g_hitLoc;;
     extern float g_hitDist;
@@ -38,7 +39,7 @@ extern int g_buttonDown;
         bgfx::dbgTextPrintf(0, 8, 0x0f, "Fps [%.2f]", g_Fps);
         ///bgfx::dbgTextPrintf(0, 10, 0x0f, "VB %d MB", sVBBytes.load() >> 20);
         bgfx::dbgTextPrintf(0, 10, 0x0f, "Tile [%d {%d %d %d}]", g_inLoc.m_l, g_inLoc.m_x, g_inLoc.m_y, g_inLoc.m_z );
-        bgfx::dbgTextPrintf(0, 12, 0x0f, "Int [%f]", g_overlap);
+        bgfx::dbgTextPrintf(0, 12, 0x0f, "Brick Cache [%d]", g_brickCacheCnt);
         
 
         Engine& e = Engine::Inst();
