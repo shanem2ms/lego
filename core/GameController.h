@@ -11,14 +11,13 @@ namespace sam
         enum class TouchAction
         {
             None = 0,
-            Pad0 = 10,
-            Pad1 = 11,
-            Pad9 = 19,
+            Thumbpad = 10,
             Button0 = 20,
             Button1 = 21,
             Button2 = 22,
             Button3 = 23,
             Button9 = 29,
+            MousePad = 30
         };
 
         struct Touch
@@ -30,13 +29,26 @@ namespace sam
             TouchAction action;
         };
 
-        struct Pad
+        struct ThumbPad
         {
             Vec2f m_pos;
             Vec3f m_color;
             bool m_active;
             float m_xaxis;
             float m_yaxis;
+            AABoxf m_hitbox;
+            TouchAction m_touch;
+        };
+
+        struct MousePad
+        {
+            Vec2f m_pos;
+            Vec3f m_color;
+            bool m_active;
+            float m_xpos;
+            float m_ypos;
+            float m_xprev;
+            float m_yprev;
             AABoxf m_hitbox;
             TouchAction m_touch;
         };
@@ -56,7 +68,8 @@ namespace sam
         int m_height;
         float m_aspect;
         float m_padSize;
-        Pad m_pads[2];
+        ThumbPad m_thumbpad;
+        MousePad m_mousepad;
         Button m_buttons[4];
         std::shared_ptr<Player> m_player;
         World *m_world;
