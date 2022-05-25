@@ -196,7 +196,8 @@ namespace sam
         Flags flags) :
         UIGroup(x, y, w, h),
         m_flags(flags),
-        m_name(name)
+        m_name(name),
+        m_initialized(false)
     {
 
     }
@@ -237,10 +238,9 @@ namespace sam
         bool popupVisible = false;
         if (ispopup)
         {
-            ImGui::OpenPopup(m_name.c_str());
-            popupVisible = ImGui::BeginPopup(m_name.c_str(),
-                ((m_flags & Flags::TitleBar) ? 0 : ImGuiWindowFlags_NoTitleBar) |
-                ImGuiWindowFlags_NoResize);
+            popupVisible = ImGui::BeginPopup(m_name.c_str());
+            if (m_isVisible && !popupVisible)
+                ImGui::OpenPopup(m_name.c_str());
         }
         else
         {
@@ -252,29 +252,30 @@ namespace sam
                     ImGuiWindowFlags_NoMove) :
                 ((m_flags & Flags::TitleBar) ? 0 : ImGuiWindowFlags_NoTitleBar) |
                 ImGuiWindowFlags_NoResize);
+        }
+
+        if (popupVisible || !ispopup)
+        {
             if (isopen != m_isVisible && m_onOpenChangedFn != nullptr)
             {
                 m_onOpenChangedFn(isopen);
                 m_isVisible = false;
             }
+
+            ImGui::SetWindowFontScale(ctx.scaleW);
+            int clientW = w;
+            int clientH = h;
+
+            m_isVisible = isopen;
+            UIContext subCtx = ctx;
+            subCtx.width = clientW;
+            subCtx.height = clientH;
+            UIGroup::DrawUI(subCtx);
         }
-
-        ImGui::SetWindowFontScale(ctx.scaleW);
-        ImVec2 pos = ImGui::GetWindowPos();
-        //m_x = pos.x / ctx.scaleW;
-        //m_y = pos.y / ctx.scaleH;
-
-        ImVec2 size = ImGui::GetWindowSize();
-        int clientW = size.x / ctx.scaleW;
-        int clientH = size.y / ctx.scaleH;
-
-        m_isVisible = isopen;
-        UIContext subCtx = ctx;
-        subCtx.width = clientW;
-        subCtx.height = clientH;
-        UIGroup::DrawUI(subCtx);
-        if (ispopup) 
-            ImGui::EndPopup();
+        if (ispopup)
+        {
+            if (popupVisible) ImGui::EndPopup();
+        }
         else ImGui::End();
     }
 

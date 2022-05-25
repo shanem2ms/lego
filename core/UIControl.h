@@ -88,6 +88,7 @@ namespace sam
         Flags m_flags;
         std::string m_name;
         std::function<void(bool)> m_onOpenChangedFn;
+        bool m_initialized;
     public:
         void OnOpenChanged(const std::function<void(bool)> &fn)
         { m_onOpenChangedFn = fn; }

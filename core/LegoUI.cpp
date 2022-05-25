@@ -26,7 +26,7 @@ namespace sam
         const int btnSize = 150;
         const int btnSpace = 10;        
         
-        std::shared_ptr<UIWindow> inventoryWnd = std::make_shared<UIWindow>(100, 100, -200, -200, "bricks", UIWindow::Popup);
+        std::shared_ptr<UIWindow> inventoryWnd = std::make_shared<UIWindow>(100, 100, -200, -200, "bricks", UIWindow::None);
         inventoryWnd->OnOpenChanged([this, parent](bool isopen) {
             if (!isopen) Deactivate(); });
         inventoryWnd->SetLayout(UILayout::Horizontal);
@@ -194,7 +194,7 @@ namespace sam
 
     std::shared_ptr<UIControl> LegoUI::MainMenu::Build(LegoUI* parent, DrawContext& ctx, int w, int h)
     {
-        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "mainmenu", UIWindow::Popup);
+        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "mainmenu", UIWindow::None);
         menu->OnOpenChanged([this, parent](bool isopen) {
             if (!isopen) Deactivate(); });
         menu->SetLayout(UILayout::Horizontal);
@@ -258,7 +258,7 @@ namespace sam
 
     std::shared_ptr<UIControl> LegoUI::ImportWindow::Build(LegoUI* parent, DrawContext& ctx, int w, int h)
     {
-        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "ImportWindow", UIWindow::Popup);
+        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "ImportWindow", UIWindow::None);
         menu->OnOpenChanged([this, parent](bool isopen) {
             if (!isopen) Deactivate(); });
         menu->SetLayout(UILayout::Horizontal);

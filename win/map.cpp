@@ -19,7 +19,7 @@
 #include <vector>
 
 #define MAX_LOADSTRING 100
-bool simulateTouchMode = true;
+bool simulateTouchMode = false;
 uint64_t nextTouchId = 1;
 uint64_t activeoTouch = 0;
 
