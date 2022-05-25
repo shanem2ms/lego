@@ -88,6 +88,8 @@ namespace sam
 
     void World::PlaceBrick(Player* player)
     {
+        if (m_pPickedBrick == nullptr)
+            return;
         m_connectionLogic.PlaceBrick(player, m_pPickedBrick,
             m_octTileSelection, m_physics, !m_disableCollisionCheck);
     }

@@ -76,15 +76,23 @@ namespace sam
 
     class UIWindow : public UIGroup
     {
+    public:
+        enum Flags
+        {
+            None = 0,
+            Inivisible = 1,
+            TitleBar = 2,
+            Popup = 4
+        };
+    protected:
+        Flags m_flags;
         std::string m_name;
-        bool m_isinvisible;
-        bool m_titleBar;
         std::function<void(bool)> m_onOpenChangedFn;
     public:
         void OnOpenChanged(const std::function<void(bool)> &fn)
         { m_onOpenChangedFn = fn; }
         UIWindow(float x, float y, float w, float h, const std::string& name,
-            bool invisible, bool titleBar);
+            Flags);
         UIControl* IsHit(float x, float y, int buttonId) override;
         void DrawUI(UIContext& ctx) override;
         void Show() { m_isVisible = true; }

@@ -193,11 +193,10 @@ namespace sam
     }
 
     UIWindow::UIWindow(float x, float y, float w, float h, const std::string& name,
-        bool invisible, bool titleBar) :
+        Flags flags) :
         UIGroup(x, y, w, h),
-        m_titleBar(titleBar),
-        m_name(name),
-        m_isinvisible(invisible)
+        m_flags(flags),
+        m_name(name)
     {
 
     }
@@ -208,7 +207,7 @@ namespace sam
         if (pHit != nullptr)
             return pHit;
 
-        if (m_isinvisible)
+        if (m_flags & Inivisible)
             return nullptr;
 
         return (x >= m_x && x < (m_x + m_width) &&
@@ -225,33 +224,45 @@ namespace sam
         int w = m_width <= 0 ? ctx.width + m_width : m_width;
         int h = m_height <= 0 ? ctx.height + m_height : m_height;
         ImGui::SetNextWindowPos(
-            ToIM(ctx, x, y), m_isinvisible ? ImGuiCond_Always : ImGuiCond_Appearing);
+            ToIM(ctx, x, y), (m_flags & Flags::Inivisible) ? ImGuiCond_Always : ImGuiCond_Appearing);
 
         if (w > 0)
         {
             ImGui::SetNextWindowSize(ToIM(ctx, w, h),
-                m_isinvisible ? ImGuiCond_Always : ImGuiCond_Appearing
+                (m_flags & Flags::Inivisible) ? ImGuiCond_Always : ImGuiCond_Appearing
             );
         }
         bool isopen = m_isVisible;
-        ImGui::Begin(m_name.c_str(), &isopen,
-            m_isinvisible ? (
-            ImGuiWindowFlags_NoBackground |
-            ImGuiWindowFlags_NoTitleBar |
-            ImGuiWindowFlags_NoResize |
-            ImGuiWindowFlags_NoMove) : 
-            (m_titleBar ? 0 : ImGuiWindowFlags_NoTitleBar) |
-            ImGuiWindowFlags_NoResize);
-        if (isopen != m_isVisible && m_onOpenChangedFn != nullptr)
+        bool ispopup = m_flags & Flags::Popup;
+        bool popupVisible = false;
+        if (ispopup)
         {
-            m_onOpenChangedFn(isopen);
-            m_isVisible = false;
+            ImGui::OpenPopup(m_name.c_str());
+            popupVisible = ImGui::BeginPopup(m_name.c_str(),
+                ((m_flags & Flags::TitleBar) ? 0 : ImGuiWindowFlags_NoTitleBar) |
+                ImGuiWindowFlags_NoResize);
+        }
+        else
+        {
+            ImGui::Begin(m_name.c_str(), &isopen,
+                (m_flags & Flags::Inivisible) ? (
+                    ImGuiWindowFlags_NoBackground |
+                    ImGuiWindowFlags_NoTitleBar |
+                    ImGuiWindowFlags_NoResize |
+                    ImGuiWindowFlags_NoMove) :
+                ((m_flags & Flags::TitleBar) ? 0 : ImGuiWindowFlags_NoTitleBar) |
+                ImGuiWindowFlags_NoResize);
+            if (isopen != m_isVisible && m_onOpenChangedFn != nullptr)
+            {
+                m_onOpenChangedFn(isopen);
+                m_isVisible = false;
+            }
         }
 
         ImGui::SetWindowFontScale(ctx.scaleW);
         ImVec2 pos = ImGui::GetWindowPos();
-        m_x = pos.x / ctx.scaleW;
-        m_y = pos.y / ctx.scaleH;
+        //m_x = pos.x / ctx.scaleW;
+        //m_y = pos.y / ctx.scaleH;
 
         ImVec2 size = ImGui::GetWindowSize();
         int clientW = size.x / ctx.scaleW;
@@ -262,7 +273,9 @@ namespace sam
         subCtx.width = clientW;
         subCtx.height = clientH;
         UIGroup::DrawUI(subCtx);
-        ImGui::End();
+        if (ispopup) 
+            ImGui::EndPopup();
+        else ImGui::End();
     }
 
     static int sUICnt = 0;

@@ -14,7 +14,7 @@ namespace sam
 {
     std::shared_ptr<UIControl> LegoUI::Build(DrawContext& ctx, int w, int h)
     {
-        auto topWnd = std::make_shared<UIWindow>(0, 0, 0, 0, "top", true, false);
+        auto topWnd = std::make_shared<UIWindow>(0, 0, 0, 0, "top", UIWindow::Inivisible);
         m_topctrl = topWnd;
         topWnd->AddControl(m_mainMenu.Build(this, ctx, w, h));
         topWnd->AddControl(m_inventory.Build(this, ctx, w, h));
@@ -26,7 +26,7 @@ namespace sam
         const int btnSize = 150;
         const int btnSpace = 10;        
         
-        std::shared_ptr<UIWindow> inventoryWnd = std::make_shared<UIWindow>(100, 100, -200, -200, "bricks", false, true);
+        std::shared_ptr<UIWindow> inventoryWnd = std::make_shared<UIWindow>(100, 100, -200, -200, "bricks", UIWindow::Popup);
         inventoryWnd->OnOpenChanged([this, parent](bool isopen) {
             if (!isopen) Deactivate(); });
         inventoryWnd->SetLayout(UILayout::Horizontal);
@@ -81,7 +81,7 @@ namespace sam
 
     std::shared_ptr<UIControl> LegoUI::BuildHotbar(DrawContext& ctx, int w, int h)
     {
-        m_hotbar = std::make_shared<UIWindow>(250, -300, 1620, 230, "hotbar", false, false);
+        m_hotbar = std::make_shared<UIWindow>(55, -300, 1720, 200, "hotbar", UIWindow::None);
         m_hotbar->SetLayout(UILayout::Horizontal);
         auto hotbarTable = std::make_shared<UITable>(8);
         const SlotPart* pSlots = ctx.m_pPlayer->GetSlots();
@@ -102,10 +102,10 @@ namespace sam
             });
 
         World* pWorld = ctx.m_pWorld;
-        auto hotbarPanel = std::make_shared<UIPanel>(0, 0, -100, 0);
+        auto hotbarPanel = std::make_shared<UIPanel>(0, 0, -150, 0);
         hotbarPanel->AddControl(hotbarTable);
         m_hotbar->AddControl(hotbarPanel);
-        m_hotbar->AddControl(std::make_shared<UIStateBtn>(845, 20, 85, 85, ICON_FA_ALIGN_JUSTIFY,
+        m_hotbar->AddControl(std::make_shared<UIStateBtn>(-100, 20, 85, 125, ICON_FA_ALIGN_JUSTIFY,
             [pWorld](bool isBtnDown)
             {
                 Application::Inst().OpenInventory();
@@ -194,7 +194,7 @@ namespace sam
 
     std::shared_ptr<UIControl> LegoUI::MainMenu::Build(LegoUI* parent, DrawContext& ctx, int w, int h)
     {
-        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "mainmenu", false, true);
+        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "mainmenu", UIWindow::Popup);
         menu->OnOpenChanged([this, parent](bool isopen) {
             if (!isopen) Deactivate(); });
         menu->SetLayout(UILayout::Horizontal);
@@ -258,7 +258,7 @@ namespace sam
 
     std::shared_ptr<UIControl> LegoUI::ImportWindow::Build(LegoUI* parent, DrawContext& ctx, int w, int h)
     {
-        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "ImportWindow", false, true);
+        std::shared_ptr<UIWindow> menu = std::make_shared<UIWindow>(650, 250, 1280, 700, "ImportWindow", UIWindow::Popup);
         menu->OnOpenChanged([this, parent](bool isopen) {
             if (!isopen) Deactivate(); });
         menu->SetLayout(UILayout::Horizontal);

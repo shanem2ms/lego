@@ -558,25 +558,25 @@ namespace sam
             itBrick = m_bricks.insert(std::make_pair(name,
                 std::make_shared<Brick>())).first;
         }
-        Brick& b = *itBrick->second;
-        if (!b.m_vbhLR.isValid())
+        std::shared_ptr<Brick> b = itBrick->second;
+        if (!b->m_vbhLR.isValid())
         {
             std::string lores = name.GetFilename() + ".lr_mesh";
             vecstream stream = m_cacheZip->ReadFile(lores);
             if (stream.valid())
-                b.LoadLores(stream);
+                b->LoadLores(stream);
         }
-        if (hires && (!b.m_vbhHR.isValid()))
+        if (hires && (!b->m_vbhHR.isValid()))
         {
             std::string hires = name.GetFilename() + ".hr_mesh";
             vecstream stream = m_cacheZip->ReadFile(hires);
             if (stream.valid())
-                b.LoadHires(stream);
+                b->LoadHires(stream);
         }
-        MruUpdate(&b);
+        MruUpdate(b.get());
         g_brickCacheCnt = m_bricks.size();
         CleanCache();
-        return itBrick->second;
+        return b;
     }
 
     bgfx::TextureHandle BrickManager::GetBrickThumbnail(const PartId& name)
