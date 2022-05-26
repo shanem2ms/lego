@@ -163,6 +163,11 @@ namespace sam
         std::shared_ptr<btCompoundShape> m_collisionShape;
 
 
+        Brick(const PartId& name) :
+            m_name(name),
+            m_connectorsLoaded(false),
+            m_scale(0),
+            m_mruCtr(0) {}
     private:
         void LoadLores(
             const vecstream &data);

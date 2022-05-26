@@ -184,7 +184,6 @@ namespace sam
         Matrix44f p2 = proj0 * makeScale<Matrix44f>(Vec3f(dc.m_pickViewScale[0], dc.m_pickViewScale[1], 1));
         bgfx::setViewTransform(DrawViewId::PickObjects, view.getData(), p2.getData());
 
-
         bgfx::setViewFrameBuffer(DrawViewId::PickObjects, m_pickFB);
         bgfx::setViewName(DrawViewId::PickBlit, "PickBlit");
         bgfx::blit(DrawViewId::PickBlit, m_pickColorRB, 0, 0, m_pickColorTex);

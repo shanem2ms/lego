@@ -385,16 +385,16 @@ void Tick()
     if (r.right != curWindowRect.right || r.bottom != curWindowRect.bottom) {
         curWindowRect = r;
         bgfx::reset((uint32_t)r.right, (uint32_t)r.bottom, BGFX_RESET_VSYNC);
-        bgfx::setViewRect(0, 0, 0, bgfx::BackbufferRatio::Equal);
-        bgfx::setViewRect(1, 0, 0, bgfx::BackbufferRatio::Equal);
-        bgfx::setViewRect(2, 0, 0, bgfx::BackbufferRatio::Equal);
-        bgfx::setViewRect(3, 0, 0, bgfx::BackbufferRatio::Equal);
+        for (int idx = 0; idx < 6; ++idx)
+        {
+            bgfx::setViewRect(idx, 0, 0, bgfx::BackbufferRatio::Equal);
+        }
     }
     // This dummy draw call is here to make sure that view 0 is cleared if no other draw calls are submitted to view 0.
-    bgfx::touch(0);
-    bgfx::touch(1);
-    bgfx::touch(2);
-    bgfx::touch(3);
+    for (int idx = 0; idx < 6; ++idx)
+    {
+        bgfx::touch(idx);
+    }
     app->Draw();
     bgfx::frame();
 }

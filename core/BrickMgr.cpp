@@ -556,7 +556,7 @@ namespace sam
         if (itBrick == m_bricks.end())
         {
             itBrick = m_bricks.insert(std::make_pair(name,
-                std::make_shared<Brick>())).first;
+                std::make_shared<Brick>(name))).first;
         }
         std::shared_ptr<Brick> b = itBrick->second;
         if (!b->m_vbhLR.isValid())
