@@ -57,18 +57,18 @@ namespace sam
         typesTable->OnItemSelected([this, parent](int itemIdx)
             { BuildPartsTable(itemIdx); });
 
-        auto typesPanel = std::make_shared<UIPanel>(0, 0, 150, -150);
+        auto typesPanel = std::make_shared<UIPanel>(0, 0, 150, -175);
         typesPanel->AddControl(typesTable);
         inventoryWnd->AddControl(typesPanel);
 
         int padding = 20;
         int numColumns = 1280 / (128 + padding);
         m_partsTable = std::make_shared<UITable>(numColumns);
-        auto partsPanel = std::make_shared<UIPanel>(0, 0, -300, -150);
+        auto partsPanel = std::make_shared<UIPanel>(0, 0, -300, -175);
         partsPanel->AddControl(m_partsTable);
         inventoryWnd->AddControl(partsPanel);
 
-        auto colorsTable = std::make_shared<UITable>(2);
+        auto colorsTable = std::make_shared<UITable>(20);
         int numcolors = BrickManager::Inst().NumColors();
         colorsTable->SetItems(numcolors, [](int start, int count, UITable::TableItem items[])
             {
@@ -85,6 +85,13 @@ namespace sam
         colorsPanel->LineBreak(true);
         colorsPanel->AddControl(colorsTable);
         inventoryWnd->AddControl(colorsPanel);
+
+        inventoryWnd->AddControl(std::make_shared<UIStateBtn>(-100, 20, 85, 125, ICON_FA_WINDOW_CLOSE,
+            [inventoryWnd](bool isBtnDown)
+            {
+                inventoryWnd->Close();
+            }));
+
         m_root = inventoryWnd;
         m_root->Close();
         return inventoryWnd;
@@ -240,7 +247,7 @@ namespace sam
                 Application::Inst().UIQuit();
             }));
         
-        panel->AddControl(std::make_shared<UIStateBtn>(-185, -105, 165, 85, "Close",
+        panel->AddControl(std::make_shared<UIStateBtn>(-100, 20, 85, 125, ICON_FA_WINDOW_CLOSE,
             [menu](bool isBtnDown)
             {
                 menu->Close();

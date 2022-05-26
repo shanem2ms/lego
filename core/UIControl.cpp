@@ -292,9 +292,8 @@ namespace sam
         ImGui::PopStyleVar();
     }
 
-    UITable::UITable(int columns, bool layoutIsVertical) :
+    UITable::UITable(int columns) :
         UIControl(0, 0, 0, 0),
-        m_layoutIsVertical(layoutIsVertical),
         m_columns(columns),
         m_itemcount(0),
         m_selectedIdx(-1)

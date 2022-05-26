@@ -142,7 +142,7 @@ namespace sam
         std::function<void(int)> m_itemSelectedFn;
         std::function<void(int, std::string&)> m_tooltipFn;
     public:
-        UITable(int columns, bool layoutIsVertical);
+        UITable(int columns);
         void SetItems(int count, const std::function<void(int, int, TableItem items[])> &drawItemsFn)
         { m_drawItemsFn = drawItemsFn; m_itemcount = count; }
         void DrawUI(UIContext& ctx) override;
