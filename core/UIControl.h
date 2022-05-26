@@ -38,6 +38,8 @@ namespace sam
         gmtl::Vec2f m_touchPos;
         int m_buttonDown;
 
+        void GetCoords(const UIContext& ctx, float& x, float& y, float& w, float& h);
+
     public:
         virtual UIControl *IsHit(float x, float y, int buttonId);
         void SetBackgroundColor(const Vec4f& color);
@@ -81,14 +83,14 @@ namespace sam
         {
             None = 0,
             Inivisible = 1,
-            TitleBar = 2,
-            Popup = 4
+            TitleBar = 2
         };
     protected:
         Flags m_flags;
         std::string m_name;
         std::function<void(bool)> m_onOpenChangedFn;
         bool m_initialized;
+
     public:
         void OnOpenChanged(const std::function<void(bool)> &fn)
         { m_onOpenChangedFn = fn; }
@@ -108,9 +110,12 @@ namespace sam
     class UIPanel : public UIGroup
     {
         std::string m_name;
+        bool m_break;
     public:
         UIPanel(float x = 0, float y = 0, float w = 0, float h = 0);
         void DrawUI(UIContext& ctx) override;
+        void LineBreak(bool b)
+        { m_break = b; }
     };
 
     class UITable : public UIControl
@@ -132,11 +137,12 @@ namespace sam
         int m_itemcount;
         int m_columns;  
         int m_selectedIdx;
+        bool m_layoutIsVertical;
         std::function<void(int, int, TableItem items[])> m_drawItemsFn;        
         std::function<void(int)> m_itemSelectedFn;
         std::function<void(int, std::string&)> m_tooltipFn;
     public:
-        UITable(int columns);
+        UITable(int columns, bool layoutIsVertical);
         void SetItems(int count, const std::function<void(int, int, TableItem items[])> &drawItemsFn)
         { m_drawItemsFn = drawItemsFn; m_itemcount = count; }
         void DrawUI(UIContext& ctx) override;

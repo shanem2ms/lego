@@ -23,7 +23,7 @@ namespace sam
         auto btnwnd = std::make_shared<UIWindow>(500, 50, 100, 100, "mbtn", UIWindow::None);
 
         btnwnd->AddControl(
-        std::make_shared<UIStateBtn>(0, 0, 0, 0, ICON_FA_LIST,
+        std::make_shared<UIStateBtn>(0, 0, -10, -10, ICON_FA_CUBE,
             [](bool isBtnDown)
             {
                 Application::Inst().OpenMainMenu();
@@ -57,14 +57,14 @@ namespace sam
         typesTable->OnItemSelected([this, parent](int itemIdx)
             { BuildPartsTable(itemIdx); });
 
-        auto typesPanel = std::make_shared<UIPanel>(0, 0, 150, 0);
+        auto typesPanel = std::make_shared<UIPanel>(0, 0, 150, -150);
         typesPanel->AddControl(typesTable);
         inventoryWnd->AddControl(typesPanel);
 
         int padding = 20;
         int numColumns = 1280 / (128 + padding);
         m_partsTable = std::make_shared<UITable>(numColumns);
-        auto partsPanel = std::make_shared<UIPanel>(0, 0, -300, 0);
+        auto partsPanel = std::make_shared<UIPanel>(0, 0, -300, -150);
         partsPanel->AddControl(m_partsTable);
         inventoryWnd->AddControl(partsPanel);
 
@@ -81,7 +81,8 @@ namespace sam
         colorsTable->OnItemSelected([this](int idx)
             { m_colortSelectedFn(idx); });
 
-        auto colorsPanel = std::make_shared<UIPanel>(0, 0, 150, 0);
+        auto colorsPanel = std::make_shared<UIPanel>(0, -150, 0, 150);
+        colorsPanel->LineBreak(true);
         colorsPanel->AddControl(colorsTable);
         inventoryWnd->AddControl(colorsPanel);
         m_root = inventoryWnd;
@@ -231,9 +232,7 @@ namespace sam
                     panel->SetVisible(false);
                     importFileBrowser->SetVisible(true);
                 }
-            }));
-
-        
+            }));        
 
         panel->AddControl(std::make_shared<UIStateBtn>(20, -105, 165, 85, "Quit",
             [](bool isBtnDown)
@@ -241,7 +240,7 @@ namespace sam
                 Application::Inst().UIQuit();
             }));
         
-        panel->AddControl(std::make_shared<UIStateBtn>(-120, -105, 165, 85, "Close",
+        panel->AddControl(std::make_shared<UIStateBtn>(-185, -105, 165, 85, "Close",
             [menu](bool isBtnDown)
             {
                 menu->Close();

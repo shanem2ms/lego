@@ -30,6 +30,14 @@ namespace sam
 
     }
 
+    void UIControl::GetCoords(const UIContext& ctx, float& x, float& y, float& w, float& h)
+    {
+        x = m_x < 0 ? ctx.width + m_x : m_x;
+        y = m_y < 0 ? ctx.height + m_y : m_y;
+        w = m_width <= 0 ? ctx.width + m_width : m_width;
+        h = m_height <= 0 ? ctx.height + m_height : m_height;
+    }
+
     void UIControl::SetBackgroundColor(const Vec4f& color)
     {
         m_background = color;
@@ -125,27 +133,12 @@ namespace sam
     inline ImVec2 ToIM(const UIContext &ctx, const float &x, const float &y)
     { return ImVec2(x * ctx.scaleW, y * ctx.scaleH); }
 
-    inline ImVec2 ToIMScl(const UIContext& ctx, const float& x, const float& y)
-    {
-        return ImVec2(
-            (x < 0 ? x + ctx.width : x) * ctx.scaleW,
-            (y < 0 ? y + ctx.height : y) * ctx.scaleH);
-    }
-
-    inline ImVec2 ToIMPos(const UIContext& ctx, const float& x, const float& y)
-    {
-        return ImVec2(
-            (x < 0 ? x + ctx.width : x) * ctx.scaleW,
-            (y < 0 ? y + ctx.height : y) * ctx.scaleH);
-    }
-
+  
     void UIStateBtn::DrawUI(UIContext& ctx)
     {
-        int x = m_x < 0 ? ctx.width + m_x : m_x;
-        int y = m_y < 0 ? ctx.height + m_y : m_y;
-        int w = m_width <= 0 ? ctx.width + m_width : m_width;
-        int h = m_height <= 0 ? ctx.height + m_height : m_height;
-        ImGui::SetCursorPos(ToIMPos(ctx, x, y));
+        float x, y, w, h;
+        GetCoords(ctx, x, y, w, h);
+        ImGui::SetCursorPos(ToIM(ctx, x, y));
         ImGui::Button(m_text.c_str(), ToIM(ctx, w, h));
         bool isDown = ImGui::IsItemActive();
         if (isDown != m_isDown)
@@ -218,7 +211,7 @@ namespace sam
         return (x >= m_x && x < (m_x + m_width) &&
             y >= m_y && y < (m_y + m_height)) ? this : nullptr;
     }
-
+    
     void UIWindow::DrawUI(UIContext& ctx)
     {
         if (!m_isVisible)
@@ -227,10 +220,8 @@ namespace sam
             return;
         }
         
-        int x = m_x < 0 ? ctx.width + m_x : m_x;
-        int y = m_y < 0 ? ctx.height + m_y : m_y;
-        int w = m_width <= 0 ? ctx.width + m_width : m_width;
-        int h = m_height <= 0 ? ctx.height + m_height : m_height;
+        float x, y, w, h;
+        GetCoords(ctx, x, y, w, h);
         ImGui::SetNextWindowPos(
             ToIM(ctx, x, y), m_initialized ? ImGuiCond_Always : ImGuiCond_Appearing);
 
@@ -238,57 +229,39 @@ namespace sam
             m_initialized ? ImGuiCond_Always : ImGuiCond_Appearing);
 
         bool isopen = m_isVisible;
-        bool ispopup = m_flags & Flags::Popup;
-        bool popupVisible = false;
-        if (ispopup)
+        ImGui::Begin(m_name.c_str(), &isopen,
+            (m_flags & Flags::Inivisible) ? (
+                ImGuiWindowFlags_NoInputs |
+                ImGuiWindowFlags_NoBackground |
+                ImGuiWindowFlags_NoTitleBar |
+                ImGuiWindowFlags_NoResize |
+                ImGuiWindowFlags_NoMove) :
+            ((m_flags & Flags::TitleBar) ? 0 : ImGuiWindowFlags_NoTitleBar) |
+            ImGuiWindowFlags_NoResize);
+
+        if (isopen != m_isVisible && m_onOpenChangedFn != nullptr)
         {
-            popupVisible = ImGui::BeginPopup(m_name.c_str());
-            if (m_isVisible && !popupVisible)
-                ImGui::OpenPopup(m_name.c_str());
-        }
-        else
-        {
-            ImGui::Begin(m_name.c_str(), &isopen,
-                (m_flags & Flags::Inivisible) ? (
-                    ImGuiWindowFlags_NoInputs |
-                    ImGuiWindowFlags_NoBackground |
-                    ImGuiWindowFlags_NoTitleBar |
-                    ImGuiWindowFlags_NoResize |
-                    ImGuiWindowFlags_NoMove) :
-                ((m_flags & Flags::TitleBar) ? 0 : ImGuiWindowFlags_NoTitleBar) |
-                ImGuiWindowFlags_NoResize);
+            m_onOpenChangedFn(isopen);
+            m_isVisible = false;
         }
 
-        if (popupVisible || !ispopup)
-        {
-            if (isopen != m_isVisible && m_onOpenChangedFn != nullptr)
-            {
-                m_onOpenChangedFn(isopen);
-                m_isVisible = false;
-            }
+        ImGui::SetWindowFontScale(ctx.scaleW);
+            
+        m_isVisible = isopen;
+        UIContext subCtx = ctx;
+        subCtx.width = ImGui::GetWindowContentRegionWidth() / ctx.scaleW;
+        subCtx.height = ImGui::GetWindowContentRegionHeight() / ctx.scaleH;
 
-            ImGui::SetWindowFontScale(ctx.scaleW);
-            int clientW = w - 15;
-            int clientH = h - 15;
-
-            m_isVisible = isopen;
-            UIContext subCtx = ctx;
-            subCtx.width = clientW;
-            subCtx.height = clientH;
-            UIGroup::DrawUI(subCtx);
-        }
-        if (ispopup)
-        {
-            if (popupVisible) ImGui::EndPopup();
-        }
-        else ImGui::End();
+        UIGroup::DrawUI(subCtx);
+        ImGui::End();
 
         m_initialized = true;
     }
 
     static int sUICnt = 0;
     UIPanel::UIPanel(float x, float y, float w, float h) :
-        UIGroup(x, y, w, h)
+        UIGroup(x, y, w, h),
+        m_break(false)
     {
         m_name = "UIPanel" + std::to_string(sUICnt++);
     }
@@ -296,23 +269,22 @@ namespace sam
     void UIPanel::DrawUI(UIContext& ctx)
     {
         if (!m_isVisible)
-            return;
-
-        if (ctx.layout == UILayout::Horizontal)
+            return;       
+        if (ctx.layout == UILayout::Horizontal && !m_break)
             ImGui::SameLine();
 
         ImGuiWindowFlags window_flags = 0;
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
-        float x = ImGui::GetCursorPosX();
-        float y = ImGui::GetCursorPosY();
-        ImGui::SetCursorPosX(x + (float)m_x * ctx.scaleW);
-        ImGui::SetCursorPosY(y + (float)m_y * ctx.scaleH);
-        ImVec2 size = ToIMScl(ctx, m_width, m_height);
+        float sz = 5.0f;
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, sz);
+        float x, y, w, h;
+        GetCoords(ctx, x, y, w, h);
+        ImVec2 pos = ToIM(ctx, x, y);
+        ImVec2 size = ToIM(ctx, w, h);
         ImGui::BeginChild(m_name.c_str(), size, true, window_flags);
         float oldW = ctx.width;
         float oldH = ctx.height;
-        ctx.width = size.x;
-        ctx.height = size.y;
+        ctx.width = ImGui::GetWindowContentRegionWidth() / ctx.scaleW;
+        ctx.height = ImGui::GetWindowContentRegionHeight() / ctx.scaleH;
         UIGroup::DrawUI(ctx);
         ctx.width = oldW;
         ctx.height = oldH;
@@ -320,8 +292,9 @@ namespace sam
         ImGui::PopStyleVar();
     }
 
-    UITable::UITable(int columns) :
+    UITable::UITable(int columns, bool layoutIsVertical) :
         UIControl(0, 0, 0, 0),
+        m_layoutIsVertical(layoutIsVertical),
         m_columns(columns),
         m_itemcount(0),
         m_selectedIdx(-1)
@@ -415,7 +388,9 @@ namespace sam
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Import File", ".zmbx", m_dir.c_str(),
                 1, nullptr, ImGuiFileDialogFlags_NoDialog);
         }
-        ImVec2 size = ToIMScl(ctx, m_width, m_height);
+        float x, y, w, h;
+        GetCoords(ctx, x, y, w, h);
+        ImVec2 size = ToIM(ctx, w, h);
         if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey",
             ImGuiWindowFlags_NoCollapse, size, size))
         {
