@@ -19,6 +19,16 @@ namespace sam
         topWnd->AddControl(m_mainMenu.Build(this, ctx, w, h));
         topWnd->AddControl(m_inventory.Build(this, ctx, w, h));
         topWnd->AddControl(BuildHotbar(ctx, w, h));
+
+        auto btnwnd = std::make_shared<UIWindow>(500, 50, 100, 100, "mbtn", UIWindow::None);
+
+        btnwnd->AddControl(
+        std::make_shared<UIStateBtn>(0, 0, 0, 0, ICON_FA_LIST,
+            [](bool isBtnDown)
+            {
+                Application::Inst().OpenMainMenu();
+            }));
+        topWnd->AddControl(btnwnd);
         return m_topctrl;
     }
     std::shared_ptr<UIControl> LegoUI::Inventory::Build(LegoUI* parent, DrawContext& ctx, int w, int h)
