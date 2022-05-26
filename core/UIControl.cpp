@@ -141,8 +141,12 @@ namespace sam
 
     void UIStateBtn::DrawUI(UIContext& ctx)
     {
-        ImGui::SetCursorPos(ToIMPos(ctx, m_x, m_y));
-        ImGui::Button(m_text.c_str(), ToIM(ctx, m_width, m_height));
+        int x = m_x < 0 ? ctx.width + m_x : m_x;
+        int y = m_y < 0 ? ctx.height + m_y : m_y;
+        int w = m_width <= 0 ? ctx.width + m_width : m_width;
+        int h = m_height <= 0 ? ctx.height + m_height : m_height;
+        ImGui::SetCursorPos(ToIMPos(ctx, x, y));
+        ImGui::Button(m_text.c_str(), ToIM(ctx, w, h));
         bool isDown = ImGui::IsItemActive();
         if (isDown != m_isDown)
             m_stateChanged(isDown);
@@ -218,21 +222,21 @@ namespace sam
     void UIWindow::DrawUI(UIContext& ctx)
     {
         if (!m_isVisible)
+        {
+            m_isVisible = false;
             return;
+        }
         
         int x = m_x < 0 ? ctx.width + m_x : m_x;
         int y = m_y < 0 ? ctx.height + m_y : m_y;
         int w = m_width <= 0 ? ctx.width + m_width : m_width;
         int h = m_height <= 0 ? ctx.height + m_height : m_height;
         ImGui::SetNextWindowPos(
-            ToIM(ctx, x, y), (m_flags & Flags::Inivisible) ? ImGuiCond_Always : ImGuiCond_Appearing);
+            ToIM(ctx, x, y), m_initialized ? ImGuiCond_Always : ImGuiCond_Appearing);
 
-        if (w > 0)
-        {
-            ImGui::SetNextWindowSize(ToIM(ctx, w, h),
-                (m_flags & Flags::Inivisible) ? ImGuiCond_Always : ImGuiCond_Appearing
-            );
-        }
+        ImGui::SetNextWindowSize(ToIM(ctx, w, h),
+            m_initialized ? ImGuiCond_Always : ImGuiCond_Appearing);
+
         bool isopen = m_isVisible;
         bool ispopup = m_flags & Flags::Popup;
         bool popupVisible = false;
@@ -246,6 +250,7 @@ namespace sam
         {
             ImGui::Begin(m_name.c_str(), &isopen,
                 (m_flags & Flags::Inivisible) ? (
+                    ImGuiWindowFlags_NoInputs |
                     ImGuiWindowFlags_NoBackground |
                     ImGuiWindowFlags_NoTitleBar |
                     ImGuiWindowFlags_NoResize |
@@ -263,8 +268,8 @@ namespace sam
             }
 
             ImGui::SetWindowFontScale(ctx.scaleW);
-            int clientW = w;
-            int clientH = h;
+            int clientW = w - 15;
+            int clientH = h - 15;
 
             m_isVisible = isopen;
             UIContext subCtx = ctx;
@@ -277,6 +282,8 @@ namespace sam
             if (popupVisible) ImGui::EndPopup();
         }
         else ImGui::End();
+
+        m_initialized = true;
     }
 
     static int sUICnt = 0;
