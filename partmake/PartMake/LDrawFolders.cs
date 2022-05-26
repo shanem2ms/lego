@@ -8,6 +8,8 @@ using System.IO;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Numerics;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace partmake
 {
@@ -517,13 +519,32 @@ namespace partmake
         {            
             WriteAllCacheFiles(updateFunc);
         }
+
+        static void WriteCategories(string path)
+        {
+            Dictionary<string, string> categories = new Dictionary<string, string>();
+            DirectoryInfo di = new DirectoryInfo(path);
+            foreach (FileInfo fi in di.GetFiles("*.json"))
+            {
+                StreamReader streamReader = new StreamReader(fi.FullName);
+                string str = streamReader.ReadToEnd();
+                JObject json = JObject.Parse(str);
+                string jtype = (string)json["type"];
+                string nm = Path.GetFileNameWithoutExtension(fi.Name);
+                categories.Add(nm, jtype);
+            }
+
+            string outstr = JsonConvert.SerializeObject(categories);
+            File.WriteAllText(Path.Combine(path, "categories.json"), outstr);
+        }
+
         static void WriteAllCacheFiles(Func<int, int, string, bool> updateFunc)
         {
             string path = Path.Combine(LDrawFolders.Root, "cache");
+
             //if (Directory.Exists(path))
             //    Directory.Delete(path, true);
             Directory.CreateDirectory(path);
-
             List<Entry> partsToWrite = ldrawParts.Where(ld => ld.HasMbx).ToList();
             int completCnt = 0;
             int totalCnt = partsToWrite.Count;
@@ -544,10 +565,11 @@ namespace partmake
                         df.WriteMeshFile(path, outname);
                     }
                     int completed = Interlocked.Increment(ref completCnt);
+                    if (completed >= totalCnt)
+                        WriteCategories(path);
                     updateFunc(completed, totalCnt, partsToWrite[idx].name);
                 }, i);
-            }
-
+            }            
         }
 
         public static string Alias(string name)

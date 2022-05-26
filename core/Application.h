@@ -24,6 +24,7 @@ class Application
     std::unique_ptr<Audio> m_audio;
     std::unique_ptr<BrickManager> m_brickManager;
     std::unique_ptr<GameController> m_gameController;
+    bool m_touchMode;
     int m_width;
     int m_height;
     int m_frameIdx;
@@ -56,7 +57,7 @@ public:
     void Draw();
     Audio &GetAudio() 
     { return *m_audio; }
-    void Initialize(const char* startFolder, const char *docFolder);
+    void Initialize(const char* startFolder, const char *docFolder, bool touchMode = true);
     const std::string &Documents() const
     { return m_documentsPath; }    
     const std::string &StartupPath() const

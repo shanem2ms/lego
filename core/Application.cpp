@@ -45,14 +45,13 @@ namespace sam
         m_height(0),
         m_width(0),
         m_frameIdx(0),
-        m_rawMouseMode(false)
+        m_rawMouseMode(false),
+        m_touchMode(true)
     {
         s_pInst = this;
         m_engine = std::make_unique<Engine>();
         m_world = std::make_unique<World>();
         m_audio = std::make_unique<Audio>();
-        m_gameController = std::make_unique<GameController>();
-        m_gameController->ConnectPlayer(m_world->GetPlayer(), m_world.get());
 #if WATCHDOGTHREAD
         sWatchdogThread = std::thread(WatchDogFunc);
 #endif
@@ -198,7 +197,8 @@ namespace sam
     {
         m_width = w;
         m_height = h;
-        m_gameController->SetSize(w, h);
+        if (m_gameController != nullptr)
+            m_gameController->SetSize(w, h);
         m_engine->Resize(w, h);
         m_world->Layout(w, h);
     }
@@ -209,8 +209,15 @@ namespace sam
     }
 
 
-    void Application::Initialize(const char* startFolder, const char* docFolder)
+    void Application::Initialize(const char* startFolder, const char* docFolder, bool touchMode)
     {
+        m_touchMode = touchMode;
+        if (m_touchMode)
+        {
+            m_gameController = std::make_unique<GameController>();
+            m_gameController->ConnectPlayer(m_world->GetPlayer(), m_world.get());
+        }
+
         m_startupPath = startFolder;
         m_documentsPath = docFolder;
         std::string dbPath = m_documentsPath + "/testlvl";
@@ -218,7 +225,8 @@ namespace sam
         imguiCreate(32.0f);
         m_brickManager = std::make_unique<BrickManager>();
         m_engine->AddExternalDraw(m_brickManager.get());
-        m_engine->AddExternalDraw(m_gameController.get());
+        if (m_gameController != nullptr)
+            m_engine->AddExternalDraw(m_gameController.get());
         m_legoUI = std::make_unique<LegoUI>();
         m_world->OnShowInventory([this]()
             {
@@ -244,7 +252,8 @@ namespace sam
         ctx.m_pickedItem = nullptr;
         ctx.debugDraw = false;
         m_engine->UpdatePickData(ctx);
-        m_gameController->Update(ctx);
+        if (m_gameController != nullptr)
+            m_gameController->Update(ctx);
         m_legoUI->Update(*m_engine, m_width, m_height, ctx);
         m_world->Update(*m_engine, ctx);
 

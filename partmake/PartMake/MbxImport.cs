@@ -8,7 +8,6 @@ using System.IO;
 using System.IO.Compression;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Converters;
 using System.Numerics;
 
 namespace partmake

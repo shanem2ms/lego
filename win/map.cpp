@@ -19,7 +19,7 @@
 #include <vector>
 
 #define MAX_LOADSTRING 100
-bool simulateTouchMode = true;
+bool simulateTouchMode = false;
 uint64_t nextTouchId = 1;
 uint64_t activeoTouch = 0;
 
@@ -204,7 +204,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     GetCurrentDirectoryA(2048, curdir);
     app->SetDebugMsgFunc(WriteDbgMessage);
     GetCurrentDirectory(MAX_PATH, my_documents);
-    app->Initialize(curdir, "C:\\homep4\\lego");
+    app->Initialize(curdir, "C:\\homep4\\lego", simulateTouchMode);
     app->Resize(rect.right, rect.bottom);
     app->SetHideMouseCursorFn(OnHideOrShowMouse);
     return TRUE;
