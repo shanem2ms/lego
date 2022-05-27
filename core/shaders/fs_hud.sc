@@ -13,7 +13,7 @@ void main()
 	float xv = v_texcoord0.x * (1 - v_texcoord0.x);
 	float yv = v_texcoord0.y * (1 - v_texcoord0.y);
 	vec2 cross = abs(v_texcoord0 - vec2(0.5,0.5));	
-	vec4 col = vec4(0,0,0,0);
+	vec4 col = vec4(1,1,1,0);
 	float ybar = step(cross.y, 0.0015) * step(cross.x, 0.015);
 	float xbar = step(cross.x, 0.0015) * step(cross.y, 0.015);
 	col.w += saturate(ybar + xbar);

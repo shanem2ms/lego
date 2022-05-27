@@ -103,6 +103,7 @@ set(ALL_FILES
     ${Main_Files}
 )
 
+find_package(aws-cpp-sdk-core REQUIRED)
 add_library(core STATIC ${ALL_FILES} "indexed_map.h")
 
 target_precompile_headers(core PRIVATE "StdIncludes.h")
@@ -122,6 +123,7 @@ target_include_directories(core PUBLIC
     "${VCPKG_INSTALL_PATH}/include/bullet"
     ${BGFX_INCLUDE_ROOT}
     ${BX_INC_DIR_COMPAT}
+    aws-cpp-sdk-core
     )
 
 add_compile_definitions(DLLX=;PRId64="I64d";BX_CONFIG_DEBUG=${BX_CONFIG_DEBUG})

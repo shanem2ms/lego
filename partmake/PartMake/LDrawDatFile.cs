@@ -36,6 +36,11 @@ namespace partmake
         public List<Topology.Face> TopoFaces => topoMesh?.FacesFromId(topoId);
         public Topology.BSPTree BSPTree => topoMesh?.bSPTree;
 
+
+        List<Tuple<Vector3, Vector3>> bisectors = null;
+        List<Connector> connectors = null;
+        public List<Connector> Connectors { get { if (connectors == null) InitConnectors(); return connectors;} }
+        public List<Tuple<Vector3, Vector3>> Bisectors { get { if (bisectors == null) InitConnectors(); return bisectors; } }
         public List<string> ReverseLookup => LDrawFolders.ReverseLookup(Name);
         public List<string> IncludedInParts => LDrawFolders.IncludedInParts(Name);
         public string Name { get => name; }
@@ -86,7 +91,7 @@ namespace partmake
             else
             {
                 List<Vtx> vertices = new List<Vtx>();
-                GetVertices(vertices, false);
+                GetVertices(vertices, false, false);
                 aabb = AABB.CreateFromPoints(vertices.Select(v => new Vector3(v.pos.X, v.pos.Y, v.pos.Z)));
                 return aabb.Value;
             }
@@ -208,7 +213,7 @@ namespace partmake
             if (mbxMesh != null)
             {
                 List<Vtx> vertices = new List<Vtx>();
-                GetVertices(vertices, false);
+                GetVertices(vertices, false, false);
                 if (vertices.Count < 10000)
                 {
                     var pts = vertices.Select(v => new Vector3(v.pos.X, v.pos.Y, v.pos.Z));
@@ -324,9 +329,9 @@ namespace partmake
                 child.File.SetSubPartSizesRecursive(inverted ^ child.invert, subMatrix);
             }
         }
-        public void GetVertices(List<Vtx> vertices, bool onlySelected)
-        {
-            GetVerticesRecursive(false, Matrix4x4.Identity, vertices, !onlySelected);
+        public void GetVertices(List<Vtx> vertices, bool onlySelected, bool useMbxMatrix)
+        {            
+            GetVerticesRecursive(false, useMbxMatrix ? PartMatrix : Matrix4x4.Identity, vertices, !onlySelected);
         }
 
         Vector3 V3T(Vector3 v, Matrix4x4 m)
@@ -371,15 +376,23 @@ namespace partmake
         }
         public class Connector : IComparable<Connector>
         {
-            public ConnectorType type;
-            public Matrix4x4 mat;
+            public ConnectorType Type { get; set; }
+            public Matrix4x4 Mat { get; set; }
 
+            public Vector3 Offset => Mat.Translation;
+
+            public Quaternion Rotation => Quaternion.CreateFromRotationMatrix(Mat);
+
+            public override string ToString()
+            {
+                return $"{Type} {Mat.Translation}";
+            }
             public int CompareTo(Connector other)
             {
-                int i = type.CompareTo(other.type);
+                int i = Type.CompareTo(other.Type);
                 if (i != 0)
                     return i;
-                return mat.GetHashCode().CompareTo(other.mat.GetHashCode());
+                return Mat.GetHashCode().CompareTo(other.Mat.GetHashCode());
             }
         }
 
@@ -393,13 +406,15 @@ namespace partmake
         {
             DisableConnectorsRecursive();
         }
-        public List<Connector> GetConnectors(ref List<Tuple<Vector3, Vector3>> bisectors)
+        public void InitConnectors()
         {
             List<Connector> connectors = new List<Connector>();
             List<Connector> rStudCandidates = new List<Connector>();
             GetConnectorsRecursive(connectors, rStudCandidates, false, PartMatrix);
+            this.bisectors = new List<Tuple<Vector3, Vector3>>();
             var rStuds =
-                Topology.ConnectorUtils.GetRStuds(GetTopoMesh(), rStudCandidates.Select(s => Vector3.Transform(Vector3.Zero, s.mat)).ToArray(), bisectors);
+                Topology.ConnectorUtils.GetRStuds(GetTopoMesh(), rStudCandidates.Select(s => Vector3.Transform(Vector3.Zero, s.Mat)).ToArray(), 
+                this.bisectors);
             foreach (var rstud in rStuds)
             {
                 Vector3 u = rstud.Item2.udir;
@@ -413,12 +428,13 @@ namespace partmake
 
                 connectors.Add(new Connector()
                 {
-                    mat = Matrix4x4.CreateScale(4, 4, 4) * m *
+                    Mat = Matrix4x4.CreateScale(4, 4, 4) * m *
                     Matrix4x4.CreateTranslation(rstud.Item1),
-                    type = ConnectorType.RStud
+                    Type = ConnectorType.RStud
                 });
             }
-            return connectors.Distinct().ToList();
+            //Topology.ConnectorUtils.FindLoops(GetTopoMesh());
+            this.connectors = connectors.Distinct().ToList();
         }
 
         Connector CreateBaseConnector(Matrix4x4 mat, ConnectorType type)
@@ -428,7 +444,7 @@ namespace partmake
             Vector3 off = (bb.Max + bb.Min) * 0.5f;
             Matrix4x4 cm = Matrix4x4.CreateScale(scl) *
                 Matrix4x4.CreateTranslation(off) * mat;
-            return new Connector() { mat = cm, type = type };
+            return new Connector() { Mat = cm, Type = type };
         }
 
         public void GetLDrLoaderMesh(out LdrLoader.PosTexcoordNrmVertex[] ldrvertices,
@@ -653,7 +669,7 @@ namespace partmake
             desc.desc = e.desc;
             desc.dims = e.dims;
             desc.aliases = e.aliases;
-            desc.Connectors = GetConnectors(ref bisectors);
+            desc.Connectors = Connectors;
             string jsonstr = JsonConvert.SerializeObject(desc);
             File.WriteAllText(outPath, jsonstr);
         }

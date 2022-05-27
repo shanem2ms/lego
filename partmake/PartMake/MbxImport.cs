@@ -228,7 +228,7 @@ namespace partmake
                     continue;
                 }
                 List<Vtx> allVertices = new List<Vtx>();
-                part.GetVertices(allVertices, false);
+                part.GetVertices(allVertices, false, false);
                 AABB aABB2 = AABB.CreateFromPoints(allVertices.Select(v => new System.DoubleNumerics.Vector3(v.pos.X, v.pos.Y, v.pos.Z)));
                 System.DoubleNumerics.Vector3 ext = aABB.Max - aABB.Min;
                 System.DoubleNumerics.Vector3 ext2 = aABB2.Max - aABB2.Min;

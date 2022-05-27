@@ -64,6 +64,6 @@ extern int g_buttonDown;
             | BGFX_STATE_BLEND_ALPHA;
         // Set render states.l
         bgfx::setState(state);
-        bgfx::submit(0, m_shader);
+        bgfx::submit(DrawViewId::HUD, m_shader);
     }
 }

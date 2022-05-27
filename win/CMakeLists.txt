@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.15.0 FATAL_ERROR)
 set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
-include(/homep4/vcpkg/scripts/buildsystems/vcpkg.cmake)
 
 set (BGFX_INCLUDE_ROOT ${CMAKE_INSTALL_PREFIX}/include)
 set (BGFX_INCLUDE ${BGFX_INCLUDE_ROOT}/bgfx)
@@ -29,6 +28,8 @@ find_package(Bullet CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(libzip CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
+find_package(aws-cpp-sdk-core REQUIRED)
+
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(LIBDBG "debug/")
   set(CMAKE_DEBUG_POSTFIX "_Debug")
@@ -51,6 +52,7 @@ target_link_libraries(${PROJECT_NAME} LINK_PUBLIC
     zlibstatic
     leveldb
     libzip::zip
+    aws-cpp-sdk-core
        )
        
 target_include_directories(${PROJECT_NAME} PUBLIC

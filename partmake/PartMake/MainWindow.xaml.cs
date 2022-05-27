@@ -33,7 +33,7 @@ namespace partmake
         string textFilter = "";
         PartVis vis = null;
 
-        public string SelectedItemDesc { get { return selectedItem?.GetDesc(); } }
+        public string SelectedItemDesc { get { return selectedItem?.GetDesc(); } }        
         public string SelectedItemMatrix { get {
                 if (selectedPart == null)
                     return "";
@@ -49,8 +49,23 @@ namespace partmake
 
         LDrawDatNode selectedNode = null;
         public LDrawDatNode SelectedNode => selectedNode;
-        public Topology.INode SelectedINode { get; set; }
+        
+        List<Topology.INode> SelectedINodes = new List<Topology.INode>();
+        public Topology.INode SelectedINode
+        {
+            get => SelectedINodes.Count > 0 ? SelectedINodes[0] : null; set
+            { SelectedINodes.Clear(); SelectedINodes.Add(value); }
+        }
         public string Log => selectedPart?.GetTopoMesh().LogString;
+
+        LDrawDatFile.Connector selectedConnector = null;
+        public LDrawDatFile.Connector SelectedConnector
+        {
+            get
+            { return selectedConnector; }
+            set
+            { selectedConnector = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedConnector")); }
+        }
 
         public Topology.BSPNode SelectedBSPNode => vis?.SelectedBSPNode;
         public List<Topology.BSPNode> BSPNodes =>
@@ -80,6 +95,7 @@ namespace partmake
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItem"));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItemDesc"));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItemMatrix"));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItemConnectors"));
             }
         }
 
@@ -135,16 +151,24 @@ namespace partmake
 
         private void Vis_OnINodeSelected(object sender, Topology.INode e)
         {
-            SelectINode(e);
+            bool addToSelection = (System.Windows.Input.Keyboard.GetKeyStates(System.Windows.Input.Key.LeftShift) == System.Windows.Input.KeyStates.Down ||
+                System.Windows.Input.Keyboard.GetKeyStates(System.Windows.Input.Key.RightShift) == System.Windows.Input.KeyStates.Down);
+            SelectINode(e, addToSelection);
         }
 
-        void SelectINode(Topology.INode e)
+        void SelectINode(Topology.INode e, bool addToSelection)
         {
-            if (SelectedINode != null)
-                SelectedINode.IsSelected = false;
-            SelectedINode = e;
-            if (SelectedINode != null)
-                SelectedINode.IsSelected = true;
+            if (!addToSelection)
+            {
+                foreach (var n in this.SelectedINodes)
+                    n.IsSelected = false;
+                this.SelectedINodes.Clear();
+            }
+            if (e != null)
+            {
+                e.IsSelected = true;
+                this.SelectedINodes.Insert(0, e);
+            }
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedINode"));
 
         }
@@ -158,7 +182,9 @@ namespace partmake
             if (disableConnectors)
                 selectedPart.DisableConnectors();
             if (vis != null)
-                vis.Part = selectedPart;            
+                vis.Part = selectedPart;
+            
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentDatFile"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentPart"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Log"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("BSPNodes"));
@@ -348,7 +374,7 @@ namespace partmake
                 Topology.Face f = selectedPart.GetTopoMesh().faces.FirstOrDefault(f => f.idx == faceIdx);
                 if (f != null)
                 {
-                    SelectINode(f);
+                    SelectINode(f, false);
                     vis.SelectFace(f);
                 }
             }

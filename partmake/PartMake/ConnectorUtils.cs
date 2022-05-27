@@ -185,6 +185,63 @@ namespace partmake
                 return outPts;
             }
 
+            static public List<Loop> FindLoops(Mesh m)
+            {
+                List<Loop> foundLoops = new List<Loop>();
+                foreach (Face f in m.faces)
+                {
+                    Vector3 nrm = f.Normal;
+                    foreach (EdgePtr eptr in f.edges)
+                    {
+                        Edge e = eptr.e;
+                        if (e.flag == 0)
+                        {
+                            List<Edge> edges = new List<Edge>() { e };
+                            if (FollowCoplanarEdges(edges, nrm))
+                            {
+                                foreach (Edge fe in edges)
+                                {
+                                    fe.flag = 1;
+                                }
+                                foundLoops.Add(new Loop() { edges = edges });
+                            }
+                        }
+                    }
+                }
+
+                return foundLoops;
+            }
+
+            static bool FollowCoplanarEdges(List<Edge> edges, Vector3 nrm)
+            {
+                Edge cur = edges.Last();
+                if (cur.instack)
+                {
+                    if (edges[0] == cur && edges.Count > 3)
+                        return true;
+                    else
+                        return false;
+                }
+                cur.instack = true;
+                foreach (Edge e in cur.v1.edges)
+                {
+                    if (e.flag == 0 &&
+                        Vector3.Dot(nrm, e.dir) == 0)
+                    {
+                        edges.Add(e);
+                        if (FollowCoplanarEdges(edges, nrm))
+                        {
+                            cur.instack = false;
+                            return true;
+                        }
+                        edges.Remove(e);
+                    }
+                }
+
+                cur.instack = false;
+                return false;
+            }
+
         }
     }
 }

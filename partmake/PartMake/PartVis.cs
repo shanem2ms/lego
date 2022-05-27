@@ -417,14 +417,21 @@ namespace partmake
             meshSelectedOffset = -1;
             List<Vtx> vlist = new List<Vtx>();
             faceIndices = new List<int>();
-            Dictionary<int, Topology.Plane> planes = 
-                Topology.ConnectorUtils.GetCandidatePlanes(_part.GetTopoMesh());
-            _part.GetTopoMesh().GetVertices(vlist, faceIndices, true,
-                (Topology.Face f) =>
+            bool doCandidatePlanes = false;
+            if (doCandidatePlanes)
             {
-                return (planes.ContainsKey(f.Plane.idx));
-            });
-
+                Dictionary<int, Topology.Plane> planes =
+                    Topology.ConnectorUtils.GetCandidatePlanes(_part.GetTopoMesh());
+                _part.GetTopoMesh().GetVertices(vlist, faceIndices, true,
+                    (Topology.Face f) =>
+                {
+                    return (planes.ContainsKey(f.Plane.idx));
+                });
+            }
+            else
+            {
+                _part.GetTopoMesh().GetVertices(vlist, faceIndices, true, null);
+            }
             if (vlist.Count == 0)
             {
                 return;
@@ -481,7 +488,7 @@ namespace partmake
 
             List<Vtx> vlistSel = new List<Vtx>();
 
-            _part.GetVertices(vlistSel, true);
+            _part.GetVertices(vlistSel, true, true);
             if (vlistSel.Count > 0)
             {
                 Vtx[] verticesSel = vlistSel.ToArray();
@@ -499,9 +506,9 @@ namespace partmake
                 _selectedIndexCount = indicesSel.Length;
             }
 
-            List<Tuple<System.DoubleNumerics.Vector3, System.DoubleNumerics.Vector3>> bs = 
-                new List<Tuple<System.DoubleNumerics.Vector3, System.DoubleNumerics.Vector3>>();
-            List <LDrawDatFile.Connector> connectors = _part.GetConnectors(ref bs);
+            List<Tuple<System.DoubleNumerics.Vector3, System.DoubleNumerics.Vector3>> bs =
+                _part.Bisectors;
+            List <LDrawDatFile.Connector> connectors = _part.Connectors;
             this.bisectors = bs.Select(tp => new Tuple<Vector3, Vector3>(
                 new Vector3((float)tp.Item1.X, (float)tp.Item1.Y, (float)tp.Item1.Z),
                 new Vector3((float)tp.Item2.X, (float)tp.Item2.Y, (float)tp.Item2.Z))).ToList();
@@ -511,7 +518,7 @@ namespace partmake
                 LDrawDatFile.ConnectorType mask = (LDrawDatFile.ConnectorType.Stud | LDrawDatFile.ConnectorType.RStud |
                     LDrawDatFile.ConnectorType.MFigHipLeg |
                     LDrawDatFile.ConnectorType.MFigRHipLeg);
-                connectorVizs.Add(new ConnectorVis() { type = conn.type & mask, mat = conn.mat.ToM44() });
+                connectorVizs.Add(new ConnectorVis() { type = conn.Type & mask, mat = conn.Mat.ToM44() });
             }
 
             this.edges.Clear();

@@ -354,6 +354,26 @@
                     <CheckBox Content="DisableConnectors" IsChecked="{Binding Path=DisableConnectors}"/>
                 </StackPanel>
             </TabItem>
+            <TabItem Header="Connectors" >
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <ListBox ItemsSource="{Binding Path=CurrentDatFile.Connectors}" SelectedItem="{Binding Path=SelectedConnector, Mode=TwoWay}"/>
+                    <ContentControl Grid.Row="1" Content="{Binding Path=SelectedConnector}" >
+                        <ContentControl.ContentTemplate>
+                            <DataTemplate DataType="x:Type LDrawDatFile.Connector">
+                                <StackPanel Orientation="Vertical">
+                                    <TextBlock Text="{Binding Type}" />
+                                    <TextBlock Text="{Binding Offset}" />
+                                    <TextBlock Text="{Binding Rotation}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ContentControl.ContentTemplate>
+                    </ContentControl>
+                </Grid>
+            </TabItem>
         </TabControl>
         <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" />
         <Grid Grid.Column="4">
@@ -366,7 +386,7 @@
             </StackPanel>
             <TabControl Grid.Row="1" >
                 <TabItem Header="Render">
-                    <local:RenderControl x:Name="_RenderControl" KeyDown="_RenderControl_KeyDown" KeyUp="_RenderControl_KeyUp" />
+                    <local:RenderControl d:IsHidden="true" x:Name="_RenderControl" KeyDown="_RenderControl_KeyDown" KeyUp="_RenderControl_KeyUp" />
                 </TabItem>
                 <TabItem Header="Points">
                     <local:PolyLog x:Name="polyLog"/>
