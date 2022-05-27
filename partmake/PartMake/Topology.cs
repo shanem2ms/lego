@@ -1832,12 +1832,15 @@ namespace partmake
                         edges.Add(e);
                 }
             }
-
-            public void GetVertices(List<Vtx> vlist, List<int> faceIndices, bool allowQuads)
+            public delegate bool TestFunc(Face f);
+            public void GetVertices(List<Vtx> vlist, List<int> faceIndices, bool allowQuads,
+                TestFunc func)
             {
                 int faceIdx = 0;
                 foreach (var f in faces)
                 {
+                    if (func != null && !func(f))
+                        continue;
                     Vector3 nrm = f.Normal;
                     var vl = f.Vtx;
                     Vtx[] vtxs = vl.Select(v => new Vtx(v.pt, nrm, new Vector2(f.isinvalid ? 1 : 0, 0))).ToArray();
@@ -1855,7 +1858,7 @@ namespace partmake
                     faceIdx++;
                 }
             }
-
+            
             void GetTrianglePts(List<Vector3> vlist)
             {
                 foreach (var f in faces)

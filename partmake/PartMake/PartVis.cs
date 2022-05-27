@@ -417,7 +417,13 @@ namespace partmake
             meshSelectedOffset = -1;
             List<Vtx> vlist = new List<Vtx>();
             faceIndices = new List<int>();
-            _part.GetTopoMesh().GetVertices(vlist, faceIndices, true);
+            Dictionary<int, Topology.Plane> planes = 
+                Topology.ConnectorUtils.GetCandidatePlanes(_part.GetTopoMesh());
+            _part.GetTopoMesh().GetVertices(vlist, faceIndices, true,
+                (Topology.Face f) =>
+            {
+                return (planes.ContainsKey(f.Plane.idx));
+            });
 
             if (vlist.Count == 0)
             {
@@ -847,7 +853,7 @@ namespace partmake
                 _pipeline = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
                     BlendStateDescription.SingleAlphaBlend,
                     DepthStencilStateDescription.DepthOnlyLessEqual,
-                    new RasterizerStateDescription(FaceCullMode.Back, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
+                    new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
                     PrimitiveTopology.TriangleList,
                     shaderSet,
                     new[] { projViewLayout, worldTextureLayout },

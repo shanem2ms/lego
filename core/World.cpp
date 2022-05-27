@@ -31,7 +31,7 @@ namespace sam
         m_pPickedBrick(nullptr),
         m_debugDraw(0),
         m_disableCollisionCheck(false),
-        m_player(std::make_shared<Player>()),
+        m_player(std::make_shared<Player>(this)),
         m_level(false)
     {        
     }  

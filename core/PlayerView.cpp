@@ -3,17 +3,19 @@
 #include "Engine.h"
 #include "Physics.h"
 #include "BrickMgr.h"
+#include "World.h"
 #include "bullet/btBulletCollisionCommon.h"
 #include "bullet/btBulletDynamicsCommon.h"
 
 namespace sam
 {     
 
-    Player::Player() :
+    Player::Player(World *pWorld) :
         m_flymode(true),
         m_inspectmode(false),
         m_jump(false),
-        m_currentSlotIdx(0)
+        m_currentSlotIdx(0),
+        m_pWorld(pWorld)
     {
         m_playerBody = std::make_shared<SceneGroup>();
         m_rightHandPartInst.canBeDestroyed = true;
@@ -180,7 +182,26 @@ namespace sam
 
     void Player::MouseDown(float x, float y, int buttonId)
     {
-       
+        if (buttonId == 1)
+        {
+            m_pWorld->PlaceBrick(this);
+        }
+        else if (buttonId == 0)
+        {
+            m_pWorld->DestroyBrick(this);
+        }
+        else if (buttonId == 3)
+        {
+            /*
+            const PartId& id = m_pPickedBrick->GetPartInst().id;
+            this->
+                ReplaceCurrentPart(id.Name());
+
+            this->ReplaceCurrentPartColor(
+                BrickManager::Inst().GetColorFromIdx(m_pPickedBrick->GetPartInst().atlasidx));
+                */
+        }
+
     }
     void Player::RawMove(float dx, float dy)
     {

@@ -15,19 +15,42 @@ namespace partmake
     {
         public class ConnectorUtils
         { 
-            static public List<Tuple<Vector3, Plane>> GetRStuds(Mesh m, Vector3[] candidates, List<Tuple<Vector3, Vector3>> bisectors)
+            static public Dictionary<int, Plane> GetCandidatePlanes(Mesh m)
             {
-                AABB aabb = AABB.CreateFromPoints(m.vertices.Select(v => v.pt).ToList());
                 Dictionary<int, Plane> planes = new Dictionary<int, Plane>();
                 Plane bottomPlane = m.planeMgr.GetPlane(Vector3.UnitY, 0);
                 foreach (Face f in m.faces)
                 {
-                    if (f.Plane.totalArea > 100.0 || f.Plane.idx == bottomPlane.idx)
+                    if (f.Plane.totalArea > 25 || f.Plane.idx == bottomPlane.idx)
                     {
                         if (!planes.ContainsKey(f.Plane.idx))
                             planes.Add(f.Plane.idx, f.Plane);
                     }
                 }
+
+                Dictionary<int, Plane> planes2 = new Dictionary<int, Plane>();
+                foreach (var kv in planes)
+                {
+                    Plane p = kv.Value;
+                    bool[] pn = { false, false };
+                    foreach (var v in m.vertices)
+                    {
+                        double dist = Vector3.Dot(v.pt, p.normal) - p.d;
+                        if (!Eps.Eq2(dist, 0))
+                        {
+                            if (dist < 0) pn[0] = true;
+                            else pn[1] = true;
+                        }
+                    }
+                    if (pn[0] ^ pn[1])
+                        planes2.Add(kv.Key, kv.Value);
+                }
+                return planes2;
+            }
+            static public List<Tuple<Vector3, Plane>> GetRStuds(Mesh m, Vector3[] candidates, List<Tuple<Vector3, Vector3>> bisectors)
+            {
+                Dictionary<int, Plane> planes = GetCandidatePlanes(m);
+                AABB aabb = AABB.CreateFromPoints(m.vertices.Select(v => v.pt).ToList());
                 List<Tuple<Vector3, Plane>> outPts = new List<Tuple<Vector3, Plane>>();
                 foreach (var kvplane in planes)
                 {

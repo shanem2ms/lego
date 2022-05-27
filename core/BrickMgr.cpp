@@ -64,32 +64,6 @@ namespace sam
         std::vector<Vec3f> offsets;
     };
 
-    std::map<std::string, ConnectorInfo> sConnectorMap =
-    { { "stud.dat", { ConnectorType::Stud, { Vec3f(0,0,0) }}},
-        { "stud4.dat", { ConnectorType::InvStud, { Vec3f(0,-4,0), Vec3f(10,-4,10), Vec3f(-10,-4,10), Vec3f(10,-4,-10), Vec3f(-10,-4,-10) }}},
-        { "stud4o.dat", { ConnectorType::InvStud, { Vec3f(0,-4,0) }}},
-        { "connect.dat", { ConnectorType::InvStud, { Vec3f(0,0,0) }}},
-        { "stud2a.dat",{ ConnectorType::Stud, { Vec3f(0,0,0) }}},
-        { "stud2.dat", { ConnectorType::InvStud, { Vec3f(0,0,0) }}},
-        { "stud3.dat", { ConnectorType::InvStud, { Vec3f(10,-4,0), Vec3f(-10,-4,0) }}},
-        { "stud6.dat", { ConnectorType::InvStud, { Vec3f(0,0,0)}}},
-        { "1-4ring3.dat", { ConnectorType::InvStud, { Vec3f(0,0,0)}}},
-    };
-
-    static std::set<std::string> sConnectorNames;
-
-    void InitConnectorNames()
-    {
-        if (sConnectorNames.size() == 0)
-        {
-            for (auto& connectorPair : sConnectorMap)
-            {
-                sConnectorNames.insert(connectorPair.first);
-            }
-        }
-    }
-
-
     void Brick::LoadLores(const vecstream& ifs)
     {
         PosTexcoordNrmVertex::init();
@@ -119,7 +93,6 @@ namespace sam
         m_scale = std::max(std::max(ext[0], ext[1]), ext[2]);
         m_center = (m_bounds.mMax + m_bounds.mMin) * 0.5f;
 
-        InitConnectorNames();
         m_collisionBox = m_bounds;
 
         Vec3f bnd = m_bounds.mMax - m_bounds.mMin;
@@ -413,14 +386,22 @@ namespace sam
             codeIdx[col.second.code] = col.second.atlasidx;
         }
 
-        std::vector<std::string> allfiles = m_cacheZip->ListFiles("json");
-        for (const std::string& file : allfiles)
+        std::map<std::string, std::string> categories;
         {
-            std::string partname = file.substr(0, file.length() - 5);
+            vecstream str = m_cacheZip->ReadFile("categories.json");
+
+            json jobj = json::parse(str.readText());
+            for (auto& [key, value] : jobj.items()) {
+                categories.insert(std::make_pair(
+                    key, (std::string)value));
+            }
+        }
+        for (auto& [key, value] : categories)
+        {
             PartDesc pd;
-            pd.filename = partname;
-            pd.type = "nn";
-            m_partsMap.insert(std::make_pair(PartId(partname), pd));
+            pd.filename = key;
+            pd.type = value;
+            m_partsMap.insert(std::make_pair(PartId(key), pd));
         }
         const auto& keys = m_partsMap.keys();
         for (const auto& key : keys)

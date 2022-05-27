@@ -14,6 +14,7 @@ class btCollisionShape;
 namespace sam
 {
     struct BrickColor;
+    class World;
     class Player
     {
         std::shared_ptr<SceneGroup> m_playerBody;
@@ -33,6 +34,7 @@ namespace sam
         std::shared_ptr<btRigidBody> m_rigidBody;
         std::shared_ptr<btCollisionShape> m_btShape;
         int m_currentSlotIdx;
+        World* m_pWorld;
 
     public:
         
@@ -48,7 +50,7 @@ namespace sam
         std::shared_ptr<SceneItem> GetPlayerGroup()
         { return m_playerBody; }
         void Update(DrawContext& ctx, Level& level);
-        Player();
+        Player(World* pWorld);
         void Initialize(Level& level);
         const SlotPart* GetSlots() const
         { return m_slots; }
