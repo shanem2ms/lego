@@ -48,7 +48,6 @@ namespace partmake
             }
         }
         public LDrawDatFile CurrentDatFile => selectedPart;
-        public List<Connector> CurrentConnectors => CurrentDatFile?.Connectors.Items;
         public List<LDrawDatNode> CurrentPart { get => new List<LDrawDatNode>() { new LDrawDatNode { File = selectedPart } }; }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -102,7 +101,6 @@ namespace partmake
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItem"));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItemDesc"));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItemMatrix"));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentConnectors"));
             }
         }
 
@@ -112,7 +110,7 @@ namespace partmake
                 LDrawFolders.Root + "\\cache");
             Topology.Mesh.settings = this.TopoSettings;
             Topology.Mesh.settings.SettingsChanged += Settings_SettingsChanged;
-            LDrawFolders.SetRoot(@"C:\homep4\lego\ldraw");
+            LDrawFolders.SetRoot(Path.Combine(LDrawFolders.Root, "ldraw"));
             this.DataContext = this;
             InitializeComponent();
             string part = "4733.dat";
@@ -126,6 +124,7 @@ namespace partmake
             vis = _RenderControl.Vis;
             vis.Part = selectedPart;
             EpsTB.Text = Eps.Epsilon.ToString();
+            EpsTB2.Text = Topology.Mesh.VertexMinDist.ToString();
             vis.OnINodeSelected += Vis_OnINodeSelected;
             vis.OnBSPNodeSelected += Vis_OnBSPNodeSelected;
             vis.OnLogUpdated += Vis_OnLogUpdated;
@@ -197,46 +196,51 @@ namespace partmake
 
                 var plane = planes0.Intersect(planes1).FirstOrDefault();
 
-                int vidx = -1;
-                if (e0.v0.idx == e1.v0.idx ||
-                    e0.v0.idx == e1.v1.idx)
-                    vidx = 0;
-                else if (e0.v1.idx == e1.v0.idx ||
-                    e0.v1.idx == e1.v1.idx)
-                    vidx = 1;
-                Vector3[] pts = new Vector3[3];
-                if (vidx == 0)
+                if (plane != null)
                 {
-                    pts[0] = e0.v1.pt;
-                    pts[1] = e0.v0.pt;
-                    pts[2] = e0.v0.idx == e1.v0.idx ? e1.v1.pt : e1.v0.pt;
+                    int vidx = -1;
+                    if (e0.v0.idx == e1.v0.idx ||
+                        e0.v0.idx == e1.v1.idx)
+                        vidx = 0;
+                    else if (e0.v1.idx == e1.v0.idx ||
+                        e0.v1.idx == e1.v1.idx)
+                        vidx = 1;
+                    Vector3[] pts = new Vector3[3];
+                    if (vidx == 0)
+                    {
+                        pts[0] = e0.v1.pt;
+                        pts[1] = e0.v0.pt;
+                        pts[2] = e0.v0.idx == e1.v0.idx ? e1.v1.pt : e1.v0.pt;
+                    }
+                    else if (vidx == 1)
+                    {
+                        pts[0] = e0.v0.pt;
+                        pts[1] = e0.v1.pt;
+                        pts[2] = e0.v1.idx == e1.v0.idx ? e1.v1.pt : e1.v0.pt;
+                    }
+
+                    List<Vector2> ppts = plane.ToPlanePts(pts);
+                    Vector2 dir0 = Vector2.Normalize(ppts[1] - ppts[0]);
+                    Vector2 ast = (ppts[0] + ppts[1]) * 0.5;
+                    Vector2 ad = new Vector2(-dir0.Y, dir0.X);
+                    Vector2 dir1 = Vector2.Normalize(ppts[2] - ppts[1]);
+                    Vector2 bs = (ppts[2] + ppts[1]) * 0.5;
+                    Vector2 bd = new Vector2(-dir1.Y, dir1.X);
+                    double dp = Vector2.Dot(dir0, dir1);
+
+                    double dx = bs.X - ast.X;
+                    double dy = bs.Y - ast.Y;
+                    double det = bd.X * ad.Y - bd.Y * ad.X;
+                    double u = (dy * bd.X - dx * bd.Y) / det;
+                    double v = (dy * ad.X - dx * ad.Y) / det;
+
+                    Vector2 p0 = ast + ad * u;
+                    Vector2 p1 = bs + bd * v;
+                    var meshpts = plane.ToMeshPts(new Vector2[] { p0 });
+                    SelectionInfo = $"P: {plane?.idx} Ppt: {meshpts[0]}";
                 }
-                else if (vidx == 1)
-                {
-                    pts[0] = e0.v0.pt;
-                    pts[1] = e0.v1.pt;
-                    pts[2] = e0.v1.idx == e1.v0.idx ? e1.v1.pt : e1.v0.pt;
-                }
-
-                List<Vector2> ppts = plane.ToPlanePts(pts);
-                Vector2 dir0 = Vector2.Normalize(ppts[1] - ppts[0]);
-                Vector2 ast = (ppts[0] + ppts[1]) * 0.5;
-                Vector2 ad = new Vector2(-dir0.Y, dir0.X);
-                Vector2 dir1 = Vector2.Normalize(ppts[2] - ppts[1]);
-                Vector2 bs = (ppts[2] + ppts[1]) * 0.5;
-                Vector2 bd = new Vector2(-dir1.Y, dir1.X);
-                double dp = Vector2.Dot(dir0, dir1);
-
-                double dx = bs.X - ast.X;
-                double dy = bs.Y - ast.Y;
-                double det = bd.X * ad.Y - bd.Y * ad.X;
-                double u = (dy * bd.X - dx * bd.Y) / det;
-                double v = (dy * ad.X - dx * ad.Y) / det;
-
-                Vector2 p0 = ast + ad * u;
-                Vector2 p1 = bs + bd * v;
-                var meshpts = plane.ToMeshPts(new Vector2[] { p0 });
-                SelectionInfo = $"P: {plane?.idx} Ppt: {meshpts[0]}";
+                else
+                    SelectionInfo = "";
             }
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectionInfo"));
         }
@@ -252,7 +256,6 @@ namespace partmake
                 vis.Part = selectedPart;
 
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentDatFile"));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentConnectors"));            
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentPart"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Log"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("BSPNodes"));
@@ -337,6 +340,16 @@ namespace partmake
         private void Eps_LostFocus(object sender, RoutedEventArgs e)
         {
             Eps.Epsilon = float.Parse((sender as TextBox).Text);
+            OnSelectedItem(this.selectedItem);
+        }
+
+        private void Eps2_TextChanged(object sender, TextChangedEventArgs e)
+        {
+        }
+
+        private void Eps2_LostFocus(object sender, RoutedEventArgs e)
+        {
+            Topology.Mesh.VertexMinDist = float.Parse((sender as TextBox).Text);
             OnSelectedItem(this.selectedItem);
         }
 
@@ -537,8 +550,9 @@ namespace partmake
             Topology.Edge e1 = this.SelectedINodes[1] as Topology.Edge;
 
             selectedPart.Connectors.AddFromEdgeCrossing(selectedPart, e0, e1);
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentConnectors"));            
             vis.Part = selectedPart;
+            this.ConnectorsLB.InvalidateArrange();
+            this.ConnectorsLB.UpdateLayout();
         }
     }
 

@@ -75,6 +75,7 @@ namespace partmake
         static Dictionary<string, List<string>> partsReverseLookup = new Dictionary<string, List<string>>();
         static Dictionary<string, string> aliases = new Dictionary<string, string>();
         static public bool FilterEnabled { get; set; } = false;
+        public static string ConnectorsFolder;
         static public string SelectedType
         {
             get => selectedType;
@@ -161,6 +162,7 @@ namespace partmake
         {
             string descFile = "partdesc.txt";
             rootFolder = folder;
+            ConnectorsFolder = Path.Combine(rootFolder, @"partmake\connectors");
             if (!File.Exists(Path.Combine(folder, descFile)))
             {
                 List<string> allFiles = new List<string>();

@@ -366,21 +366,23 @@
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <ListBox ItemsSource="{Binding Path=CurrentConnectors}" SelectedItem="{Binding Path=SelectedConnector, Mode=TwoWay}"/>
+                    <ListBox x:Name="ConnectorsLB" ItemsSource="{Binding Path=CurrentDatFile.Connectors.Items}" SelectedItem="{Binding Path=SelectedConnector}"/>
                     <ContentControl Grid.Row="1" Content="{Binding Path=SelectedConnector}" >
                         <ContentControl.ContentTemplate>
-                            <DataTemplate DataType="x:Type LDrawDatFile.Connector">
+                            <DataTemplate DataType="x:Type Connector">
                                 <StackPanel Orientation="Vertical">
                                     <TextBlock Text="Type" />
                                     <ComboBox ItemsSource="{Binding ConnectorTypes}" SelectedItem="{Binding Type, Mode=TwoWay, Converter={StaticResource EnumToStringConverter}}"/>
                                     <TextBlock Text="{Binding Offset}" />
                                     <TextBlock Text="{Binding Rotation}" />
+                                    <TextBlock Text="{Binding Scale}" />
                                 </StackPanel>
                             </DataTemplate>
                         </ContentControl.ContentTemplate>
                     </ContentControl>
                     <Grid Grid.Row="3">
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <Button Content="Scan Plane" Padding="5,2" Click="Button_ScanPlaneClick" />
@@ -396,6 +398,7 @@
             </Grid.RowDefinitions>
             <StackPanel Orientation="Horizontal">
                 <TextBox x:Name="EpsTB" Width="200" TextChanged="Eps_TextChanged" LostFocus="Eps_LostFocus" />
+                <TextBox x:Name="EpsTB2" Width="200" TextChanged="Eps2_TextChanged" LostFocus="Eps2_LostFocus" />
             </StackPanel>
             <TabControl Grid.Row="1" >
                 <TabItem Header="Render">

@@ -769,7 +769,7 @@ namespace partmake
             public List<ConvexMesh> convexDecomp = new List<ConvexMesh>();
             int nextVtxIdx = 0;
             public Dictionary<ulong, Edge> edgeDict = new Dictionary<ulong, Edge>();
-            static double vertexMinDist = 0.0005;
+            public static double VertexMinDist = 0.0005;
             EdgeIntersectCPP edgeIntersect = new EdgeIntersectCPP();
             public List<string> logLines = new List<string>();
             public PlaneMgr planeMgr = new PlaneMgr();
@@ -798,12 +798,12 @@ namespace partmake
             public static bool IsEqual(double[] vals, Vector3 v2)
             {
                 Vector3 v1 = new Vector3(vals[0], vals[1], vals[2]);
-                return Vector3.DistanceSquared(v1, v2) < vertexMinDist;
+                return Vector3.DistanceSquared(v1, v2) < VertexMinDist;
             }
             public static bool IsEqual(double[] vals, Vector2 v2)
             {
                 Vector2 v1 = new Vector2(vals[0], vals[1]);
-                return Vector2.DistanceSquared(v1, v2) < vertexMinDist;
+                return Vector2.DistanceSquared(v1, v2) < VertexMinDist;
             }
             public delegate void LogDel(string line);
 
@@ -998,7 +998,7 @@ namespace partmake
                         DoBsp(settings.ReverseBSPFaces);
                     }
                     //RemoveDuplicateFaces();
-                    vertexMinDist *= 0.01;
+                    //VertexMinDist *= 0.01;
                     if (settings.AddInteriorEdges)
                         AddInteriorEdges();
                     if (settings.Triangulate)
