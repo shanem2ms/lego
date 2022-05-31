@@ -33,23 +33,30 @@ namespace partmake
         string textFilter = "";
         PartVis vis = null;
 
-        public string SelectedItemDesc { get { return selectedItem?.GetDesc(); } }        
-        public string SelectedItemMatrix { get {
+        public string SelectedItemDesc { get { return selectedItem?.GetDesc(); } }
+        public string SelectedItemMatrix
+        {
+            get
+            {
                 if (selectedPart == null)
                     return "";
                 Vector3 scale;
                 Quaternion rotation;
                 Vector3 translate;
                 Matrix4x4.Decompose(selectedPart.PartMatrix, out scale, out rotation, out translate);
-                return $"s {scale}\nr {rotation}\nt {translate}"; } }
+                return $"s {scale}\nr {rotation}\nt {translate}";
+            }
+        }
         public LDrawDatFile CurrentDatFile => selectedPart;
+        public List<Connector> CurrentConnectors => CurrentDatFile?.Connectors.Items;
         public List<LDrawDatNode> CurrentPart { get => new List<LDrawDatNode>() { new LDrawDatNode { File = selectedPart } }; }
 
         public event PropertyChangedEventHandler PropertyChanged;
 
         LDrawDatNode selectedNode = null;
+        public string SelectionInfo { get; set; }
         public LDrawDatNode SelectedNode => selectedNode;
-        
+
         List<Topology.INode> SelectedINodes = new List<Topology.INode>();
         public Topology.INode SelectedINode
         {
@@ -58,8 +65,8 @@ namespace partmake
         }
         public string Log => selectedPart?.GetTopoMesh().LogString;
 
-        LDrawDatFile.Connector selectedConnector = null;
-        public LDrawDatFile.Connector SelectedConnector
+        Connector selectedConnector = null;
+        public Connector SelectedConnector
         {
             get
             { return selectedConnector; }
@@ -72,7 +79,7 @@ namespace partmake
             new List<Topology.BSPNode>() { selectedPart?.GetTopoMesh().bSPTree?.Top };
 
         public bool disableConnectors = false;
-        public bool DisableConnectors {get => disableConnectors; set { disableConnectors = value; Rebuild(); } }
+        public bool DisableConnectors { get => disableConnectors; set { disableConnectors = value; Rebuild(); } }
 
         public Topology.Settings TopoSettings { get; } = new Topology.Settings();
         public string SelectedType
@@ -95,7 +102,7 @@ namespace partmake
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItem"));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItemDesc"));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItemMatrix"));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedItemConnectors"));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentConnectors"));
             }
         }
 
@@ -136,7 +143,7 @@ namespace partmake
         {
             selectedPart.ClearTopoMesh();
             if (disableConnectors)
-                selectedPart.DisableConnectors();
+                selectedPart.Connectors.DisableConnectors(selectedPart);
             vis.Part = selectedPart;
         }
         private void Settings_SettingsChanged(object sender, EventArgs e)
@@ -151,13 +158,15 @@ namespace partmake
 
         private void Vis_OnINodeSelected(object sender, Topology.INode e)
         {
-            bool addToSelection = (System.Windows.Input.Keyboard.GetKeyStates(System.Windows.Input.Key.LeftShift) == System.Windows.Input.KeyStates.Down ||
-                System.Windows.Input.Keyboard.GetKeyStates(System.Windows.Input.Key.RightShift) == System.Windows.Input.KeyStates.Down);
+            bool addToSelection = ((System.Windows.Input.Keyboard.GetKeyStates(System.Windows.Input.Key.LeftShift) & System.Windows.Input.KeyStates.Down) != 0 ||
+                (System.Windows.Input.Keyboard.GetKeyStates(System.Windows.Input.Key.RightShift) & System.Windows.Input.KeyStates.Down) != 0);
             SelectINode(e, addToSelection);
         }
 
         void SelectINode(Topology.INode e, bool addToSelection)
         {
+            if (this.SelectedINodes.IndexOf(e) >= 0)
+                return;
             if (!addToSelection)
             {
                 foreach (var n in this.SelectedINodes)
@@ -169,22 +178,81 @@ namespace partmake
                 e.IsSelected = true;
                 this.SelectedINodes.Insert(0, e);
             }
+            UpdateSelectionInfo();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedINode"));
 
         }
 
+        void UpdateSelectionInfo()
+        {
+            SelectionInfo = "";
+            if (this.SelectedINodes.Count >= 2 &&
+                this.SelectedINodes[0] is Topology.Edge &&
+                this.SelectedINodes[1] is Topology.Edge)
+            {
+                Topology.Edge e0 = this.SelectedINodes[0] as Topology.Edge;
+                HashSet<Topology.Plane> planes0 = e0.Faces.Select(f => f.Plane).ToHashSet();
+                Topology.Edge e1 = this.SelectedINodes[1] as Topology.Edge;
+                HashSet<Topology.Plane> planes1 = e1.Faces.Select(f => f.Plane).ToHashSet();
+
+                var plane = planes0.Intersect(planes1).FirstOrDefault();
+
+                int vidx = -1;
+                if (e0.v0.idx == e1.v0.idx ||
+                    e0.v0.idx == e1.v1.idx)
+                    vidx = 0;
+                else if (e0.v1.idx == e1.v0.idx ||
+                    e0.v1.idx == e1.v1.idx)
+                    vidx = 1;
+                Vector3[] pts = new Vector3[3];
+                if (vidx == 0)
+                {
+                    pts[0] = e0.v1.pt;
+                    pts[1] = e0.v0.pt;
+                    pts[2] = e0.v0.idx == e1.v0.idx ? e1.v1.pt : e1.v0.pt;
+                }
+                else if (vidx == 1)
+                {
+                    pts[0] = e0.v0.pt;
+                    pts[1] = e0.v1.pt;
+                    pts[2] = e0.v1.idx == e1.v0.idx ? e1.v1.pt : e1.v0.pt;
+                }
+
+                List<Vector2> ppts = plane.ToPlanePts(pts);
+                Vector2 dir0 = Vector2.Normalize(ppts[1] - ppts[0]);
+                Vector2 ast = (ppts[0] + ppts[1]) * 0.5;
+                Vector2 ad = new Vector2(-dir0.Y, dir0.X);
+                Vector2 dir1 = Vector2.Normalize(ppts[2] - ppts[1]);
+                Vector2 bs = (ppts[2] + ppts[1]) * 0.5;
+                Vector2 bd = new Vector2(-dir1.Y, dir1.X);
+                double dp = Vector2.Dot(dir0, dir1);
+
+                double dx = bs.X - ast.X;
+                double dy = bs.Y - ast.Y;
+                double det = bd.X * ad.Y - bd.Y * ad.X;
+                double u = (dy * bd.X - dx * bd.Y) / det;
+                double v = (dy * ad.X - dx * ad.Y) / det;
+
+                Vector2 p0 = ast + ad * u;
+                Vector2 p1 = bs + bd * v;
+                var meshpts = plane.ToMeshPts(new Vector2[] { p0 });
+                SelectionInfo = $"P: {plane?.idx} Ppt: {meshpts[0]}";
+            }
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectionInfo"));
+        }
         void OnSelectedItem(LDrawFolders.Entry item)
-        { 
+        {
             if (item == null)
                 return;
             selectedPart = LDrawFolders.GetPart(item);
             selectedPart.SetSubPartSizes();
             if (disableConnectors)
-                selectedPart.DisableConnectors();
+                selectedPart.Connectors.DisableConnectors(selectedPart);
             if (vis != null)
                 vis.Part = selectedPart;
-            
+
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentDatFile"));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentConnectors"));            
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentPart"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Log"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("BSPNodes"));
@@ -217,7 +285,8 @@ namespace partmake
 
         private void WriteAll_Button_Click(object sender, RoutedEventArgs e)
         {
-            LDrawFolders.WriteAll((completed, total, name) => {
+            LDrawFolders.WriteAll((completed, total, name) =>
+            {
                 Dispatcher.BeginInvoke(new Action(() =>
                     StatusTb.Text = $"[{completed} / {total}]  [{name}]"));
                 return true;
@@ -445,14 +514,14 @@ namespace partmake
                 }
             }
             LDrawFolders.FilterEnabled = true;
-            FilteredCheckbox.IsChecked = true;            
+            FilteredCheckbox.IsChecked = true;
         }
 
         private void FilteredCheckbox_Checked(object sender, RoutedEventArgs e)
         {
             LDrawFolders.FilterEnabled = FilteredCheckbox.IsChecked == true;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("LDrawParts"));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("LDrawGroups"));            
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("LDrawGroups"));
         }
 
         private void PartNumTB_LostFocus(object sender, RoutedEventArgs e)
@@ -460,6 +529,16 @@ namespace partmake
             string srchstr = (sender as TextBox).Text;
             LDrawFolders.SearchString = srchstr;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("LDrawParts"));
+        }
+
+        private void Button_ScanPlaneClick(object sender, RoutedEventArgs e)
+        {
+            Topology.Edge e0 = this.SelectedINodes[0] as Topology.Edge;
+            Topology.Edge e1 = this.SelectedINodes[1] as Topology.Edge;
+
+            selectedPart.Connectors.AddFromEdgeCrossing(selectedPart, e0, e1);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentConnectors"));            
+            vis.Part = selectedPart;
         }
     }
 
@@ -498,6 +577,20 @@ namespace partmake
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
             throw new ArgumentException();
+        }
+    }
+
+    public class EnumToString : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            return value.ToString();
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value == null) return null;
+            return Enum.Parse(targetType, value as string);
         }
     }
 }

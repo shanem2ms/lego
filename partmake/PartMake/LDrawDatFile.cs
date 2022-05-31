@@ -29,6 +29,7 @@ namespace partmake
         Matrix4x4? partMatrix;
         public Matrix4x4 PartMatrix { get { if (!partMatrix.HasValue) RefreshPartMatrix(); return partMatrix.Value; } }
 
+        public Connectors Connectors { get; set; }
         Topology.Mesh topoMesh;
         MbxImport.Mesh mbxMesh;
         string description;
@@ -36,11 +37,6 @@ namespace partmake
         public List<Topology.Face> TopoFaces => topoMesh?.FacesFromId(topoId);
         public Topology.BSPTree BSPTree => topoMesh?.bSPTree;
 
-
-        List<Tuple<Vector3, Vector3>> bisectors = null;
-        List<Connector> connectors = null;
-        public List<Connector> Connectors { get { if (connectors == null) InitConnectors(); return connectors;} }
-        public List<Tuple<Vector3, Vector3>> Bisectors { get { if (bisectors == null) InitConnectors(); return bisectors; } }
         public List<string> ReverseLookup => LDrawFolders.ReverseLookup(Name);
         public List<string> IncludedInParts => LDrawFolders.IncludedInParts(Name);
         public string Name { get => name; }
@@ -49,6 +45,8 @@ namespace partmake
         {
             name = Path.GetFileNameWithoutExtension(path);
             Read(path);
+            Connectors = new Connectors(this);
+            Connectors.Init(this);
         }
 
         string MbxPath => Path.Combine(LDrawFolders.MdxFolder, Path.ChangeExtension(this.name, "json"));
@@ -66,7 +64,8 @@ namespace partmake
             return mbxMesh;
         }
         LDrawDatFile()
-        { }
+        {
+        }
         public LDrawDatFile Clone()
         {
             LDrawDatFile c = new LDrawDatFile();
@@ -81,6 +80,7 @@ namespace partmake
             c.aabb = aabb;
             c.hasGeometry = hasGeometry;
             c.multiColor = multiColor;
+            c.Connectors = Connectors;
             return c;
         }
 
@@ -360,93 +360,6 @@ namespace partmake
             }
         }
 
-        public enum ConnectorType
-        {
-            Stud = 1,
-            Clip = 2,
-            StudJ = 3,
-            RStud = 4,
-            MFigHipLeg = 5,
-            MFigRHipLeg = 6,
-            MFigHipStud = 7,
-            MFigTorsoRArm = 8,
-            MFigTorsoNeck = 9,
-            MFigHeadRNeck = 10,
-            MFigArmKnob = 11
-        }
-        public class Connector : IComparable<Connector>
-        {
-            public ConnectorType Type { get; set; }
-            public Matrix4x4 Mat { get; set; }
-
-            public Vector3 Offset => Mat.Translation;
-
-            public Quaternion Rotation => Quaternion.CreateFromRotationMatrix(Mat);
-
-            public override string ToString()
-            {
-                return $"{Type} {Mat.Translation}";
-            }
-            public int CompareTo(Connector other)
-            {
-                int i = Type.CompareTo(other.Type);
-                if (i != 0)
-                    return i;
-                return Mat.GetHashCode().CompareTo(other.Mat.GetHashCode());
-            }
-        }
-
-        static HashSet<string> studs = new HashSet<string>() { "stud", "stud9", "stud10", "stud15", "studel", "studp01" };
-        static HashSet<string> studclipj = new HashSet<string>() { "stud2", "stud6", "stud6a", "stud2a" };
-        static HashSet<string> rstud = new HashSet<string>() { "stud4", "stud4a", "stud4o", "stud4f1s",
-                "stud4f1w", "stud4f2n","stud4f2s", "stud4f2w", "stud4f3s", "stud4f4s", "stud4f4n", "stud4f5n" };
-
-
-        public void DisableConnectors()
-        {
-            DisableConnectorsRecursive();
-        }
-        public void InitConnectors()
-        {
-            List<Connector> connectors = new List<Connector>();
-            List<Connector> rStudCandidates = new List<Connector>();
-            GetConnectorsRecursive(connectors, rStudCandidates, false, PartMatrix);
-            this.bisectors = new List<Tuple<Vector3, Vector3>>();
-            var rStuds =
-                Topology.ConnectorUtils.GetRStuds(GetTopoMesh(), rStudCandidates.Select(s => Vector3.Transform(Vector3.Zero, s.Mat)).ToArray(), 
-                this.bisectors);
-            foreach (var rstud in rStuds)
-            {
-                Vector3 u = rstud.Item2.udir;
-                Vector3 n = rstud.Item2.normal;
-                Vector3 v = rstud.Item2.vdir;
-                Matrix4x4 m = new Matrix4x4(
-                    v.X, v.Y, v.Z, 0,
-                    n.X, n.Y, n.Z, 0,
-                    u.X, u.Y, u.Z, 0,
-                    0, 0, 0, 1);
-
-                connectors.Add(new Connector()
-                {
-                    Mat = Matrix4x4.CreateScale(4, 4, 4) * m *
-                    Matrix4x4.CreateTranslation(rstud.Item1),
-                    Type = ConnectorType.RStud
-                });
-            }
-            //Topology.ConnectorUtils.FindLoops(GetTopoMesh());
-            this.connectors = connectors.Distinct().ToList();
-        }
-
-        Connector CreateBaseConnector(Matrix4x4 mat, ConnectorType type)
-        {
-            AABB bb = GetBBox();
-            Vector3 scl = bb.Max - bb.Min;
-            Vector3 off = (bb.Max + bb.Min) * 0.5f;
-            Matrix4x4 cm = Matrix4x4.CreateScale(scl) *
-                Matrix4x4.CreateTranslation(off) * mat;
-            return new Connector() { Mat = cm, Type = type };
-        }
-
         public void GetLDrLoaderMesh(out LdrLoader.PosTexcoordNrmVertex[] ldrvertices,
             out int[] ldrindices)
         {
@@ -477,175 +390,6 @@ namespace partmake
             }
         }
 
-        bool DisableConnectorsRecursive()
-        {
-            if (studs.Contains(this.name) ||
-                studclipj.Contains(this.name) ||
-                rstud.Contains(this.name) ||
-                this.name == "stud12" ||
-                this.name == "stud3" || this.name == "stud3a" ||
-                this.name == "stud4h" || this.name == "stud18a")
-            {
-                return true;
-            }
-            else
-            {
-                foreach (var child in this.children)
-                {
-                    if (child.File.DisableConnectorsRecursive())
-                        child.IsEnabled = false;
-                }
-                return false;
-            }
-        }
-        void GetConnectorsRecursive(List<Connector> connectors, List<Connector> rStudCandidates, bool inverted, Matrix4x4 transform)
-        {
-            if (studs.Contains(this.name))
-            {
-                AABB aabb = GetBBox();
-                connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 2, 0) * transform, ConnectorType.Stud));
-            }
-            else if (studclipj.Contains(this.name))
-            {
-                connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 2, 0) * transform,
-                    ConnectorType.Stud));
-                connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 2, 0) * transform,
-                    ConnectorType.StudJ));
-                connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 2, 0) * transform,
-                    ConnectorType.Clip));
-            }
-            else if (rstud.Contains(this.name))
-            {
-                Vector3[] offsets = new Vector3[]
-                {
-                    new Vector3(0, 0, 0),
-                    new Vector3(10, 0, 10),
-                    new Vector3(-10, 0, 10),
-                    new Vector3(10, 0, -10),
-                    new Vector3(-10, 0, -10),
-                };
-                for (int i = 0; i < offsets.Length; ++i)
-                {
-                    rStudCandidates.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(offsets[i]) * transform,
-                        ConnectorType.RStud));
-                }
-            }
-            else if (this.name == "stud12")
-            {
-                Vector3[] offsets = new Vector3[]
-                {
-                    new Vector3(10, 0, 10),
-                    new Vector3(-10, 0, 10),
-                    new Vector3(10, 0, -10),
-                    new Vector3(-10, 0, -10),
-                };
-                for (int i = 0; i < offsets.Length; ++i)
-                {
-                    rStudCandidates.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(offsets[i]) * transform,
-                        ConnectorType.RStud));
-                }
-            }
-            else if (this.name == "stud3" || this.name == "stud3a")
-            {
-                Vector3[] offsets = new Vector3[]
-                               {
-                    new Vector3(10, 0, 0),
-                    new Vector3(-10, 0, 0),
-                               };
-                for (int i = 0; i < offsets.Length; ++i)
-                {
-                    rStudCandidates.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(offsets[i]) * transform,
-                        ConnectorType.RStud));
-                }
-            }
-            else if (this.name == "stud4h" || this.name == "stud18a")
-            {
-                Vector3[] offsets = new Vector3[]
-                               {
-                    new Vector3(0, 0, 0),
-                    new Vector3(-10, 0, 0),
-                    new Vector3(10, 0, 0),
-                               };
-                for (int i = 0; i < offsets.Length; ++i)
-                {
-                    rStudCandidates.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(offsets[i]) * transform,
-                        ConnectorType.RStud));
-                }
-            }
-            else if (this.name == "4-4cylc")
-            {
-                Vector3 scale = transform.GetScale();
-                if (Eps.Eq2(scale.X, 3) &&
-                    Eps.Eq2(scale.Z, 3))
-                {
-                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, -0.1, 0) * transform,
-                        ConnectorType.MFigHipLeg));
-                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, -1.1, 0) *
-                        Matrix4x4.CreateFromAxisAngle(Vector3.UnitX, Math.PI) *
-                        transform,
-                        ConnectorType.MFigHipLeg));
-                }
-            }
-            else if (this.name == "3-4cyli")
-            {
-                Vector3 scale = transform.GetScale();
-                if (Eps.Eq2(scale.X, 6) &&
-                    Eps.Eq2(scale.Z, 6))
-                {
-                    connectors.Add(CreateBaseConnector(
-                        Matrix4x4.CreateFromAxisAngle(Vector3.UnitX, Math.PI) *
-                        Matrix4x4.CreateTranslation(0, 0.5, 0) *
-                        transform,
-                        ConnectorType.MFigTorsoNeck));
-                }
-            }
-            else if ((this.name == "4-4cyli" ||
-                this.name == "4-4cylo")
-                && inverted)
-            {
-                Vector3 scale = transform.GetScale();
-                if (Eps.Eq2(scale.X, 3) &&
-                    Eps.Eq2(scale.Z, 3))
-                {
-                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, -0.5, 0) * transform,
-                        ConnectorType.MFigRHipLeg));
-                }
-                if (Eps.Eq2(scale.X, 5) &&
-                    Eps.Eq2(scale.Z, 5))
-                {
-                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
-                        ConnectorType.MFigTorsoRArm));
-                }
-                if (Eps.Eq2(scale.X, 6) &&
-                    Eps.Eq2(scale.Z, 6))
-                {
-                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
-                        ConnectorType.MFigHeadRNeck));
-                }
-            }
-            else if (this.name == "knob1")
-            {
-                connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 0, 0) * transform,
-                    ConnectorType.MFigArmKnob));
-            }
-            else if (this.name == "hipstud")
-            {
-                Vector3 scale = transform.GetScale();
-                {
-                    connectors.Add(CreateBaseConnector(Matrix4x4.CreateTranslation(0, 5, 0) * transform,
-                        ConnectorType.MFigHipStud));
-                }
-            }
-
-            else
-            {
-                foreach (var child in this.children)
-                {
-                    child.File.GetConnectorsRecursive(connectors, rStudCandidates, inverted ^ child.invert, child.transform * transform);
-                }
-            }
-        }
-
         class Descriptor
         {
             public string type;
@@ -654,7 +398,7 @@ namespace partmake
             public string desc;
             public float[] dims;
             public List<string> aliases;
-            public List<Connector> Connectors;
+            public IEnumerable<Connector> Connectors;
         }
         public void WriteDescriptorFile(LDrawFolders.Entry e, string folder, string outname)
         {
@@ -669,7 +413,7 @@ namespace partmake
             desc.desc = e.desc;
             desc.dims = e.dims;
             desc.aliases = e.aliases;
-            desc.Connectors = Connectors;
+            desc.Connectors = Connectors.Items;
             string jsonstr = JsonConvert.SerializeObject(desc);
             File.WriteAllText(outPath, jsonstr);
         }
@@ -685,7 +429,7 @@ namespace partmake
                 string outPath = Path.Combine(folder, outname + ".col");
                 if (File.Exists(outPath))
                     return;
-                DisableConnectors();
+                Connectors.DisableConnectors(this);
                 Debug.WriteLine(outname);
                 Topology.Mesh tm = new Topology.Mesh();
                 GetTopoRecursive(false, PartMatrix, tm, "0");

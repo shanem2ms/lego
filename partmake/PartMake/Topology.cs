@@ -1767,7 +1767,7 @@ namespace partmake
                 }
             }
 
-            public void GetPlaneEdges(Plane p, List<Edge> edges)
+            public void GetPlaneEdges(Plane p, HashSet<Edge> edges)
             {
                 foreach (var e in this.edgeDict.Values)
                 {

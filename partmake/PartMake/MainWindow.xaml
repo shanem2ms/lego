@@ -12,6 +12,7 @@
         <SolidColorBrush x:Key="HighlightBrush" Color="LightBlue" Opacity="0" />
         <local:BoolToBrush x:Key="PartInvertedBrush" TrueBrush="{StaticResource BackgroundBrush}"
                              FalseBrush="{StaticResource HighlightBrush}" />
+        <local:EnumToString x:Key="EnumToStringConverter" />
         <DataTemplate DataType="x:Type topo:EdgePtr" >
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="V0" />
@@ -158,12 +159,13 @@
             </StackPanel>
         </Grid>
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
-        <TabControl Grid.Column="2" SelectedIndex="2">
+        <TabControl Grid.Column="2" SelectedIndex="5">
             <TabItem Header="Node">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -180,6 +182,9 @@
                     <ContentControl Grid.Row="1" Content="{Binding Path=SelectedINode}" 
                                 ContentTemplateSelector="{StaticResource selector}">
                     </ContentControl>
+                    <Grid Grid.Row="2">
+                        <TextBlock Text="{Binding SelectionInfo}" />
+                    </Grid>
                 </Grid>
             </TabItem>
             <TabItem Header="BSP">
@@ -359,19 +364,27 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <ListBox ItemsSource="{Binding Path=CurrentDatFile.Connectors}" SelectedItem="{Binding Path=SelectedConnector, Mode=TwoWay}"/>
+                    <ListBox ItemsSource="{Binding Path=CurrentConnectors}" SelectedItem="{Binding Path=SelectedConnector, Mode=TwoWay}"/>
                     <ContentControl Grid.Row="1" Content="{Binding Path=SelectedConnector}" >
                         <ContentControl.ContentTemplate>
                             <DataTemplate DataType="x:Type LDrawDatFile.Connector">
                                 <StackPanel Orientation="Vertical">
-                                    <TextBlock Text="{Binding Type}" />
+                                    <TextBlock Text="Type" />
+                                    <ComboBox ItemsSource="{Binding ConnectorTypes}" SelectedItem="{Binding Type, Mode=TwoWay, Converter={StaticResource EnumToStringConverter}}"/>
                                     <TextBlock Text="{Binding Offset}" />
                                     <TextBlock Text="{Binding Rotation}" />
                                 </StackPanel>
                             </DataTemplate>
                         </ContentControl.ContentTemplate>
                     </ContentControl>
+                    <Grid Grid.Row="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Button Content="Scan Plane" Padding="5,2" Click="Button_ScanPlaneClick" />
+                    </Grid>
                 </Grid>
             </TabItem>
         </TabControl>

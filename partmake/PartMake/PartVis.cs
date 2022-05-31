@@ -117,7 +117,7 @@ namespace partmake
 
         class ConnectorVis
         {
-            public LDrawDatFile.ConnectorType type;
+            public ConnectorType type;
             public Matrix4x4 mat;
         }
         List<ConnectorVis> connectorVizs = new List<ConnectorVis>();
@@ -507,17 +507,17 @@ namespace partmake
             }
 
             List<Tuple<System.DoubleNumerics.Vector3, System.DoubleNumerics.Vector3>> bs =
-                _part.Bisectors;
-            List <LDrawDatFile.Connector> connectors = _part.Connectors;
+                _part.Connectors.Bisectors;
+            List<Connector> connectors = _part.Connectors.Items.ToList();
             this.bisectors = bs.Select(tp => new Tuple<Vector3, Vector3>(
                 new Vector3((float)tp.Item1.X, (float)tp.Item1.Y, (float)tp.Item1.Z),
                 new Vector3((float)tp.Item2.X, (float)tp.Item2.Y, (float)tp.Item2.Z))).ToList();
             connectorVizs.Clear();
             foreach (var conn in connectors)
             {
-                LDrawDatFile.ConnectorType mask = (LDrawDatFile.ConnectorType.Stud | LDrawDatFile.ConnectorType.RStud |
-                    LDrawDatFile.ConnectorType.MFigHipLeg |
-                    LDrawDatFile.ConnectorType.MFigRHipLeg);
+                ConnectorType mask = (ConnectorType.Stud | ConnectorType.RStud |
+                    ConnectorType.MFigHipLeg |
+                    ConnectorType.MFigRHipLeg);
                 connectorVizs.Add(new ConnectorVis() { type = conn.Type & mask, mat = conn.Mat.ToM44() });
             }
 
@@ -1543,12 +1543,12 @@ namespace partmake
         }
         void DrawBisectors(ref Matrix4x4 mat)
         {
-            Dictionary<LDrawDatFile.ConnectorType, Vector4> colors = new Dictionary<LDrawDatFile.ConnectorType, Vector4>()
-                { { LDrawDatFile.ConnectorType.Stud, new Vector4(0.8f, 0.1f, 0, 1) }, 
-                { LDrawDatFile.ConnectorType.RStud, new Vector4(0.1f, 0.1f, 0.8f, 1) },
-                { LDrawDatFile.ConnectorType.MFigHipLeg, new Vector4(0.3f, 0.8f, 0, 1) },
-                { LDrawDatFile.ConnectorType.MFigRHipLeg, new Vector4(0.3f, 0.8f, 0, 1) },
-                { LDrawDatFile.ConnectorType.MFigHipStud, new Vector4(0.3f, 0.2f, 0.9f, 1)}};
+            Dictionary<ConnectorType, Vector4> colors = new Dictionary<ConnectorType, Vector4>()
+                { { ConnectorType.Stud, new Vector4(0.8f, 0.1f, 0, 1) }, 
+                { ConnectorType.RStud, new Vector4(0.1f, 0.1f, 0.8f, 1) },
+                { ConnectorType.MFigHipLeg, new Vector4(0.3f, 0.8f, 0, 1) },
+                { ConnectorType.MFigRHipLeg, new Vector4(0.3f, 0.8f, 0, 1) },
+                { ConnectorType.MFigHipStud, new Vector4(0.3f, 0.2f, 0.9f, 1)}};
 
             if (ShowConnectors)
             {
