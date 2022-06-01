@@ -63,8 +63,19 @@ namespace sam
     {
         Unknown = 0,
         Stud = 1,
-        InvStud = 2,
-        PinholeStud
+        Clip = 2,
+        StudJ = 3,
+        RStud = 4,
+        MFigHipLeg = 5,
+        MFigRHipLeg = 6,
+        MFigHipStud = 7,
+        MFigTorsoRArm = 8,
+        MFigTorsoNeck = 9,
+        MFigHeadRNeck = 10,
+        MFigArmKnob = 11,
+        MFigRWrist = 12,
+        MFigWrist = 13,
+        MFigRHandGrip = 14
     };
 
   
@@ -98,7 +109,9 @@ namespace sam
                 b = a;
                 a = tmp;
             }
-            if (a == Stud && b == InvStud)
+            if (a == Stud && b == RStud)
+                return true;
+            if (a == MFigHipLeg && b == MFigRHipLeg)
                 return true;
             return false;
         }

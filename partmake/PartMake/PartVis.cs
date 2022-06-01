@@ -115,12 +115,7 @@ namespace partmake
 
         bool showInwardOrOutwardFaces = true;
 
-        class ConnectorVis
-        {
-            public ConnectorType type;
-            public Matrix4x4 mat;
-        }
-        List<ConnectorVis> connectorVizs = new List<ConnectorVis>();
+        List<Connector> connectorVizs = new List<Connector>();
         List<Topology.Edge> edges = new List<Topology.Edge>();
         List<Topology.Edge> nonMFedges = new List<Topology.Edge>();
         List<Vector3> candidateRStuds = new List<Vector3>();
@@ -512,14 +507,7 @@ namespace partmake
             this.bisectors = bs.Select(tp => new Tuple<Vector3, Vector3>(
                 new Vector3((float)tp.Item1.X, (float)tp.Item1.Y, (float)tp.Item1.Z),
                 new Vector3((float)tp.Item2.X, (float)tp.Item2.Y, (float)tp.Item2.Z))).ToList();
-            connectorVizs.Clear();
-            foreach (var conn in connectors)
-            {
-                ConnectorType mask = (ConnectorType.Stud | ConnectorType.RStud |
-                    ConnectorType.MFigHipLeg |
-                    ConnectorType.MFigRHipLeg);
-                connectorVizs.Add(new ConnectorVis() { type = conn.Type & mask, mat = conn.Mat.ToM44() });
-            }
+            connectorVizs = connectors;
 
             this.edges.Clear();
             _part.GetTopoMesh().GetEdges(this.edges);
@@ -1552,32 +1540,42 @@ namespace partmake
 
             if (ShowConnectors)
             {
+                Vector4[] axiscolors = new Vector4[3]
+                {
+                        new Vector4(1,0,0,1),
+                        new Vector4(0,1,0,1),
+                        new Vector4(0,0,1,1)
+                };
+
                 _cl.SetPipeline(_pipeline);
                 _cl.SetVertexBuffer(0, _cubeVertexBuffer);
                 _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
 
                 foreach (var c in connectorVizs)
                 {
-                    Vector4 ccol;
-                    if (!colors.TryGetValue(c.type, out ccol))
-                        ccol = new Vector4(1, 1, 1, 1);
                     const float lsize = 0.05f;
-                    _cl.UpdateBuffer(_materialBuffer, 0, ref ccol);
+                    Matrix4x4 cmat = c.Mat.ToM44();
+                    Vector4 color = axiscolors[2] * (c.IsSelected ? 1.0f : 0.5f);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref color);
                     {
                         Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(0, 0, -0.5f)) *
-                            Matrix4x4.CreateScale(new Vector3(lsize, lsize, 0.5f)) * c.mat * mat;
+                            Matrix4x4.CreateScale(new Vector3(lsize, lsize, 0.5f)) * cmat * mat;
                         _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
                         _cl.DrawIndexed((uint)_cubeIndexCount);
                     }
+                    color = axiscolors[0] * (c.IsSelected ? 1.0f : 0.5f);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref color);
                     {
                         Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(-0.5f, 0, 0)) *
-                            Matrix4x4.CreateScale(new Vector3(0.5f, lsize, lsize)) * c.mat * mat;
+                            Matrix4x4.CreateScale(new Vector3(0.5f, lsize, lsize)) * cmat * mat;
                         _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
                         _cl.DrawIndexed((uint)_cubeIndexCount);
                     }
+                    color = axiscolors[1] * (c.IsSelected ? 1.0f : 0.5f);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref color);
                     {
                         Matrix4x4 cm = Matrix4x4.CreateTranslation(new Vector3(0, -0.5f, 0)) *
-                            Matrix4x4.CreateScale(new Vector3(lsize, 1.0f, lsize)) * c.mat * mat;
+                            Matrix4x4.CreateScale(new Vector3(lsize, 1.0f, lsize)) * cmat * mat;
                         _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
                         _cl.DrawIndexed((uint)_cubeIndexCount);
                     }

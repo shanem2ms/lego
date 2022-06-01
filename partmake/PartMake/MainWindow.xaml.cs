@@ -70,7 +70,13 @@ namespace partmake
             get
             { return selectedConnector; }
             set
-            { selectedConnector = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedConnector")); }
+            {
+                if (selectedConnector != null)
+                    selectedConnector.IsSelected = false;
+                selectedConnector = value;
+                if (selectedConnector != null)
+                    selectedConnector.IsSelected = true;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedConnector")); }
         }
 
         public Topology.BSPNode SelectedBSPNode => vis?.SelectedBSPNode;

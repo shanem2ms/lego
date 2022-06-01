@@ -47,6 +47,7 @@ namespace partmake
 
         public Vector3 Scale => Mat.GetScale();
 
+        public bool IsSelected = false;
         public static string[] ConnectorTypes => Enum.GetNames(typeof(ConnectorType));
         public override string ToString()
         {
@@ -91,7 +92,7 @@ namespace partmake
         string partname;
 
         //partmake\connectors
-        public Connectors(LDrawDatFile f)
+        public Connectors()
         {
 
         }
@@ -251,7 +252,7 @@ namespace partmake
                 if (Eps.Eq2(scale.X, 3) &&
                     Eps.Eq2(scale.Z, 3))
                 {
-                    connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, -0.5, 0) * transform,
+                    connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
                         ConnectorType.MFigRHipLeg));
                 }
                 if (Eps.Eq2(scale.X, 5) &&

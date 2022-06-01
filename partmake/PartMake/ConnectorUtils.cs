@@ -44,11 +44,16 @@ namespace partmake.Topology
         {
             Dictionary<int, Plane> planes = GetCandidatePlanes(m);
             AABB aabb = AABB.CreateFromPoints(m.vertices.Select(v => v.pt).ToList());
-            List<Tuple<Vector3, Plane>> outPts = new List<Tuple<Vector3, Plane>>();
+            List<Tuple<Vector3, Plane>> outRStuds = new List<Tuple<Vector3, Plane>>();
             foreach (var kvplane in planes)
             {
                 List<Face> planeFaces =
                     m.faces.Where(f => f.Plane.idx == kvplane.Key).ToList();
+
+                double ptSide = m.vertices.Select(v => kvplane.Value.DistFromPt(v.pt)).Sum();
+                bool reversePlaneNormal = ptSide < 0;
+                Plane plane = reversePlaneNormal ? new Plane(-kvplane.Value.normal, -kvplane.Value.d, -1) :
+                    kvplane.Value;
                 foreach (var kv in m.edgeDict)
                 {
                     kv.Value.flag = 0;
@@ -169,13 +174,13 @@ namespace partmake.Topology
                                 }
                             }
                             if (minDot < 0)
-                                outPts.Add(new Tuple<Vector3, Plane>(cpt, kvplane.Value));
+                                outRStuds.Add(new Tuple<Vector3, Plane>(cpt, plane));
                         }
                     }
                 }
             }
-            outPts = outPts.Distinct().ToList();
-            return outPts;
+            outRStuds = outRStuds.Distinct().ToList();
+            return outRStuds;
         }
 
         static public List<Tuple<Vector3, Topology.Plane>> GetCandidates(Topology.Mesh m, Plane p,

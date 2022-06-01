@@ -29,7 +29,23 @@ namespace partmake
         Matrix4x4? partMatrix;
         public Matrix4x4 PartMatrix { get { if (!partMatrix.HasValue) RefreshPartMatrix(); return partMatrix.Value; } }
 
-        public Connectors Connectors { get; set; }
+        Connectors connectors = null;
+        public Connectors Connectors
+        {
+            get
+            {
+                if (connectors == null)
+                {
+                    connectors = new Connectors();
+                    connectors.Init(this);
+                }
+                return connectors;
+            }
+            set
+            {
+                connectors = value;
+            }
+        }
         Topology.Mesh topoMesh;
         MbxImport.Mesh mbxMesh;
         string description;
@@ -45,8 +61,8 @@ namespace partmake
         {
             name = Path.GetFileNameWithoutExtension(path);
             Read(path);
-            Connectors = new Connectors(this);
-            Connectors.Init(this);
+            //Connectors = new Connectors(this);
+            //Connectors.Init(this);
         }
 
         string MbxPath => Path.Combine(LDrawFolders.MdxFolder, Path.ChangeExtension(this.name, "json"));
@@ -80,7 +96,7 @@ namespace partmake
             c.aabb = aabb;
             c.hasGeometry = hasGeometry;
             c.multiColor = multiColor;
-            c.Connectors = Connectors;
+            c.connectors = connectors;
             return c;
         }
 

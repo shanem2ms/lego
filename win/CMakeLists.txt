@@ -29,6 +29,7 @@ find_package(fmt CONFIG REQUIRED)
 find_package(libzip CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(aws-cpp-sdk-core REQUIRED)
+find_package(aws-cpp-sdk-s3 REQUIRED)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(LIBDBG "debug/")
@@ -53,6 +54,7 @@ target_link_libraries(${PROJECT_NAME} LINK_PUBLIC
     leveldb
     libzip::zip
     aws-cpp-sdk-core
+    aws-cpp-sdk-s3
        )
        
 target_include_directories(${PROJECT_NAME} PUBLIC

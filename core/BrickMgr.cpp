@@ -196,13 +196,7 @@ namespace sam
     {
         if (m_connectorsLoaded)
             return;
-
-        std::map<int, ConnectorType> cTypeMap =
-        { { 1, ConnectorType::Stud },
-            { 2, ConnectorType::Unknown },
-            { 4, ConnectorType::Unknown },
-            { 8, ConnectorType::InvStud } };
-        //open file
+        
 
         //get length of file
         size_t length = stream.length();
@@ -217,8 +211,8 @@ namespace sam
             Connector c;
             Matrix44f trans;
             float* vals = trans.mData;
-            int type = elem["type"];
-            json mat = elem["mat"];
+            int type = elem["Type"];
+            json mat = elem["Mat"];
             vals[0] = mat["M11"];
             vals[1] = mat["M12"];
             vals[2] = mat["M13"];
@@ -242,9 +236,7 @@ namespace sam
             xform(out, trans, Vec4f(0, -1, 0, 0));
             c.dir = Vec3f(out);
             normalize(c.dir);
-            if (type & 1) c.type = ConnectorType::Stud;
-            else if (type & 4) c.type = ConnectorType::InvStud;
-            else c.type = ConnectorType::Unknown;
+            c.type = (ConnectorType)type;
             m_connectors.push_back(c);
         }
 

@@ -99,7 +99,7 @@ namespace sam
 
     std::shared_ptr<UIControl> LegoUI::BuildHotbar(DrawContext& ctx, int w, int h)
     {
-        m_hotbar = std::make_shared<UIWindow>(55, -300, 1720, 200, "hotbar", UIWindow::None);
+        m_hotbar = std::make_shared<UIWindow>(55, -200, 1720, 200, "hotbar", UIWindow::None);
         m_hotbar->SetLayout(UILayout::Horizontal);
         auto hotbarTable = std::make_shared<UITable>(8);
         const SlotPart* pSlots = ctx.m_pPlayer->GetSlots();

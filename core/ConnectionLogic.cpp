@@ -69,17 +69,17 @@ namespace sam
         int connectorIdx = pickedBrick->GetHighlightedConnector();
         if (connectorIdx >= 0)
         {
-            auto& connector = pBrick->m_connectors[connectorIdx];
-            Quatf wsPickedConnectorDir = pickedDir * connector.GetDirAsQuat();
+            auto& pickedConnector = pBrick->m_connectors[connectorIdx];
+            Quatf wsPickedConnectorDir = pickedDir * pickedConnector.GetDirAsQuat();
 
             Vec4f wsPickedConnectorPos;
-            xform(wsPickedConnectorPos, wm, Vec4f(connector.pos, 1));
+            xform(wsPickedConnectorPos, wm, Vec4f(pickedConnector.pos, 1));
 
             std::shared_ptr<Brick> pRHandBrick = BrickManager::Inst().GetBrick(player->GetRightHandPart().id);
             BrickManager::Inst().LoadConnectors(pBrick);
             for (auto& rhandconnect : pRHandBrick->m_connectors)
             {
-                if (Connector::CanConnect(connector.type, rhandconnect.type))
+                if (Connector::CanConnect(pickedConnector.type, rhandconnect.type))
                 {
 
                     // This part is tricky, first based on the direction we're facing, we're goig to try
@@ -108,84 +108,15 @@ namespace sam
                         Vec3f xDir;
                         cross(xDir, constraintPlaneNrm, snappedDir);
                         Matrix33f m33 = makeAxes<Matrix33f>(xDir, constraintPlaneNrm, snappedDir);
-                        Quat snappedRot = make<Quatf>(m33);
+                        Quatf snappedRot = make<Quatf>(m33);
                         snappedRot = snappedRot * pi.rot;
+                        Quatf partRot = makeRot<Quatf>(rhandconnect.dir, pickedConnector.dir);
                         pi.rot = snappedRot;
-                        Vec3f newpos = snappedRot * rhandconnect.pos;
+                        Vec3f newpos = partRot * snappedRot * rhandconnect.pos;
                         Vec3f pos = Vec3f(wsPickedConnectorPos) - (newpos * BrickManager::Scale);
                         pi.pos = pos;
                     }
-                    else
-                    {
-                        Planef constraintPlane(constraintPlaneNrm, Vec3f(wsPickedConnectorPos));
-                        normalize(zDir);
-                        Vec3f xDir;
-                        cross(xDir, constraintPlaneNrm, zDir);
-                        Matrix33f m33 = makeAxes<Matrix33f>(xDir, constraintPlaneNrm, zDir);
 
-                        // We now form the direction we would ideally place the brick if we didn't 
-                        // have to connect it to any other studs.  That direction is qIdealPlacement;
-                        Quatf qIdealPlacement = make<Quatf>(m33);
-
-                        // Now we make an part placement, and set its position so that the connectors are joined together.
-                        // Direction is set from above.
-                        qIdealPlacement = qIdealPlacement * pi.rot;
-                        pi.rot = qIdealPlacement;
-                        Vec3f newpos = qIdealPlacement * rhandconnect.pos;
-                        Vec3f pos = Vec3f(wsPickedConnectorPos) - (newpos * BrickManager::Scale);
-                        pi.pos = pos;
-
-                        float rotDist =
-                            GetMaxRotDist(pRHandBrick->m_collisionBox, rhandconnect.pos);
-                        Spheref s(Vec3f(wsPickedConnectorPos), rotDist * BrickManager::Scale);
-                        std::vector<PartInst> nearbyParts;
-                        octTileSelection.GetInterectingParts(s, nearbyParts);
-                        std::vector<NearbyConnector> nearbyConnectors;
-                        std::vector<Vec3f> connectPts;
-                        for (const PartInst& pi : nearbyParts)
-                        {
-                            std::shared_ptr<Brick> b = BrickManager::Inst().GetBrick(pi.id);
-                            for (const Connector& c : b->m_connectors)
-                            {
-                                if (c.type != ConnectorType::Stud)
-                                    continue;
-                                Vec3f p = c.pos * BrickManager::Scale;
-                                Vec3f connectorWsPos = pi.pos + pi.rot * p;
-                                Vec3f scl(5, 5, 5);
-                                scl *= BrickManager::Scale;
-                                AABoxf cb(p - scl, p + scl);
-                                RotateAABox(cb, pi.rot);
-                                cb.mMin += pi.pos;
-                                cb.mMax += pi.pos;
-                                if (intersect(cb, s))
-                                {
-                                    float d = distance(constraintPlane, Point3f(connectorWsPos));
-                                    if (d < 0.001f)
-                                    {
-                                        connectPts.push_back(connectorWsPos);
-                                        Vec3f connectVec = Vec3f(connectorWsPos - Vec3f(wsPickedConnectorPos));
-                                        nearbyConnectors.push_back(
-                                            NearbyConnector{ &pi, &c, lengthSquared(connectVec), dot(xDir, connectVec), dot(zDir, connectVec) });
-                                    }
-                                }
-                            }
-                        }
-
-                        std::sort(nearbyConnectors.begin(), nearbyConnectors.end(), [](const auto& a, const auto& b) {
-                            return a.distSq < b.distSq; });
-
-                        Planef rhPlane(rhandconnect.dir, rhandconnect.pos);
-                        for (auto& rc : pRHandBrick->m_connectors)
-                        {
-                            float d = distance(rhPlane, Point3f(rc.pos));
-                            if (d < 0.001f)
-                            {
-                            }
-                        }
-                        // m_connnectorsCL = std::make_shared<CubeList>();
-                        //m_connnectorsCL->Create(connectPts, 5 * BrickManager::Scale);
-                        GetAlignmentDomain(pi, rotDist * BrickManager::Scale);
-                    }
                     AABoxf cbox = pRHandBrick->m_collisionBox;
 
                     cbox.mMin = cbox.mMin * BrickManager::Scale;// +pi.pos;
