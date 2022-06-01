@@ -118,7 +118,7 @@ namespace partmake
 
                 connectors.Add(new Connector()
                 {
-                    Mat = Matrix4x4.CreateScale(4, 4, 4) * m *
+                    Mat = Matrix4x4.CreateScale(12, -4, 12) * m *
                     Matrix4x4.CreateTranslation(rstud.Item1),
                     Type = ConnectorType.RStud
                 });
@@ -127,13 +127,17 @@ namespace partmake
             this.connectors = new ObservableCollection<Connector>(connectors.Distinct().ToList());
             LoadConnectorFile();
         }
-
         Connector CreateBaseConnector(LDrawDatFile file, Matrix4x4 mat, ConnectorType type)
+        {
+            return CreateBaseConnector(file, mat, Matrix4x4.Identity, type);
+        }
+        Connector CreateBaseConnector(LDrawDatFile file, Matrix4x4 mat, Matrix4x4 rot, ConnectorType type)
         {
             AABB bb = file.GetBBox();
             Vector3 scl = bb.Max - bb.Min;
             Vector3 off = (bb.Max + bb.Min) * 0.5f;
             Matrix4x4 cm = Matrix4x4.CreateScale(scl) *
+                rot *
                 Matrix4x4.CreateTranslation(off) * mat;
             return new Connector() { Mat = cm, Type = type };
         }
@@ -265,7 +269,8 @@ namespace partmake
             }
             else if (file.Name == "knob1")
             {
-                connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, 0, 0) * transform,
+                connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(-2, 0, 0) * 
+                    transform, Matrix4x4.CreateRotationZ(Math.PI / 2.0), 
                     ConnectorType.MFigArmKnob));
             }
             else if (file.Name == "hipstud")
@@ -311,6 +316,11 @@ namespace partmake
             DisableConnectorsRecursive(file);
         }
 
+        public void RemoveConnector(Connector c)
+        {
+            this.connectors.Remove(c);
+            UpdateConnectorFile();
+        }
         public void AddFromEdgeCrossing(LDrawDatFile file, Topology.Edge e0, Topology.Edge e1)
         {
             HashSet<Topology.Plane> planes0 = e0.Faces.Select(f => f.Plane).ToHashSet();
@@ -370,6 +380,8 @@ namespace partmake
                     ydir.X, ydir.Y, ydir.Z, 0,
                     zdir.X, zdir.Y, zdir.Z, 0,
                     0, 0, 0, 1);
+                len *= 2;
+                len = RoundTo(len, 0.01);
                 Matrix4x4 cm = Matrix4x4.CreateScale(len) *
                     rot *
                     Matrix4x4.CreateTranslation(meshpts[0]);
@@ -378,6 +390,11 @@ namespace partmake
                 connectors.Add(c);
                 UpdateConnectorFile();
             }
+        }
+
+        double RoundTo(double v, double prec)
+        {
+            return Math.Truncate((v / prec) + 0.5) * prec;
         }
 
         private void C_Changed(object sender, bool e)

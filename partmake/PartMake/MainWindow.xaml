@@ -12,6 +12,7 @@
         <SolidColorBrush x:Key="HighlightBrush" Color="LightBlue" Opacity="0" />
         <local:BoolToBrush x:Key="PartInvertedBrush" TrueBrush="{StaticResource BackgroundBrush}"
                              FalseBrush="{StaticResource HighlightBrush}" />
+        <local:BoolToVisibility x:Key="BoolToVisibilityConverter" />
         <local:EnumToString x:Key="EnumToStringConverter" />
         <DataTemplate DataType="x:Type topo:EdgePtr" >
             <StackPanel Orientation="Horizontal">
@@ -371,7 +372,14 @@
                         <ContentControl.ContentTemplate>
                             <DataTemplate DataType="x:Type Connector">
                                 <StackPanel Orientation="Vertical">
-                                    <TextBlock Text="Type" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Type" />
+                                        <Button Grid.Column="1" Content="X" Click="Button_DeleteConnector" Visibility="{Binding IsCustom, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    </Grid>
                                     <ComboBox ItemsSource="{Binding ConnectorTypes}" SelectedItem="{Binding Type, Mode=TwoWay, Converter={StaticResource EnumToStringConverter}}"/>
                                     <TextBlock Text="{Binding Offset}" />
                                     <TextBlock Text="{Binding Rotation}" />

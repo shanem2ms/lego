@@ -554,6 +554,13 @@ namespace partmake
             this.ConnectorsLB.InvalidateArrange();
             this.ConnectorsLB.UpdateLayout();
         }
+
+        private void Button_DeleteConnector(object sender, RoutedEventArgs e)
+        {
+            Button btn = (sender as Button);
+            Connector c = (btn.DataContext as Connector);
+            this.CurrentDatFile.Connectors.RemoveConnector(c);
+        }
     }
 
     public class TopoTemplateSelector : DataTemplateSelector
@@ -570,6 +577,23 @@ namespace partmake
                 return FaceTemplate;
 
             return null;
+        }
+    }
+    public class BoolToVisibility : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if ((targetType == typeof(Visibility) || targetType == typeof(Object)))
+            {
+                bool nVal = (bool)value;
+                return nVal ? Visibility.Visible : Visibility.Collapsed;
+            }
+            return value;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new ArgumentException();
         }
     }
 

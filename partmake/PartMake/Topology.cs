@@ -893,6 +893,9 @@ namespace partmake
                     elist.Add(eptr);
                 }
 
+                if (elist.Count < 3)
+                    return null;
+
                 Face f = new Face(id, elist, planeMgr);
                 foreach (EdgePtr eptr in f.edges)
                 {
@@ -905,6 +908,8 @@ namespace partmake
             public Face AddFace(string id, List<Vector3> vertices, int idx = -1)
             {
                 Face f = MakeFace(id, vertices);
+                if (f == null)
+                    return null;
                 if (idx < 0)
                     this.faces.Add(f);
                 else
