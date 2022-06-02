@@ -24,12 +24,91 @@ namespace partmake
         MFigArmKnob = 11,
         MFigRWrist = 12,
         MFigWrist = 13,
-        MFigRHandGrip = 14
+        MFigRHandGrip = 14,
+        MFigRHipStud = 15
     }
-    
+
+    public static class Vector3Parse
+    {
+        public static string Str(this Vector3 v)
+        {
+            return $"{v.X}, {v.Y}, {v.Z}";
+        }
+
+        public static Vector3 Parse(string str)
+        {
+            try
+            {
+                string[] vals = str.Split(',');
+                if (vals.Length == 3)
+                {
+                    Vector3 v = new Vector3(double.Parse(vals[0]),
+                        double.Parse(vals[1]),
+                        double.Parse(vals[2]));
+                    return v;
+                }
+            }
+            catch
+            {
+            }
+            return Vector3.Zero;
+        }
+
+        public static Quaternion FromVecs(Vector3 xdir, Vector3 ydir)
+        {
+            ydir = Vector3.Normalize(ydir);
+            xdir = Vector3.Normalize(xdir);
+            Vector3 zdir = Vector3.Cross(xdir, ydir);
+            xdir = Vector3.Cross(ydir, zdir);
+            Matrix4x4 m = new Matrix4x4(xdir.X, xdir.Y, xdir.Z, 0,
+                ydir.X, ydir.Y, ydir.Z, 0,
+                zdir.X, zdir.Y, zdir.Z, 0,
+                0, 0, 0, 1);
+            return Quaternion.CreateFromRotationMatrix(m);
+        }
+        public static Quaternion ParseQuat(string str)
+        {
+            try
+            {
+                string[] vals = str.Split('[');
+                if (vals.Length == 3)
+                {
+                    Vector3 ydir = Parse(vals[1].Trim(new char[] { ' ', ']' }));
+                    Vector3 xdir = Parse(vals[2].Trim(new char[] { ' ', ']' }));
+                    return FromVecs(xdir, ydir);
+                }
+            }
+            catch { }
+            return Quaternion.Identity;
+        }
+        public static string Str(this Quaternion q)
+        {
+            Vector3 ydir = Vector3.Normalize(Vector3.Transform(Vector3.UnitY, q));
+            Vector3 xdir = Vector3.Normalize(Vector3.Transform(Vector3.UnitX, q));
+            return $"[{ydir.Str()}] [{xdir.Str()}]";
+        }
+
+        public static void Decompose(this Matrix4x4 mat, out Vector3 translate,
+            out Vector3 scale, out Quaternion rotation)
+        {
+            translate = mat.Translation;
+            scale = mat.GetScale();
+            rotation = Quaternion.CreateFromRotationMatrix(mat);
+        }
+
+        public static Matrix4x4 Compose(Vector3 translate,
+            Vector3 scale, Quaternion rotation)
+        {
+            return Matrix4x4.CreateScale(scale) *
+                Matrix4x4.CreateFromQuaternion(rotation) *
+                Matrix4x4.CreateTranslation(translate);
+        }
+    }
+
     [JsonObject(MemberSerialization.OptIn)]
     public class Connector : IComparable<Connector>
     {
+
 
         ConnectorType type;
         [JsonProperty]
@@ -41,9 +120,30 @@ namespace partmake
         [JsonProperty]
         public bool IsCustom { get; set; } = false;
 
-        public Vector3 Offset => Mat.Translation;
+        public string Offset
+        {
+            get => Mat.Translation.Str();
+            set
+            {
+                Vector3 v = Vector3Parse.Parse(value);
+                Matrix4x4 m = Mat; m.Translation = v; Mat = m;
+                Changed?.Invoke(this, true);
+            }
+        }
 
-        public Quaternion Rotation => Quaternion.CreateFromRotationMatrix(Mat);
+        public string Rotation
+        {
+            get => Quaternion.CreateFromRotationMatrix(Mat).Str();
+            set
+            {
+                Vector3 t, s;
+                Quaternion q;
+                Mat.Decompose(out t, out s, out q);
+                Quaternion newq = Vector3Parse.ParseQuat(value);
+                Mat = Vector3Parse.Compose(t, s, newq);
+                Changed?.Invoke(this, true);
+            }
+        }
 
         public Vector3 Scale => Mat.GetScale();
 
@@ -278,7 +378,7 @@ namespace partmake
             {
                 Vector3 scale = transform.GetScale();
                 {
-                    connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, 5, 0) * transform,
+                    connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, -5, 0) * transform,
                         ConnectorType.MFigHipStud));
                 }
             }
@@ -393,6 +493,12 @@ namespace partmake
             }
         }
 
+        public void AddNew()
+        {
+            Connector c = new Connector() { Mat = connectors.Last().Mat, Type = ConnectorType.Clip, IsCustom = true };
+            connectors.Add(c);
+            UpdateConnectorFile();
+        }
         double RoundTo(double v, double prec)
         {
             return Math.Truncate((v / prec) + 0.5) * prec;

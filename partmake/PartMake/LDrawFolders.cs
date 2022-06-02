@@ -522,6 +522,25 @@ namespace partmake
             WriteAllCacheFiles(updateFunc);
         }
 
+        public static void WriteSelected(List<Entry> parts)
+        {
+            string path = Path.Combine(LDrawFolders.Root, "cache");
+
+            foreach (Entry part in parts)
+            {
+                LDrawDatFile df = GetPart(part);
+                if (df.GetFaceCount() < 1000 || df.Name == "91405")
+                {
+                    Entry e = part;
+                    string outname = e.mbxNum?.Length > 0 ?
+                        e.mbxNum : df.Name;
+                    df.WriteDescriptorFile(e, path, outname, true);
+                    df.WriteCollisionFile(path, outname, true);
+                    df.WriteMeshFile(path, outname);
+                }
+            }
+        }
+                
         static void WriteCategories(string path)
         {
             Dictionary<string, string> categories = new Dictionary<string, string>();
@@ -562,8 +581,8 @@ namespace partmake
                         Entry e = partsToWrite[idx];
                         string outname = e.mbxNum?.Length > 0 ?
                             e.mbxNum : df.Name;
-                        df.WriteDescriptorFile(e, path, outname);
-                        df.WriteCollisionFile(path, outname);
+                        df.WriteDescriptorFile(e, path, outname, false);
+                        df.WriteCollisionFile(path, outname, false);
                         df.WriteMeshFile(path, outname);
                     }
                     int completed = Interlocked.Increment(ref completCnt);

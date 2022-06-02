@@ -151,10 +151,16 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <StackPanel Orientation="Horizontal" Grid.Row="3" >
-                <Button Content="Write All" Click="WriteAll_Button_Click" Margin="10,4"/>
-                <Button Content="Import MBX" Click="ImportMbx_Button_Click" Margin="10,4"/>
-            </StackPanel>
+            <Grid Grid.Row="3" >
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Content="Write All" Click="WriteAll_Button_Click" Margin="10,4"/>
+                <Button Grid.Column="1" Content="Write Sel" Click="WriteSelected_Button_Click" Margin="10,4"/>
+                <Button Grid.Column="2" Content="MBX" Click="ImportMbx_Button_Click" Margin="10,4"/>
+            </Grid>
             <StackPanel Grid.Row="4" Orientation="Horizontal">
                 <TextBlock x:Name="StatusTb" />
             </StackPanel>
@@ -381,8 +387,8 @@
                                         <Button Grid.Column="1" Content="X" Click="Button_DeleteConnector" Visibility="{Binding IsCustom, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                     </Grid>
                                     <ComboBox ItemsSource="{Binding ConnectorTypes}" SelectedItem="{Binding Type, Mode=TwoWay, Converter={StaticResource EnumToStringConverter}}"/>
-                                    <TextBlock Text="{Binding Offset}" />
-                                    <TextBlock Text="{Binding Rotation}" />
+                                    <TextBox Text="{Binding Offset}" />
+                                    <TextBox Text="{Binding Rotation}" />
                                     <TextBlock Text="{Binding Scale}" />
                                 </StackPanel>
                             </DataTemplate>
@@ -393,7 +399,8 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <Button Content="Scan Plane" Padding="5,2" Click="Button_ScanPlaneClick" />
+                        <Button Content="Add" Padding="5,2" Click="Button_AddConnectorClick" />
+                        <Button Grid.Column="1" Content="From Edges" Margin="10,0" Padding="5,2" Click="Button_ScanPlaneClick" />
                     </Grid>
                 </Grid>
             </TabItem>

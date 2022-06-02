@@ -127,6 +127,8 @@ namespace partmake
                     part = lines[0];
             }
             SelectedItem = LDrawFolders.GetEntry(part);
+            SelectedType = SelectedItem.type;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedType"));
             vis = _RenderControl.Vis;
             vis.Part = selectedPart;
             EpsTB.Text = Eps.Epsilon.ToString();
@@ -301,6 +303,11 @@ namespace partmake
                 return true;
             });
         }
+
+        private void WriteSelected_Button_Click(object sender, RoutedEventArgs e)
+        {
+            LDrawFolders.WriteSelected(new List<LDrawFolders.Entry>() { this.selectedItem });
+        }        
         private void ImportMbx_Button_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog dlg = new OpenFileDialog();
@@ -556,6 +563,14 @@ namespace partmake
             Topology.Edge e1 = this.SelectedINodes[1] as Topology.Edge;
 
             selectedPart.Connectors.AddFromEdgeCrossing(selectedPart, e0, e1);
+            vis.Part = selectedPart;
+            this.ConnectorsLB.InvalidateArrange();
+            this.ConnectorsLB.UpdateLayout();
+        }
+
+        private void Button_AddConnectorClick(object sender, RoutedEventArgs e)
+        {
+            selectedPart.Connectors.AddNew();
             vis.Part = selectedPart;
             this.ConnectorsLB.InvalidateArrange();
             this.ConnectorsLB.UpdateLayout();

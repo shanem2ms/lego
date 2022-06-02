@@ -416,10 +416,10 @@ namespace partmake
             public List<string> aliases;
             public IEnumerable<Connector> Connectors;
         }
-        public void WriteDescriptorFile(LDrawFolders.Entry e, string folder, string outname)
+        public void WriteDescriptorFile(LDrawFolders.Entry e, string folder, string outname, bool overwrite)
         {
             string outPath = Path.Combine(folder, outname + ".json");
-            if (File.Exists(outPath))
+            if (!overwrite && File.Exists(outPath))
                 return;
             List<Tuple<Vector3, Vector3>> bisectors = new List<Tuple<Vector3, Vector3>>();
             Descriptor desc = new Descriptor();
@@ -438,12 +438,12 @@ namespace partmake
             LDrawFolders.LDrWrite(this.name, PartMatrix.ToM44(),
                 Path.Combine(outFolder, outname), false);
         }
-        public void WriteCollisionFile(string folder, string outname)
+        public void WriteCollisionFile(string folder, string outname, bool overwrite)
         {
             try
             {
                 string outPath = Path.Combine(folder, outname + ".col");
-                if (File.Exists(outPath))
+                if (!overwrite && File.Exists(outPath))
                     return;
                 Connectors.DisableConnectors(this);
                 Debug.WriteLine(outname);

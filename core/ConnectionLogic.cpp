@@ -16,6 +16,7 @@
 #include "Audio.h"
 #include "PlayerView.h"
 #include "gmtl/AABoxOps.h"
+#include "gmtl/QuatOps.h"
 #include "ConnectionLogic.h"
 #include "bullet/btBulletCollisionCommon.h"
 #include "bullet/btBulletDynamicsCommon.h"
@@ -23,6 +24,22 @@
 
 namespace sam
 {
+    bool ConnectionLogic::CanConnect(ConnectorType a, ConnectorType b)
+    {
+        if (a > b)
+        {
+            ConnectorType tmp = b;
+            b = a;
+            a = tmp;
+        }
+        if (a == Stud && b == RStud)
+            return true;
+        if (a == MFigHipLeg && b == MFigRHipLeg)
+            return true;
+        if (a == MFigHipStud && b == MFigRHipStud)
+            return true;
+        return false;
+    }
     float GetMaxRotDist(const AABoxf& aabb, const Vec3f& pos)
     {
         Point3f corners[8];
@@ -79,7 +96,7 @@ namespace sam
             BrickManager::Inst().LoadConnectors(pBrick);
             for (auto& rhandconnect : pRHandBrick->m_connectors)
             {
-                if (Connector::CanConnect(pickedConnector.type, rhandconnect.type))
+                if (ConnectionLogic::CanConnect(pickedConnector.type, rhandconnect.type))
                 {
 
                     // This part is tricky, first based on the direction we're facing, we're goig to try

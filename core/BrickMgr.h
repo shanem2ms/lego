@@ -6,6 +6,8 @@
 #include <filesystem>
 #include "SceneItem.h"
 #include "Engine.h"
+#include "ConnectionLogic.h"
+
 #include "Loc.h"
 #include "PartDefs.h"
 #include "Mesh.h"
@@ -57,98 +59,6 @@ namespace sam
         }
 
         return lhs.desc < rhs.desc;
-    }
-
-    enum ConnectorType
-    {
-        Unknown = 0,
-        Stud = 1,
-        Clip = 2,
-        StudJ = 3,
-        RStud = 4,
-        MFigHipLeg = 5,
-        MFigRHipLeg = 6,
-        MFigHipStud = 7,
-        MFigTorsoRArm = 8,
-        MFigTorsoNeck = 9,
-        MFigHeadRNeck = 10,
-        MFigArmKnob = 11,
-        MFigRWrist = 12,
-        MFigWrist = 13,
-        MFigRHandGrip = 14
-    };
-
-  
-    static Vec3f ScaleForType(ConnectorType ctype)
-    {
-        return Vec3f(5, 5, 5);
-    }
-    struct Connector
-    {
-        ConnectorType type;
-        Vec3f pos;
-        Vec3f scl;
-        Vec3f dir;
-        int pickIdx;
-
-        Quatf GetDirAsQuat()
-        {
-            if (fabs(dot(Vec3f(0, 1, 0), dir)) > 0.999f)
-                return Quatf(QUAT_MULT_IDENTITYF);
-            else
-            {
-                Matrix44f mat = makeRot<Matrix44f>(dir, Vec3f(0, 1, 0));
-                return make<Quatf>(mat);
-            }
-        }
-        static bool CanConnect(ConnectorType a, ConnectorType b)
-        {
-            if (a > b)
-            {
-                ConnectorType tmp = b;
-                b = a;
-                a = tmp;
-            }
-            if (a == Stud && b == RStud)
-                return true;
-            if (a == MFigHipLeg && b == MFigRHipLeg)
-                return true;
-            return false;
-        }
-    };
-
-    inline bool operator < (const Vec3f& lhs, const Vec3f& rhs)
-    {
-        for (int i = 0; i < 3; ++i)
-        {
-            if (lhs[i] != rhs[i])
-                return lhs[i] < rhs[i];
-        }
-        return false;
-    }
-    inline bool operator < (const Quatf& lhs, const Quatf& rhs)
-    {
-        for (int i = 0; i < 4; ++i)
-        {
-            if (lhs[i] != rhs[i])
-                return lhs[i] < rhs[i];
-        }
-        return false;
-    }
-
-    inline bool operator < (const Connector& lhs, const Connector& rhs)
-    {
-        if (lhs.type != rhs.type)
-            return lhs.type < rhs.type;
-        if (lhs.pos != rhs.pos)
-            return lhs.pos < rhs.pos;
-        return lhs.dir < rhs.dir;
-    }
-    inline bool operator == (const Connector& lhs, const Connector& rhs)
-    {
-        if (lhs.type != rhs.type)
-            return false;
-        return lhs.pos == rhs.pos;
     }
 
     struct Brick
