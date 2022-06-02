@@ -97,7 +97,7 @@ namespace sam
                 return Quatf(QUAT_MULT_IDENTITYF);
             else
             {
-                Matrix44f mat = makeRot<Matrix44f>(Vec3f(0, 1, 0), dir);
+                Matrix44f mat = makeRot<Matrix44f>(dir, Vec3f(0, 1, 0));
                 return make<Quatf>(mat);
             }
         }

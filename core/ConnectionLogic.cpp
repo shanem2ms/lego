@@ -84,6 +84,8 @@ namespace sam
 
                     // This part is tricky, first based on the direction we're facing, we're goig to try
                     // to place the brick facing directly forward, we calculate that vector.
+                    Quatf invPart = invert(rhandconnect.GetDirAsQuat());
+                    wsPickedConnectorDir = wsPickedConnectorDir * invPart;
                     Vec3f constraintPlaneNrm = wsPickedConnectorDir * Vec3f(0, 1, 0);
                     Vec3f zDir = camLookDir - dot(camLookDir, constraintPlaneNrm) * constraintPlaneNrm;
                     PartInst pi = player->GetRightHandPart();
@@ -110,9 +112,8 @@ namespace sam
                         Matrix33f m33 = makeAxes<Matrix33f>(xDir, constraintPlaneNrm, snappedDir);
                         Quatf snappedRot = make<Quatf>(m33);
                         snappedRot = snappedRot * pi.rot;
-                        Quatf partRot = makeRot<Quatf>(rhandconnect.dir, pickedConnector.dir);
                         pi.rot = snappedRot;
-                        Vec3f newpos = partRot * snappedRot * rhandconnect.pos;
+                        Vec3f newpos = snappedRot * rhandconnect.pos;
                         Vec3f pos = Vec3f(wsPickedConnectorPos) - (newpos * BrickManager::Scale);
                         pi.pos = pos;
                     }
