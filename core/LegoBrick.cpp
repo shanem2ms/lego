@@ -58,7 +58,7 @@ namespace sam
         {
             for (auto c : m_pBrick->m_connectors)
             {
-                auto connectWidget = std::make_shared<ConnectionWidget>(c.type);
+                auto connectWidget = std::make_shared<ConnectionWidget>(ColorForType(c.type));
                 connectWidget->SetOffset(c.pos);
                 connectWidget->SetRotate(c.GetDirAsQuat());
                 AddItem(connectWidget);
@@ -97,7 +97,7 @@ namespace sam
             {
 
                 auto& c = m_pBrick->m_connectors[connectorIdx];
-                auto connectWidget = std::make_shared<ConnectionWidget>(c.type);
+                auto connectWidget = std::make_shared<ConnectionWidget>(ColorForType(c.type));
                 connectWidget->SetOffset(c.pos);
                 connectWidget->SetRotate(c.GetDirAsQuat());
                 AddItem(connectWidget);

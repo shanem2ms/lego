@@ -11,7 +11,7 @@
 
 namespace sam
 {
-    ConnectionWidget::ConnectionWidget(int color) :
+    ConnectionWidget::ConnectionWidget(Vec3f color) :
         m_color(color)
     {
 
@@ -47,7 +47,7 @@ namespace sam
         // Set render states.l
 
         bgfx::setTexture(0, sPaletteHandle, BrickManager::Inst().Palette());
-        Vec4f color = Vec4f(m_color, 0.5f, 0.0f, 0);
+        Vec4f color = Vec4f(m_color, 0.5f);
         bgfx::setUniform(m_uparams, &color, 1);
 
         bgfx::setState(state);

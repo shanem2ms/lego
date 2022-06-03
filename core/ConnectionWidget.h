@@ -13,9 +13,9 @@ namespace sam
     class ConnectionWidget : public SceneItem
     {
         bgfxh<bgfx::UniformHandle> m_uparams;
-        int m_color;
+        Vec3f m_color;
     public:
-        ConnectionWidget(int color);
+        ConnectionWidget(Vec3f color);
         void Initialize(DrawContext& nvg) override;
         void Draw(DrawContext& ctx) override;
     };

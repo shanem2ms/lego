@@ -133,7 +133,16 @@ namespace partmake
 
         public string Rotation
         {
-            get => Quaternion.CreateFromRotationMatrix(Mat).Str();
+            get
+            {
+                Vector4 v = Vector4.Transform(new Vector4(0, 1, 0, 0), Mat);
+                Matrix4x4 m = Mat;
+                Matrix4x4.Invert(m, out m);
+                m = Matrix4x4.Transpose(m);
+                Vector3 vb = Vector3.Normalize(Vector3.TransformNormal(new Vector3(0,1,0), m));
+                Vector3 v3 = Vector3.Normalize(new Vector3(v.X, v.Y, v.Z));
+                return Quaternion.CreateFromRotationMatrix(Mat).Str();
+            }
             set
             {
                 Vector3 t, s;

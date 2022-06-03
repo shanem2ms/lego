@@ -65,6 +65,30 @@ namespace sam
         float xDist;
         float zDist;
     };
+
+    Vec3f ColorForType(ConnectorType ctype)
+    {
+        switch (ctype)
+        {
+        case Stud:
+        case MFigHipLeg:
+        case MFigHipStud:
+        case MFigTorsoNeck:
+        case MFigArmKnob:
+            return Vec3f(1, 0, 0);
+        case RStud:
+        case MFigRHipLeg:
+        case MFigTorsoRArm:
+        case MFigHeadRNeck:
+        case MFigRWrist:
+        case MFigRHandGrip:
+        case MFigRHipStud:            
+            return Vec3f(0, 1, 0);
+        default:
+            return Vec3f(0.5f, 0.5f, 0.5f);
+        }
+    }
+
     void ConnectionLogic::PlaceBrick(Player* player, std::shared_ptr<LegoBrick> pickedBrick,
         OctTileSelection& octTileSelection, std::shared_ptr<Physics> physics, bool doCollisionCheck)
     {

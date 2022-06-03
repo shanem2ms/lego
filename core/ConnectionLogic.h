@@ -31,10 +31,13 @@ namespace sam
     };
 
 
-    static Vec3f ScaleForType(ConnectorType ctype)
+    inline Vec3f ScaleForType(ConnectorType ctype)
     {
         return Vec3f(5, 5, 5);
     }
+
+    Vec3f ColorForType(ConnectorType ctype);
+
     struct Connector
     {
         ConnectorType type;

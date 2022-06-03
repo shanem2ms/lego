@@ -231,10 +231,14 @@ namespace sam
             vals[15] = 1;
             trans.mState = Matrix44f::AFFINE;
             c.pos = Vec3f(mat["M41"], mat["M42"], mat["M43"]);
+            c.pos[0] = -c.pos[0];
+            c.pos[1] = -c.pos[1];
+            c.pos[2] = -c.pos[2];
             Vec4f out;
-            xform(out, trans, Vec4f(0, -1, 0, 0));
+            xform(out, trans, Vec4f(0, 1, 0, 0));
             c.dir = Vec3f(out);
             normalize(c.dir);
+            c.dir[1] = -c.dir[1];
             c.type = (ConnectorType)type;
             m_connectors.push_back(c);
         }
@@ -277,8 +281,8 @@ namespace sam
     void BrickManager::LoadConnectors(Brick* pBrick)
     {
         vecstream stream = m_cacheZip->ReadFile(pBrick->m_name.Name() + ".json");
-        if (pBrick->m_name == "3814")
-            __debugbreak();
+        //if (pBrick->m_name == "3814")
+        //  __debugbreak();
         if (stream.valid())
             pBrick->LoadConnectors(stream);
     }
