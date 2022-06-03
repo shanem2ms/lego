@@ -225,13 +225,12 @@ namespace sam
             vals[9] = mat["M32"];
             vals[10] = mat["M33"];
             vals[11] = mat["M34"];
-            vals[12] = mat["M41"];
-            vals[13] = mat["M42"];
-            vals[14] = mat["M43"];
-            vals[15] = mat["M44"];
+            vals[12] = 0;
+            vals[13] = 0;
+            vals[14] = 0;
+            vals[15] = 1;
             trans.mState = Matrix44f::AFFINE;
-            trans = makeScale<Matrix44f>(Vec3f(-1, -1, -1)) * trans;
-            c.pos = Vec3f(vals[12], vals[13], vals[14]);
+            c.pos = Vec3f(mat["M41"], mat["M42"], mat["M43"]);
             Vec4f out;
             xform(out, trans, Vec4f(0, -1, 0, 0));
             c.dir = Vec3f(out);
@@ -278,6 +277,8 @@ namespace sam
     void BrickManager::LoadConnectors(Brick* pBrick)
     {
         vecstream stream = m_cacheZip->ReadFile(pBrick->m_name.Name() + ".json");
+        if (pBrick->m_name == "3814")
+            __debugbreak();
         if (stream.valid())
             pBrick->LoadConnectors(stream);
     }

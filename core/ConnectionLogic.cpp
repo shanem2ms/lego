@@ -38,6 +38,8 @@ namespace sam
             return true;
         if (a == MFigHipStud && b == MFigRHipStud)
             return true;
+        if (a == MFigTorsoRArm && b == MFigArmKnob)
+            return true;
         return false;
     }
     float GetMaxRotDist(const AABoxf& aabb, const Vec3f& pos)
