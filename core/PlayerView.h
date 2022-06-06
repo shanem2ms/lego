@@ -58,8 +58,7 @@ namespace sam
         { m_slots[idx] = sp; }
         int GetCurrentSlotIdx() const
         { return m_currentSlotIdx; }
-        void SetCurrentSlotIdx(int slotIdx)
-        { m_currentSlotIdx = slotIdx; }
+        void SetCurrentSlotIdx(int slotIdx);
 
         void ReplaceCurrentPart(const PartId& partname);
         void ReplaceCurrentPartColor(const BrickColor& bc);

@@ -187,7 +187,8 @@ namespace sam
 
     Physics::Physics() :
         m_isInit(false),
-        m_dbgEnabled(false)
+        m_dbgEnabled(false),
+        m_lastStepTime(-1)
     {
         spInst = this;
     }
@@ -226,7 +227,7 @@ namespace sam
         }
         btScalar addSingleResult(btManifoldPoint& cp, const btCollisionObjectWrapper* colObj0Wrap, int partId0, int index0, const btCollisionObjectWrapper* colObj1Wrap, int partId1, int index1) override
         {
-            LegoBrick *pBrick0 = (LegoBrick *)colObj0Wrap->getCollisionObject()->getUserPointer();
+            LegoBrick* pBrick0 = (LegoBrick*)colObj0Wrap->getCollisionObject()->getUserPointer();
             LegoBrick* pBrick1 = (LegoBrick*)colObj1Wrap->getCollisionObject()->getUserPointer();
             if (pBrick0 != nullptr)
                 pBrick0->SetDbgCollided(true);
@@ -244,7 +245,7 @@ namespace sam
         m_discreteDynamicsWorld->contactTest(pObj, contactTest);
         g_overlap = contactTest.m_overlap;
         return contactTest.collision && contactTest.m_overlap < -0.15f;
-        
+
     }
 
     void Physics::AddRigidBody(btRigidBody* pRigidBody)
@@ -261,13 +262,18 @@ namespace sam
     {
         if (!m_isInit)
             Init();
-        m_discreteDynamicsWorld->stepSimulation(1.0f / 30.0f, 10);
-            m_dbgPhysics->BeginDraw();
-            if (m_dbgEnabled)
-            {
-                m_discreteDynamicsWorld->debugDrawWorld();
-            }
-            m_dbgPhysics->EndDraw();
+        float stepTime = 1.0f / 30.0f;
+        clock_t curTime = std::clock();
+        if (m_lastStepTime >= 0)
+            stepTime = (float)(curTime - m_lastStepTime) / (float)CLOCKS_PER_SEC;
+        m_discreteDynamicsWorld->stepSimulation(stepTime, 10);
+        m_dbgPhysics->BeginDraw();
+        if (m_dbgEnabled)
+        {
+            m_discreteDynamicsWorld->debugDrawWorld();
+        }
+        m_dbgPhysics->EndDraw();
+        m_lastStepTime = curTime;
     }
     void Physics::DebugRender(DrawContext& ctx)
     {

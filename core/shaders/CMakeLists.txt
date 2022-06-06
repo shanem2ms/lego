@@ -1,6 +1,6 @@
 set (VS_SHADERS vs_brick.sc vs_connector.sc vs_hud.sc vs_physicsdbg.sc vs_cubes.sc vs_fullscreen.sc
-    vs_frustum.sc vs_gamecontroller.sc) 
-set (FS_SHADERS fs_cubes.sc fs_pickconnector.sc fs_pickbrick.sc fs_targetcube.sc fs_frustum.sc 
+    vs_frustum.sc vs_gamecontroller.sc vs_brickpreview.sc) 
+set (FS_SHADERS fs_cubes.sc fs_pickconnector.sc fs_pickbrick.sc fs_brickpreview.sc fs_frustum.sc 
     fs_forwardshade.sc fs_hud.sc fs_bbox.sc fs_deferred.sc fs_blit.sc fs_ibl.sc fs_gamecontroller.sc)
 
 set (CS_BINS ${CS_SHADERS})

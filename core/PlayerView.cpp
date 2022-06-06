@@ -232,8 +232,12 @@ namespace sam
 
     void Player::WheelScroll(float delta)
     {
-        m_currentSlotIdx -= (int)delta;
-        m_currentSlotIdx = std::max(0, std::min(7, m_currentSlotIdx));
+        SetCurrentSlotIdx(std::max(0, std::min(7, m_currentSlotIdx - (int)delta)));
+    }
+
+    void Player::SetCurrentSlotIdx(int slotIdx)
+    {
+        m_currentSlotIdx = slotIdx;
         PartInst pi;
         pi.canBeDestroyed = true;
         pi.id = m_slots[m_currentSlotIdx].id;

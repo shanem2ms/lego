@@ -479,30 +479,6 @@ namespace sam
             }
         }
         return Vec3i(-1, -1, -1);
-    }
-
-    void TargetCube::Initialize(DrawContext& nvg)
-    {
-        m_shader = Engine::Inst().LoadShader("vs_brick.bin", "fs_targetcube.bin");
-    }
-
-    void TargetCube::Draw(DrawContext& ctx)
-    {   
-        Cube::init();
-        Matrix44f m = ctx.m_mat * CalcMat();
-        bgfx::setTransform(m.getData());
-        // Set vertex and index buffer.
-        bgfx::setVertexBuffer(0, Cube::vbh);
-        bgfx::setIndexBuffer(Cube::ibh);
-        uint64_t state = 0
-            | BGFX_STATE_WRITE_RGB
-            | BGFX_STATE_WRITE_A
-            | BGFX_STATE_WRITE_Z
-            | BGFX_STATE_MSAA
-            | BGFX_STATE_BLEND_ALPHA;
-        // Set render states.l
-        bgfx::setState(state);
-        bgfx::submit(DrawViewId::ForwardRendered, m_shader);
-    }
+    }    
 
 }

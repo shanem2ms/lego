@@ -460,7 +460,7 @@ namespace sam
     void BrickManager::Draw(DrawContext& ctx)
     {
         if (!bgfx::isValid(sShader))
-            sShader = Engine::Inst().LoadShader("vs_brick.bin", "fs_targetcube.bin");
+            sShader = Engine::Inst().LoadShader("vs_brickpreview.bin", "fs_brickpreview.bin");
         if (!sUparams.isValid())
             sUparams = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, 1);
 
@@ -600,23 +600,26 @@ namespace sam
 
     void BrickManager::CleanCache()
     {
-        if (m_bricks.size() > 512)
-        {
-            std::vector<std::pair<size_t, PartId>> mrulist;
-            mrulist.reserve(m_bricks.size());
-            for (auto& pair : m_bricks)
-            {
-                if (pair.second.use_count() == 1) {
-                    mrulist.push_back(std::make_pair(pair.second->m_mruCtr,
-                        pair.first));
-                }
-            }
+        if (m_bricks.size() < 512)
+            return;
+        std::lock_guard<std::mutex> lock(m_cacheMtx);
+        if (m_bricks.size() < 512)
+            return;
 
-            std::sort(mrulist.begin(), mrulist.end());
-            for (size_t idx = 0; idx < std::min(mrulist.size(), (size_t)64); ++idx)
-            {
-                m_bricks.erase(mrulist[idx].second);
+        std::vector<std::pair<size_t, PartId>> mrulist;
+        mrulist.reserve(m_bricks.size());
+        for (auto& pair : m_bricks)
+        {
+            if (pair.second.use_count() == 1) {
+                mrulist.push_back(std::make_pair(pair.second->m_mruCtr,
+                    pair.first));
             }
+        }
+
+        std::sort(mrulist.begin(), mrulist.end());
+        for (size_t idx = 0; idx < std::min(mrulist.size(), (size_t)64); ++idx)
+        {
+            m_bricks.erase(mrulist[idx].second);
         }
     }
 

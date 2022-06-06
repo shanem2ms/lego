@@ -46,5 +46,6 @@ namespace sam
         std::shared_ptr<PhysicsDebugDraw> m_dbgPhysics;
         bool m_isInit;
         bool m_dbgEnabled;
+        clock_t m_lastStepTime;
     };
 }

@@ -4,6 +4,7 @@
 #include <set>
 #include <list>
 #include <filesystem>
+#include <mutex>
 #include "SceneItem.h"
 #include "Engine.h"
 #include "ConnectionLogic.h"
@@ -195,6 +196,7 @@ namespace sam
         index_map<PartId, PartDesc> m_partsMap;
         index_map<std::string, std::vector<PartId>> m_typesMap;
         std::filesystem::path m_cachePath;
+        std::mutex m_cacheMtx;
         std::vector<std::shared_ptr<Brick>> m_brickRenderQueue;
         bgfxh<bgfx::TextureHandle> m_iconDepth;
         bgfxh<bgfx::TextureHandle> m_colorPalette;

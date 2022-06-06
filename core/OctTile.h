@@ -81,13 +81,6 @@ namespace sam
         void Persist(World* pWorld);
     };
 
-    class TargetCube : public SceneItem
-    {
-        bgfx::ProgramHandle m_shader;
-        void Initialize(DrawContext& nvg) override;
-        void Draw(DrawContext& ctx) override;
-    };
-
     inline AABoxf RotateAABox(const AABoxf& in, const Quatf& q)
     {
         AABoxf outBox;

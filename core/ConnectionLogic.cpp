@@ -40,6 +40,10 @@ namespace sam
             return true;
         if (a == MFigTorsoRArm && b == MFigArmKnob)
             return true;
+        if (a == MFigTorsoNeck && b == MFigHeadRNeck)
+            return true;
+        if (a == MFigRWrist && b == MFigWrist)
+            return true;     
         return false;
     }
     float GetMaxRotDist(const AABoxf& aabb, const Vec3f& pos)
@@ -132,36 +136,36 @@ namespace sam
                     Vec3f constraintPlaneNrm = wsPickedConnectorDir * Vec3f(0, 1, 0);
                     Vec3f zDir = camLookDir - dot(camLookDir, constraintPlaneNrm) * constraintPlaneNrm;
                     PartInst pi = player->GetRightHandPart();
+
+                    Quatf rhq = rhandconnect.GetDirAsQuat();
+                    rhq = invert(rhq);
+                    Quatf snappedDir;                    
                     if (true) // Snap
                     {
-                        Vec3f snapDirs[4];
-                        snapDirs[0] = wsPickedConnectorDir * Vec3f(1, 0, 0);
-                        snapDirs[1] = -snapDirs[0];
-                        snapDirs[2] = wsPickedConnectorDir * Vec3f(0, 0, 1);
-                        snapDirs[3] = -snapDirs[2];
                         float maxdot = 0;
-                        Vec3f snappedDir;
                         for (int i = 0; i < 4; ++i)
                         {
-                            float d = dot(zDir, snapDirs[i]);
+                            Quatf rq = makeRot<Quatf>(AxisAnglef(gmtl::Math::PI_OVER_2 * i, Vec3f(0, 1, 0)));
+                            Quatf q = pickedConnector.GetDirAsQuat() * rq * rhq;
+                            Vec3f testDir = q * Vec3f(1, 0, 0);
+                            float d = dot(zDir, testDir);
                             if (d > maxdot)
                             {
                                 maxdot = d;
-                                snappedDir = snapDirs[i];
+                                snappedDir = rq;
                             }
                         }
-                        Vec3f xDir;
-                        cross(xDir, constraintPlaneNrm, snappedDir);
-                        Matrix33f m33 = makeAxes<Matrix33f>(xDir, constraintPlaneNrm, snappedDir);
-                        Quatf snappedRot = make<Quatf>(m33);
-                        snappedRot = snappedRot * pi.rot;
-                        pi.rot = snappedRot;
-                        Vec3f newpos = snappedRot * rhandconnect.pos;
-                        Vec3f pos = Vec3f(wsPickedConnectorPos) - (newpos * BrickManager::Scale);
-                        pi.pos = pos;
                     }
 
+                    Quatf rq = makeRot<Quatf>(AxisAnglef(gmtl::Math::PI_OVER_2, Vec3f(0, 1, 0)));
+                    Quatf q = pickedConnector.GetDirAsQuat() * snappedDir * rhq;
+                    pi.rot = pickedDir * q;
+                    Vec3f newpos = pi.rot * rhandconnect.pos;
+                    Vec3f pos = Vec3f(wsPickedConnectorPos) - (newpos * BrickManager::Scale);
+                    pi.pos = pos;
+
                     AABoxf cbox = pRHandBrick->m_collisionBox;
+
 
                     cbox.mMin = cbox.mMin * BrickManager::Scale;// +pi.pos;
                     cbox.mMax = cbox.mMax * BrickManager::Scale;// +pi.pos;
@@ -190,15 +194,8 @@ namespace sam
                                 Application::Inst().GetAudio().PlayOnce("click-7.wav");
                                 break;
                             }
-                            //physics->AddRigidBody(sRigidBody.get());
                         }
                     }
-                    /*
-                    if (!doCollisionCheck || octTileSelection.CanAddPart(pi, cbox))
-                    {
-                        octTileSelection.AddPartInst(pi);
-                        Application::Inst().GetAudio().PlayOnce("click-7.wav");
-                    }*/
                 }
             }
         }
