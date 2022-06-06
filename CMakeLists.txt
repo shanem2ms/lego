@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.15.0 FATAL_ERROR)
 set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
 include (ExternalProject)
-include(../vcpkg/scripts/buildsystems/vcpkg.cmake)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -34,6 +33,7 @@ set(CMAKE_FIND_DEBUG_MODE TRUE)
 find_package(bgfx CONFIG REQUIRED )
 set(CMAKE_FIND_DEBUG_MODE FALSE)
 
+include(${CMAKE_SOURCE_DIR}/../vcpkg/scripts/buildsystems/vcpkg.cmake)
 
 add_subdirectory(core)
 add_dependencies(core bgfx::bgfx)

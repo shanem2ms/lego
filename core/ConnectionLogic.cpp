@@ -131,7 +131,8 @@ namespace sam
 
                     // This part is tricky, first based on the direction we're facing, we're goig to try
                     // to place the brick facing directly forward, we calculate that vector.
-                    Quatf invPart = invert(rhandconnect.GetDirAsQuat());
+                    Quatf invPart = rhandconnect.GetDirAsQuat();
+                    invert(invPart);
                     wsPickedConnectorDir = wsPickedConnectorDir * invPart;
                     Vec3f constraintPlaneNrm = wsPickedConnectorDir * Vec3f(0, 1, 0);
                     Vec3f zDir = camLookDir - dot(camLookDir, constraintPlaneNrm) * constraintPlaneNrm;

@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.15.0 FATAL_ERROR)
 
 set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
-include(${CMAKE_SOURCE_DIR}/../vcpkg/scripts/buildsystems/vcpkg.cmake)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -71,6 +70,8 @@ find_package(libzip CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(libzip CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
+find_package(aws-cpp-sdk-core REQUIRED)
+find_package(aws-cpp-sdk-s3 REQUIRED)
 
 set (PLATFORMLIBS 
 "${FOUNDATIONLIB};"
@@ -111,6 +112,8 @@ target_link_libraries(${IOSAPPNAME} LINK_PUBLIC
     fmt::fmt-header-only
     leveldb
     CURL::libcurl
+    aws-cpp-sdk-core
+    aws-cpp-sdk-s3
     ${VCPKG_INSTALL_PATH}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}Bullet3Common${CMAKE_STATIC_LIBRARY_SUFFIX}
     ${VCPKG_INSTALL_PATH}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}BulletCollision${CMAKE_STATIC_LIBRARY_SUFFIX}
     ${VCPKG_INSTALL_PATH}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}BulletDynamics${CMAKE_STATIC_LIBRARY_SUFFIX}
