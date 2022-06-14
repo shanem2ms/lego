@@ -10,6 +10,7 @@
 #include "PlayerView.h"
 #include "Audio.h"
 #include "imgui.h"
+#include "Mongo.h"
 #include <chrono>
 
 #define WATCHDOGTHREAD 0
@@ -52,6 +53,7 @@ namespace sam
         m_engine = std::make_unique<Engine>();
         m_world = std::make_unique<World>();
         m_audio = std::make_unique<Audio>();
+        m_mongo = std::make_unique<Mongo>("mongodb://shanemor.ddns.net:27017");
 #if WATCHDOGTHREAD
         sWatchdogThread = std::thread(WatchDogFunc);
 #endif

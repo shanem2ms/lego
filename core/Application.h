@@ -16,12 +16,15 @@ struct DrawContext;
 class BrickManager;
 class Audio;
 class GameController;
+class Mongo;
+
 class Application
 {
     std::unique_ptr<World> m_world;
     std::unique_ptr<Engine> m_engine;
     std::unique_ptr<LegoUI> m_legoUI;
     std::unique_ptr<Audio> m_audio;
+    std::unique_ptr<Mongo> m_mongo;
     std::unique_ptr<BrickManager> m_brickManager;
     std::unique_ptr<GameController> m_gameController;
     bool m_touchMode;
