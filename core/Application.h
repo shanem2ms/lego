@@ -17,6 +17,8 @@ class BrickManager;
 class Audio;
 class GameController;
 class Mongo;
+class ENetClient;
+class ENetServer;
 
 class Application
 {
@@ -25,6 +27,8 @@ class Application
     std::unique_ptr<LegoUI> m_legoUI;
     std::unique_ptr<Audio> m_audio;
     std::unique_ptr<Mongo> m_mongo;
+    std::unique_ptr<ENetClient> m_client;
+    std::unique_ptr<ENetServer> m_localSvr;
     std::unique_ptr<BrickManager> m_brickManager;
     std::unique_ptr<GameController> m_gameController;
     bool m_touchMode;

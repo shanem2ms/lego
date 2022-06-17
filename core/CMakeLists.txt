@@ -6,11 +6,10 @@ set (BGFX_LIB ${CMAKE_INSTALL_PREFIX}/lib)
 if (MSVC)
 add_compile_options(/await:strict)
 set(BX_INC_DIR_COMPAT ${BGFX_INCLUDE_ROOT}/compat/msvc)
+STRING(REPLACE "O2" "Od" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
 elseif (APPLE)
 set(BX_INC_DIR_COMPAT ${BGFX_INCLUDE_ROOT}/compat/osx)
 endif()
-
-#STRING(REPLACE "O2" "Od" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
 
 add_subdirectory(shaders)
 
@@ -26,6 +25,7 @@ set(Header_Files
     "World.h"
     "Engine.h"
     "OctTile.h"
+    "Enet.h"
     "Hud.h"
     "indexed_map.h"
     "Physics.h"
@@ -70,6 +70,7 @@ set(Source_Files
     "Engine.cpp"
     "OctTile.cpp"
     "Hud.cpp"
+    "Enet.cpp"
     "Frustum.cpp"
     "OctTileSelection.cpp"    
     "SceneItem.cpp"

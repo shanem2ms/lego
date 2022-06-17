@@ -32,7 +32,7 @@ find_package(aws-cpp-sdk-core REQUIRED)
 find_package(aws-cpp-sdk-s3 REQUIRED)
 find_package(bsoncxx CONFIG REQUIRED)
 find_package(mongocxx CONFIG REQUIRED)
-
+find_package(unofficial-enet CONFIG REQUIRED)
     
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(LIBDBG "debug/")
@@ -49,6 +49,7 @@ target_link_libraries(${PROJECT_NAME} LINK_PUBLIC
     ${VCPKG_INSTALL_PATH}/${LIBDBG}lib/BulletDynamics${CMAKE_DEBUG_POSTFIX}.lib
     ${VCPKG_INSTALL_PATH}/${LIBDBG}lib/BulletInverseDynamics${CMAKE_DEBUG_POSTFIX}.lib
     ${VCPKG_INSTALL_PATH}/${LIBDBG}lib/LinearMath${CMAKE_DEBUG_POSTFIX}.lib
+    unofficial::enet::enet
     mongo::mongocxx_shared
     mongo::bsoncxx_shared
     fmt::fmt-header-only
