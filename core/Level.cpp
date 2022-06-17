@@ -9,11 +9,22 @@
 #include "leveldb/zlib_compressor.h"
 #include "leveldb/decompress_allocator.h"
 #include "leveldb/db.h"
+#include "Enet.h"
 #include <thread>
 
 
 namespace sam
-{
+{   
+
+    struct GetOctTileMsg : public ENetMsg
+    {
+        Loc m_tileloc;
+        GetOctTileMsg(const Loc& l) :
+            ENetMsg(Type::GetOctTile, sizeof(GetOctTileMsg)),
+            m_tileloc(l)
+        {}
+    };
+
     class NullLogger : public leveldb::Logger {
     public:
         void Logv(const char*, va_list) override {
@@ -21,14 +32,14 @@ namespace sam
     };
 
 
-    Level::Level(bool disableWrite) :
+    LevelSvr::LevelSvr(bool disableWrite) :
         m_disableWrite(disableWrite),
         m_db(nullptr)
     {
     }
 
       
-    void Level::OpenDb(const std::string& path)
+    void LevelSvr::OpenDb(const std::string& path)
     {
         //leveldb::Env* env = leveldb::Env::Default();
         leveldb::Options options;
@@ -55,14 +66,14 @@ namespace sam
         leveldb::Status status = leveldb::DB::Open(options, path.c_str(), &m_db);
     }
 
-    bool Level::GetOctChunk(const Loc& l, std::string* val) const
+    bool LevelSvr::GetOctChunk(const Loc& l, std::string* val) const
     {
         leveldb::Slice key((const char*)&l, sizeof(l));
         leveldb::Status status = m_db->Get(leveldb::ReadOptions(), key, val);
         return status.ok();
     }
 
-    bool Level::WriteOctChunk(const Loc& l, const char* byte, size_t len)
+    bool LevelSvr::WriteOctChunk(const Loc& l, const char* byte, size_t len)
     {
         if (m_disableWrite)
             return true;
@@ -72,17 +83,17 @@ namespace sam
         return status.ok();
     }
 
-    bool Level::WritePlayerData(const Level::PlayerData& pos)
+    bool LevelSvr::WritePlayerData(const ILevel::PlayerData& pos)
     {
         if (m_disableWrite)
             return true;
         leveldb::Slice key("cam", 3);
-        leveldb::Slice val((const char *)&pos, sizeof(Level::PlayerData));
+        leveldb::Slice val((const char *)&pos, sizeof(ILevel::PlayerData));
         leveldb::Status status = m_db->Put(leveldb::WriteOptions(), key, val);
         return status.ok();
     }
 
-    bool Level::GetPlayerData(PlayerData& pos)
+    bool LevelSvr::GetPlayerData(PlayerData& pos)
     {
         leveldb::Slice key("cam", 3);
         std::string val;
@@ -94,4 +105,36 @@ namespace sam
         }
         return false;
     }
+
+
+    LevelCli::LevelCli()
+    {
+
+    }
+    void LevelCli::Connect(ENetClient *cli, const std::string& path)
+    {
+        m_client = cli;
+    }
+
+    bool LevelCli::GetOctChunk(const Loc& l, std::string* val) const
+    {
+        auto resp = m_client->Send(std::make_shared<GetOctTileMsg>(l));
+        resp.wait();
+        return true;
+    }
+    bool LevelCli::WriteOctChunk(const Loc& il, const char* byte, size_t len)
+    {
+        return true;
+    }
+
+    bool LevelCli::WritePlayerData(const PlayerData& pos)
+    {
+        return true;
+    }
+
+    bool LevelCli::GetPlayerData(PlayerData& pos)
+    {
+        return true;
+    }
+
 }

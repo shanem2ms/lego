@@ -14,13 +14,9 @@ namespace leveldb
 
 namespace sam
 {
-    class TerrainTile;
-
-    class Level {
-        leveldb::DB* m_db;
-        bool m_disableWrite;
-    public: 
-
+    class ENetClient;
+    class ILevel {
+    public:
         struct PlayerData
         {
             Vec3f pos;
@@ -33,12 +29,35 @@ namespace sam
             SlotPart slots[16];
         };
 
-        Level(bool disableWrite);
+        virtual bool GetOctChunk(const Loc& l, std::string* val) const = 0;
+        virtual bool WriteOctChunk(const Loc& il, const char* byte, size_t len) = 0;
+        virtual bool WritePlayerData(const PlayerData& pos) = 0;
+        virtual bool GetPlayerData(PlayerData& pos) = 0;
+    };
+
+    class LevelSvr : public ILevel {
+        leveldb::DB* m_db;
+        bool m_disableWrite;
+    public: 
+        LevelSvr(bool disableWrite);
         void OpenDb(const std::string& path);
 
-        bool GetOctChunk(const Loc& l, std::string* val) const;
-        bool WriteOctChunk(const Loc& il, const char* byte, size_t len);
-        bool WritePlayerData(const PlayerData &pos);
-        bool GetPlayerData(PlayerData& pos);
+        bool GetOctChunk(const Loc& l, std::string* val) const override;
+        bool WriteOctChunk(const Loc& il, const char* byte, size_t len) override;
+        bool WritePlayerData(const PlayerData &pos) override;
+        bool GetPlayerData(PlayerData& pos) override;
     };
+
+    class LevelCli : public ILevel {
+        bool m_disableWrite;
+        ENetClient *m_client;
+    public:
+        LevelCli();
+        void Connect(ENetClient *cli, const std::string& path);
+        bool GetOctChunk(const Loc& l, std::string* val) const override;
+        bool WriteOctChunk(const Loc& il, const char* byte, size_t len) override;
+        bool WritePlayerData(const PlayerData& pos) override;
+        bool GetPlayerData(PlayerData& pos) override;
+    };
+
 }

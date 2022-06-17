@@ -35,7 +35,7 @@ namespace sam
         int m_currentTool;
         bgfx::ProgramHandle m_shader;        
         std::shared_ptr<SceneItem> m_frustum;
-        Level m_level;
+        std::unique_ptr<ILevel> m_level;
         std::shared_ptr<LegoBrick> m_pPickedBrick;
         std::shared_ptr<Player> m_player;
         std::shared_ptr<Physics> m_physics;
@@ -49,7 +49,7 @@ namespace sam
         void Layout(int w, int h);
         World();
         ~World();
-        Level& Level() { return m_level; }
+        ILevel *Level() { return m_level.get(); }
         void Update(Engine& engine, DrawContext& ctx);
         void KeyDown(int k);
         void KeyUp(int k);

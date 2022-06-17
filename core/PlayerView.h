@@ -49,9 +49,9 @@ namespace sam
         { return m_rightHandPartInst; }
         std::shared_ptr<SceneItem> GetPlayerGroup()
         { return m_playerBody; }
-        void Update(DrawContext& ctx, Level& level);
+        void Update(DrawContext& ctx, ILevel *level);
         Player(World* pWorld);
-        void Initialize(Level& level);
+        void Initialize(ILevel *level);
         const SlotPart* GetSlots() const
         { return m_slots; }
         void SetSlot(int idx, const SlotPart &sp)

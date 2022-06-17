@@ -4,6 +4,7 @@
 #include <string>
 #include <functional>
 #include "gmtl/Vec.h"
+#include "Enet.h"
 
 namespace sam
 {
@@ -20,7 +21,7 @@ class Mongo;
 class ENetClient;
 class ENetServer;
 
-class Application
+class Application : public IServerHandler
 {
     std::unique_ptr<World> m_world;
     std::unique_ptr<Engine> m_engine;
@@ -74,10 +75,14 @@ public:
     static void DebugMsg(const std::string& str);
     void OpenInventory();
     void OpenMainMenu();
-
+    
+    ENetClient *Enet()
+    { return m_client.get(); }
     void UIImportMbx(const std::string& name);
 
     void UIQuit();
+
+    ENetResponse HandleMessage(const ENetMsg* msg) override;
 };
 
 std::shared_ptr< bgfx::CallbackI> CreateCallback();

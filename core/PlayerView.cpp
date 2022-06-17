@@ -21,7 +21,7 @@ namespace sam
         m_rightHandPartInst.canBeDestroyed = true;
     }
 
-    void Player::Initialize(Level& level)
+    void Player::Initialize(ILevel *level)
     {
         for (int i = 0; i < 16; ++i)
         {
@@ -42,8 +42,8 @@ namespace sam
         m_playerHead->SetOffset(Vec3f(0, 2.4f, 0));
         m_playerBody->AddItem(m_playerHead);
 
-        Level::PlayerData playerdata;
-        if (level.GetPlayerData(playerdata))
+        ILevel::PlayerData playerdata;
+        if (level->GetPlayerData(playerdata))
         {
             m_pos = playerdata.pos;
             m_dir = playerdata.dir;
@@ -96,7 +96,7 @@ namespace sam
     }
 
 
-    void Player::Update(DrawContext& ctx, Level& level)
+    void Player::Update(DrawContext& ctx, ILevel *level)
     {
         if (m_rigidBody == nullptr)
         {
@@ -166,7 +166,7 @@ namespace sam
         {
             Camera::Fly fly = Engine::Inst().ViewCam().GetFly();
             Camera::Fly dfly = Engine::Inst().DrawCam().GetFly();
-            Level::PlayerData playerdata;
+            ILevel::PlayerData playerdata;
             playerdata.pos = fly.pos;
             playerdata.dir = fly.dir;
             playerdata.flymode = FlyMode();
@@ -176,7 +176,7 @@ namespace sam
             playerdata.rightHandPart = GetRightHandPart();
             memcpy(playerdata.slots, m_slots, sizeof(playerdata.slots));
 
-            level.WritePlayerData(playerdata);
+            level->WritePlayerData(playerdata);
         }
     }
 

@@ -1,7 +1,6 @@
 #include "StdIncludes.h"
 #include "World.h"
 #include "Application.h"
-#include "Application.h"
 #include "Engine.h"
 #include <numeric>
 #include "Mesh.h"
@@ -32,13 +31,16 @@ namespace sam
         m_debugDraw(0),
         m_disableCollisionCheck(false),
         m_player(std::make_shared<Player>(this)),
-        m_level(false)
+        m_level(nullptr)
     {        
     }  
 
     void World::Open(const std::string& path)
     {
-        m_level.OpenDb(path);
+        std::unique_ptr<LevelCli> level =
+            std::make_unique<LevelCli>();
+        level->Connect(Application::Inst().Enet(), path);
+        m_level = std::move(level);
     }
 
     class Touch
@@ -204,7 +206,7 @@ namespace sam
             Camera::Fly fly;
             Camera::Fly dfly;
             
-            m_player->Initialize(m_level);
+            m_player->Initialize(m_level.get());
             fly.pos = dfly.pos = m_player->Pos();
             fly.dir = dfly.dir = m_player->Dir();
             e.DrawCam().SetFly(dfly);
@@ -237,7 +239,7 @@ namespace sam
 
         m_frustum->SetEnabled(m_player->InspectMode());
        
-        m_player->Update(ctx, m_level);
+        m_player->Update(ctx, m_level.get());
 
         if (m_player->InspectMode())
         {

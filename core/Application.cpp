@@ -56,7 +56,7 @@ namespace sam
         m_audio = std::make_unique<Audio>();
         m_mongo = std::make_unique<Mongo>("mongodb://shanemor.ddns.net:27017");
         m_client = std::make_unique<ENetClient>("127.0.0.1");
-        m_localSvr = std::make_unique<ENetServer>("127.0.0.1");
+        m_localSvr = std::make_unique<ENetServer>("127.0.0.1", this);
         m_localSvr->Start();
 #if WATCHDOGTHREAD
         sWatchdogThread = std::thread(WatchDogFunc);
@@ -330,5 +330,10 @@ namespace sam
     Application::~Application()
     {
 
+    }
+
+    ENetResponse Application::HandleMessage(const ENetMsg* msg)
+    {
+        return ENetResponse();
     }
 }
