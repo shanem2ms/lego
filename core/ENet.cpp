@@ -13,8 +13,10 @@ using namespace gmtl;
 
 namespace sam
 {
+    std::atomic<size_t> ENetMsg::m_nextUid(100);
     ENetClient::ENetClient(const std::string& svr) :
-        m_server(svr)
+        m_server(svr),
+        m_terminate(false)
     {
         std::thread t1(std::bind(&ENetClient::BackgroundThread, this));
         m_thread.swap(t1);
@@ -22,32 +24,25 @@ namespace sam
 
     ENetClient::~ENetClient()
     {
-        char* message = "Hello";
-        //ENetPacket* packet = enet_packet_create(message, strlen(message) + 1, ENET_PACKET_FLAG_RELIABLE);
-        //enet_peer_send(m_enetHost, 0, packet);
-        enet_host_destroy(m_enetHost);
+        m_terminate = true;
         m_thread.join();
+        enet_host_destroy(m_enetHost);
     }
 
     std::future<ENetResponse>
-        ENetClient::Send(const ENetMsg& msg)
+        ENetClient::Send(std::shared_ptr<ENetMsg> msg)
     {
         std::promise<ENetResponse> promise;
         
         auto future = promise.get_future();
+        uint64_t nextUid = 0;
         QueuedMsg qm{
+            nextUid,
             msg,
             std::move(promise)
         };
+        std::lock_guard lock(m_queueLock);
         m_queuedMsg.push_back(std::move(qm));
-        /*
-        char* message = "Hello";
-
-        if (strlen(message) > 0) {
-            ENetPacket* packet = enet_packet_create(message, strlen(message) + 1, ENET_PACKET_FLAG_RELIABLE);
-            enet_peer_send(peer, 0, packet);
-        }
-        */
         return future;
     }
 
@@ -85,7 +80,21 @@ namespace sam
 
         eventStatus = 1;
 
-        while (1) {
+        while (!m_terminate)
+        {
+            std::list<QueuedMsg> queuedMsg;
+            {
+                std::lock_guard lock(m_queueLock);
+                std::swap(m_queuedMsg, queuedMsg);
+            }
+            for (QueuedMsg& msg : queuedMsg)
+            {
+                size_t msgSize = msg.msg->m_size;
+                void* msgPtr = msg.msg.get();
+                ENetPacket* packet = enet_packet_create(msgPtr, msgSize, ENET_PACKET_FLAG_RELIABLE);
+                enet_peer_send(peer, 0, packet);
+                m_waitingResponse.push_back(std::move(msg));
+            }
             eventStatus = enet_host_service(m_enetHost, &evt, 5);
 
             // If we had some evt that interested us
@@ -114,21 +123,19 @@ namespace sam
         }
     }
 
-    ENetServer::ENetServer(const std::string& svr)
+    ENetServer::ENetServer(const std::string& svr, IServerHandler* pHandler) :
+        m_svrHandler(pHandler)
     {
     }
 
-    int ENetServer::Start()
+    void ENetServer::Start()
     {
         std::thread t1(std::bind(&ENetServer::BackgroundThread, this));
-        m_thread.swap(t1);
+        m_thread.swap(t1);        
     }
 
     ENetServer::~ENetServer()
     {
-        char* message = "Hello";
-        //ENetPacket* packet = enet_packet_create(message, strlen(message) + 1, ENET_PACKET_FLAG_RELIABLE);
-        //enet_peer_send(m_enetHost, 0, packet);
         enet_host_destroy(m_enetHost);
         m_thread.join();
     }
@@ -173,11 +180,17 @@ namespace sam
                     break;
 
                 case ENET_EVENT_TYPE_RECEIVE:
+                {
+                    ENetMsg* msg = (ENetMsg*)evt.packet->data;
+                    m_svrHandler->HandleMessage(msg);
                     printf("(Server) Message from m_enetHost : %s\n", evt.packet->data);
                     // Lets broadcast this message to all
-                    enet_host_broadcast(m_enetHost, 0, evt.packet);
+                    //evt.peer
+                    //enet_host_broadcast(m_enetHost, 0, evt.packet);
+                    //ENetPacket* packet = enet_packet_create(msgPtr, msgSize, ENET_PACKET_FLAG_RELIABLE);
+                    //enet_peer_send(evt.peer, 0, packet);
                     break;
-
+                }
                 case ENET_EVENT_TYPE_DISCONNECT:
                     printf("%s disconnected.\n", evt.peer->data);
 

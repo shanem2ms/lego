@@ -9,12 +9,21 @@ namespace sam
 {
     struct ENetMsg
     {
-        enum Id : int {
+        enum Type : int {
             GetOctTile = 1,
             SetOctTile = 2,
         };
 
-        std::string msg;
+        ENetMsg(Type t, size_t s) :
+            m_size(s),
+            m_type(t),
+            m_uid(m_nextUid++) {}
+
+        size_t m_size;
+        Type m_type;
+        size_t m_uid;
+
+        static std::atomic<size_t> m_nextUid;
     };
 
     struct ENetResponse
@@ -31,28 +40,38 @@ namespace sam
 
         struct QueuedMsg
         {
-            ENetMsg msg;
+            uint64_t uid;
+            std::shared_ptr<ENetMsg> msg;
             std::promise<ENetResponse> response;
         };
         std::mutex m_queueLock;
         std::list<QueuedMsg> m_queuedMsg;
+        std::list<QueuedMsg> m_waitingResponse;
+        bool m_terminate;
     public:
         ~ENetClient();
         ENetClient(const std::string& svr);
 
         std::future<ENetResponse>
-            Send(const ENetMsg& msg);
+            Send(std::shared_ptr<ENetMsg> msg);
     };
 
+    class IServerHandler
+    {
+    public:
+        virtual ENetResponse HandleMessage(const ENetMsg *msg) = 0;
+    };
     class ENetServer
     {
         std::string m_server;
         std::thread m_thread;
         void BackgroundThread();
         ENetHost* m_enetHost;
+        IServerHandler* m_svrHandler;
     public:
-        ENetServer(const std::string& svr);
+        ENetServer(const std::string& svr, IServerHandler*);
         ~ENetServer();
-        int Start();
+        void Start();
     };
+    
 }
