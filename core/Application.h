@@ -20,6 +20,7 @@ class GameController;
 class Mongo;
 class ENetClient;
 class ENetServer;
+class LevelSvr;
 
 class Application : public IServerHandler
 {
@@ -32,6 +33,7 @@ class Application : public IServerHandler
     std::unique_ptr<ENetServer> m_localSvr;
     std::unique_ptr<BrickManager> m_brickManager;
     std::unique_ptr<GameController> m_gameController;
+    std::unique_ptr<LevelSvr> m_levelSvr;
     bool m_touchMode;
     int m_width;
     int m_height;

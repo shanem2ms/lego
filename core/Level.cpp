@@ -15,16 +15,7 @@
 
 namespace sam
 {   
-
-    struct GetOctTileMsg : public ENetMsg
-    {
-        Loc m_tileloc;
-        GetOctTileMsg(const Loc& l) :
-            ENetMsg(Type::GetOctTile, sizeof(GetOctTileMsg)),
-            m_tileloc(l)
-        {}
-    };
-
+    
     class NullLogger : public leveldb::Logger {
     public:
         void Logv(const char*, va_list) override {
@@ -118,8 +109,9 @@ namespace sam
 
     bool LevelCli::GetOctChunk(const Loc& l, std::string* val) const
     {
-        auto resp = m_client->Send(std::make_shared<GetOctTileMsg>(l));
-        resp.wait();
+        auto promise = m_client->Send(std::make_shared<GetOctTileMsg>(l));
+        ENetResponse resp = promise.get();
+        *val = resp.data;
         return true;
     }
     bool LevelCli::WriteOctChunk(const Loc& il, const char* byte, size_t len)

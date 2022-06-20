@@ -6,6 +6,7 @@
 #include <functional>
 #include "Loc.h"
 #include "PartDefs.h"
+#include "Enet.h"
 
 namespace leveldb
 {
@@ -60,4 +61,12 @@ namespace sam
         bool GetPlayerData(PlayerData& pos) override;
     };
 
+    struct GetOctTileMsg : public ENetMsg
+    {
+        Loc m_tileloc;
+        GetOctTileMsg(const Loc& l) :
+            ENetMsg(Type::GetOctTile, sizeof(GetOctTileMsg)),
+            m_tileloc(l)
+        {}
+    };
 }

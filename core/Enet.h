@@ -28,7 +28,14 @@ namespace sam
 
     struct ENetResponse
     {
+        int status;
         std::string data;
+    };
+
+    struct ENetResponseHdr
+    {
+        size_t m_size;
+        size_t m_uid;
     };
 
     class ENetClient
@@ -40,13 +47,12 @@ namespace sam
 
         struct QueuedMsg
         {
-            uint64_t uid;
             std::shared_ptr<ENetMsg> msg;
             std::promise<ENetResponse> response;
         };
         std::mutex m_queueLock;
         std::list<QueuedMsg> m_queuedMsg;
-        std::list<QueuedMsg> m_waitingResponse;
+        std::unordered_map<uint64_t, QueuedMsg> m_waitingResponse;
         bool m_terminate;
     public:
         ~ENetClient();

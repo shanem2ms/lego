@@ -37,7 +37,6 @@ namespace sam
         auto future = promise.get_future();
         uint64_t nextUid = 0;
         QueuedMsg qm{
-            nextUid,
             msg,
             std::move(promise)
         };
@@ -93,7 +92,7 @@ namespace sam
                 void* msgPtr = msg.msg.get();
                 ENetPacket* packet = enet_packet_create(msgPtr, msgSize, ENET_PACKET_FLAG_RELIABLE);
                 enet_peer_send(peer, 0, packet);
-                m_waitingResponse.push_back(std::move(msg));
+                m_waitingResponse.insert(std::make_pair(msg.msg->m_uid, std::move(msg)));
             }
             eventStatus = enet_host_service(m_enetHost, &evt, 5);
 
@@ -106,11 +105,20 @@ namespace sam
                     break;
 
                 case ENET_EVENT_TYPE_RECEIVE:
-                    printf("(Client) Message from server : %s\n", evt.packet->data);
-                    // Lets broadcast this message to all
-                    // enet_host_broadcast(m_enetHost, 0, evt.packet);
+                {
+                    ENetResponseHdr* hdr = (ENetResponseHdr*)evt.packet->data;
+                    auto itResp = m_waitingResponse.find(hdr->m_uid);
+                    if (itResp != m_waitingResponse.end())
+                    {
+                        ENetResponse resp;
+                        resp.data.resize(hdr->m_size);
+                        memcpy(resp.data.data(), evt.packet->data + sizeof(ENetResponseHdr),
+                            resp.data.size());
+                        itResp->second.response.set_value(resp);
+                    }
                     enet_packet_destroy(evt.packet);
                     break;
+                }
 
                 case ENET_EVENT_TYPE_DISCONNECT:
                     printf("(Client) %s disconnected.\n", evt.peer->data);
@@ -182,17 +190,20 @@ namespace sam
                 case ENET_EVENT_TYPE_RECEIVE:
                 {
                     ENetMsg* msg = (ENetMsg*)evt.packet->data;
-                    m_svrHandler->HandleMessage(msg);
-                    printf("(Server) Message from m_enetHost : %s\n", evt.packet->data);
-                    // Lets broadcast this message to all
-                    //evt.peer
-                    //enet_host_broadcast(m_enetHost, 0, evt.packet);
-                    //ENetPacket* packet = enet_packet_create(msgPtr, msgSize, ENET_PACKET_FLAG_RELIABLE);
-                    //enet_peer_send(evt.peer, 0, packet);
+                    ENetResponse resp = m_svrHandler->HandleMessage(msg);                    
+                    std::string rdata;
+                    rdata.resize(sizeof(ENetResponseHdr) + resp.data.size());
+                    ENetResponseHdr ehdr;
+                    ehdr.m_size = resp.data.size();
+                    ehdr.m_uid = msg->m_uid;
+                    memcpy(rdata.data(), &ehdr, sizeof(ENetResponseHdr));
+                    memcpy(rdata.data() + sizeof(ENetResponseHdr), resp.data.data(), resp.data.size());
+                    ENetPacket* packet = enet_packet_create(rdata.data(), rdata.size(), ENET_PACKET_FLAG_RELIABLE);
+                    enet_peer_send(evt.peer, 0, packet);
+                    enet_packet_destroy(evt.packet);
                     break;
                 }
                 case ENET_EVENT_TYPE_DISCONNECT:
-                    printf("%s disconnected.\n", evt.peer->data);
 
                     // Reset m_enetHost's information
                     evt.peer->data = NULL;

@@ -58,6 +58,7 @@ namespace sam
         m_client = std::make_unique<ENetClient>("127.0.0.1");
         m_localSvr = std::make_unique<ENetServer>("127.0.0.1", this);
         m_localSvr->Start();
+        m_levelSvr = std::make_unique<LevelSvr>(false);
 #if WATCHDOGTHREAD
         sWatchdogThread = std::thread(WatchDogFunc);
 #endif
@@ -227,7 +228,8 @@ namespace sam
         m_startupPath = startFolder;
         m_documentsPath = docFolder;
         std::string dbPath = m_documentsPath + "/testlvl";
-        m_world->Open(dbPath);
+        m_levelSvr->OpenDb(dbPath);
+        m_world->Open("127.0.0.1");
         imguiCreate(32.0f);
         m_brickManager = std::make_unique<BrickManager>();
         m_engine->AddExternalDraw(m_brickManager.get());
@@ -334,6 +336,14 @@ namespace sam
 
     ENetResponse Application::HandleMessage(const ENetMsg* msg)
     {
-        return ENetResponse();
+        ENetResponse response;
+        if (msg->m_type == ENetMsg::GetOctTile)
+        {
+            GetOctTileMsg* gmsg = (GetOctTileMsg*)msg;
+            std::string val;
+            bool result = m_levelSvr->GetOctChunk(gmsg->m_tileloc, &response.data);
+            if (!result) response.data = std::string();
+        }
+        return response;
     }
 }
