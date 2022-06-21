@@ -37,15 +37,16 @@ set(CMAKE_FIND_DEBUG_MODE FALSE)
 include(${CMAKE_SOURCE_DIR}/../vcpkg/scripts/buildsystems/vcpkg.cmake)
 
 add_subdirectory(core)
+add_subdirectory(zlib)
+add_subdirectory(leveldb)
+add_dependencies(core zlibstatic)
+add_dependencies(core leveldb)
+
 add_subdirectory(game)
 add_dependencies(game core)
 add_dependencies(game bgfx::bgfx)
 add_dependencies(shaders bgfx::bgfx)
 
-add_subdirectory(zlib)
-add_subdirectory(leveldb)
-add_dependencies(game zlibstatic)
-add_dependencies(game leveldb)
 
 if (APPLE)
 add_subdirectory(ios)
