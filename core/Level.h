@@ -36,17 +36,15 @@ namespace sam
         virtual bool GetPlayerData(PlayerData& pos) = 0;
     };
 
-    class LevelSvr : public ILevel {
+    class LevelSvr {
         leveldb::DB* m_db;
         bool m_disableWrite;
     public: 
         LevelSvr(bool disableWrite);
         void OpenDb(const std::string& path);
 
-        bool GetOctChunk(const Loc& l, std::string* val) const override;
-        bool WriteOctChunk(const Loc& il, const char* byte, size_t len) override;
-        bool WritePlayerData(const PlayerData &pos) override;
-        bool GetPlayerData(PlayerData& pos) override;
+        bool GetValue(const std::string& key, std::string* val) const;
+        bool WriteValue(const std::string& key, const char* byte, size_t len);
     };
 
     class LevelCli : public ILevel {
@@ -60,63 +58,81 @@ namespace sam
         bool WritePlayerData(const PlayerData& pos) override;
         bool GetPlayerData(PlayerData& pos) override;
     };
-
-    struct GetOctTileMsg : public ENetMsg
+     
+    struct GetLevelValueMsg : public ENetMsg
     {
-        Loc m_tileloc;
-        GetOctTileMsg(const Loc& l) :
-            ENetMsg(Type::GetOctTile, sizeof(GetOctTileMsg)),
-            m_tileloc(l)
+        std::string m_key;
+        GetLevelValueMsg(const uint8_t* key, size_t klen) :
+            ENetMsg(Type::GetValue),
+            m_key(key, key + klen)
         {}
 
-        GetOctTileMsg() : m_tileloc(0,0,0,0){}
+        GetLevelValueMsg() {}
 
         size_t GetSize() const override
         {
             return ENetMsg::GetSize() +
-                sizeof(m_tileloc);
+                sizeof(uint32_t) +
+                m_key.size();
         }
-        virtual uint8_t *WriteData(uint8_t* data)
+        virtual uint8_t* WriteData(uint8_t* data)
         {
-            uint8_t *dataNext = ENetMsg::WriteData(data);
-            memcpy(dataNext, &m_tileloc, sizeof(m_tileloc));
-            return dataNext + sizeof(m_tileloc);
+            uint8_t* dataNext = ENetMsg::WriteData(data);
+            uint32_t sz = m_key.size();
+            memcpy(dataNext, &sz, sizeof(sz));
+            dataNext += sizeof(sz);
+            memcpy(dataNext, m_key.data(), sz);
+            dataNext += sz;
+            return dataNext;
         }
 
         virtual const uint8_t* ReadData(const uint8_t* data)
         {
             const uint8_t* dataNext = ENetMsg::ReadData(data);
-            memcpy(&m_tileloc, dataNext, sizeof(m_tileloc));
-            return dataNext + sizeof(m_tileloc);
-        }
-    };
+            uint32_t sz;
+            memcpy(&sz, dataNext, sizeof(sz));
+            dataNext += sizeof(sz);
+            m_key.resize(sz);
+            memcpy(m_key.data(), dataNext, sz);
+            dataNext += sz;
+            return dataNext;
+        };
 
-    struct SetOctTileMsg : public ENetMsg
+    };
+   
+    struct SetLevelValueMsg : public ENetMsg
     {
-        Loc m_tileloc;
+        std::string m_key;
         std::string m_data;
 
-        SetOctTileMsg(const Loc& l, const char* byte, size_t len) :
-            ENetMsg(Type::SetOctTile, sizeof(SetOctTile) - sizeof(m_data)),
-            m_tileloc(l),
+        SetLevelValueMsg(const uint8_t* key, size_t klen,
+            const char* byte, size_t len) :
+            ENetMsg(Type::SetValue),
+            m_key(key, key+klen),
             m_data(byte, byte + len)
         {}
 
-        SetOctTileMsg() : m_tileloc(0, 0, 0, 0) {}
+        SetLevelValueMsg() : ENetMsg(Type::SetValue) {}
 
         size_t GetSize() const override
         {
             return ENetMsg::GetSize() +
-                sizeof(m_tileloc) + 
-                sizeof(uint32_t) + 
+                sizeof(uint32_t) +
+                m_key.size() +
+                sizeof(uint32_t) +
                 m_data.size();
         }
         virtual uint8_t* WriteData(uint8_t* data)
         {
             uint8_t* dataNext = ENetMsg::WriteData(data);
-            memcpy(dataNext, &m_tileloc, sizeof(m_tileloc));
-            dataNext += sizeof(m_tileloc);
-            uint32_t sz = m_data.size();
+            uint32_t sz = m_key.size();
+            memcpy(dataNext, &sz, sizeof(sz));
+            dataNext += sizeof(sz);
+            memcpy(dataNext, m_key.data(), sz);
+            dataNext += sz;
+
+
+            sz = m_data.size();
             memcpy(dataNext, &sz, sizeof(sz));
             dataNext += sizeof(sz);
             memcpy(dataNext, m_data.data(), sz);
@@ -127,9 +143,15 @@ namespace sam
         virtual const uint8_t* ReadData(const uint8_t* data)
         {
             const uint8_t* dataNext = ENetMsg::ReadData(data);
-            memcpy(&m_tileloc, dataNext, sizeof(m_tileloc));
-            dataNext += sizeof(m_tileloc);
+
             uint32_t sz;
+            memcpy(&sz, dataNext, sizeof(sz));
+            dataNext += sizeof(sz);
+            m_key.resize(sz);
+            memcpy(m_key.data(), dataNext, sz);
+            dataNext += sz;
+
+            sz;
             memcpy(&sz, dataNext, sizeof(sz));
             dataNext += sizeof(sz);
             m_data.resize(sz);
@@ -138,5 +160,4 @@ namespace sam
             return dataNext;
         }
     };
-    
 }

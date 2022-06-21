@@ -15,6 +15,8 @@ namespace sam
             m_z(z),
             m_l(l) {}
 
+        Loc() {}
+
         int m_x;
         int m_y;
         int m_z;

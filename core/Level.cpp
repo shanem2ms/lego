@@ -57,45 +57,22 @@ namespace sam
         leveldb::Status status = leveldb::DB::Open(options, path.c_str(), &m_db);
     }
 
-    bool LevelSvr::GetOctChunk(const Loc& l, std::string* val) const
+    bool LevelSvr::GetValue(const std::string &k, std::string* val) const
     {
-        leveldb::Slice key((const char*)&l, sizeof(l));
+        leveldb::Slice key(k);
         leveldb::Status status = m_db->Get(leveldb::ReadOptions(), key, val);
         return status.ok();
     }
 
-    bool LevelSvr::WriteOctChunk(const Loc& l, const char* byte, size_t len)
+    bool LevelSvr::WriteValue(const std::string& k, const char* byte, size_t len)
     {
         if (m_disableWrite)
             return true;
-        leveldb::Slice key((const char*)&l, sizeof(l));
+        leveldb::Slice key(k);
         leveldb::Slice val(byte, len);
         leveldb::Status status = m_db->Put(leveldb::WriteOptions(), key, val);
         return status.ok();
-    }
-
-    bool LevelSvr::WritePlayerData(const ILevel::PlayerData& pos)
-    {
-        if (m_disableWrite)
-            return true;
-        leveldb::Slice key("cam", 3);
-        leveldb::Slice val((const char *)&pos, sizeof(ILevel::PlayerData));
-        leveldb::Status status = m_db->Put(leveldb::WriteOptions(), key, val);
-        return status.ok();
-    }
-
-    bool LevelSvr::GetPlayerData(PlayerData& pos)
-    {
-        leveldb::Slice key("cam", 3);
-        std::string val;
-        leveldb::Status status = m_db->Get(leveldb::ReadOptions(), key, &val);
-        if (status.ok() && val.size() == sizeof(PlayerData))
-        {
-            memcpy(&pos, val.data(), sizeof(PlayerData));
-            return true;
-        }
-        return false;
-    }
+    }   
 
 
     LevelCli::LevelCli()
@@ -109,25 +86,32 @@ namespace sam
 
     bool LevelCli::GetOctChunk(const Loc& l, std::string* val) const
     {
-        auto promise = m_client->Send(std::make_shared<GetOctTileMsg>(l));
+        auto promise = m_client->Send(std::make_shared<GetLevelValueMsg>((const uint8_t*)&l, sizeof(l)));
         ENetResponse resp = promise.get();
         *val = resp.data;
         return true;
     }
     bool LevelCli::WriteOctChunk(const Loc& il, const char* byte, size_t len)
     {        
-        auto promise = m_client->Send(std::make_shared<SetOctTileMsg>(il, byte, len));
+        auto promise = m_client->Send(std::make_shared<SetLevelValueMsg>((const uint8_t *) & il, sizeof(il), byte, len));
         ENetResponse resp = promise.get();
         return resp.status == 1;
     }
 
     bool LevelCli::WritePlayerData(const PlayerData& pos)
     {
-        return true;
+        const char* key = "cam";
+        auto promise = m_client->Send(std::make_shared<SetLevelValueMsg>((const uint8_t*)key, 3, (const char *)& pos, sizeof(pos)));
+        ENetResponse resp = promise.get();
+        return resp.status == 1;
     }
 
     bool LevelCli::GetPlayerData(PlayerData& pos)
     {
+        const char* key = "cam";
+        auto promise = m_client->Send(std::make_shared<GetLevelValueMsg>((const uint8_t*)key, 3));
+        ENetResponse resp = promise.get();
+        memcpy(&pos, resp.data.data(), sizeof(pos));
         return true;
     }
 

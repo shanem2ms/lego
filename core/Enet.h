@@ -10,15 +10,15 @@ namespace sam
     struct ENetMsg
     {
         enum Type : int {
-            GetOctTile = 1,
-            SetOctTile = 2,
+            GetValue = 1,
+            SetValue = 2
         };
 
         struct Header
         {
             Header() {}
-            Header(Type t, size_t s) :
-                m_size(s),
+            Header(Type t) :
+                m_size(-1),
                 m_type(t),
                 m_uid(m_nextUid++) {}
             size_t m_size;
@@ -26,8 +26,8 @@ namespace sam
             size_t m_uid;
         };
 
-        ENetMsg(Type t, size_t s) :
-            m_hdr(t, s)
+        ENetMsg(Type t) :
+            m_hdr(t)
         {}
 
         ENetMsg() {}
