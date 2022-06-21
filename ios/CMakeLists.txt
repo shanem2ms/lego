@@ -109,6 +109,7 @@ target_link_libraries(${IOSAPPNAME} LINK_PUBLIC
     zlibstatic
     libzip::zip
     core
+    game
     fmt::fmt-header-only
     leveldb
     CURL::libcurl

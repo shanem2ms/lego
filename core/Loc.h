@@ -1,5 +1,4 @@
 #pragma once
-#include "StdIncludes.h"
 
 using namespace gmtl;
 namespace sam

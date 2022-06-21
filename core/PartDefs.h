@@ -2,6 +2,7 @@
 
 namespace sam
 {
+    using namespace gmtl;
     struct PartId
     {
         char _id[8];

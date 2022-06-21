@@ -1,9 +1,6 @@
 #include "StdIncludes.h"
-#include "SceneItem.h"
-#include "Application.h"
 #include "PartDefs.h"
 #include "ENet.h"
-#include "BrickMgr.h"
 #include "nlohmann/json.hpp"
 #include "zip.h"
 #include <enet/enet.h>

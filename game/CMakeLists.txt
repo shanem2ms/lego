@@ -18,14 +18,12 @@ add_subdirectory(shaders)
 # Source groups
 ################################################################################
 set(Header_Files
-    "StdIncludes.h"
     "Application.h"
     "Audio.h"
     "BrickMgr.h"
     "World.h"
     "Engine.h"
     "OctTile.h"
-    "Enet.h"
     "Hud.h"
     "indexed_map.h"
     "Physics.h"
@@ -70,7 +68,6 @@ set(Source_Files
     "Engine.cpp"
     "OctTile.cpp"
     "Hud.cpp"
-    "Enet.cpp"
     "Frustum.cpp"
     "OctTileSelection.cpp"    
     "SceneItem.cpp"
@@ -80,7 +77,6 @@ set(Source_Files
     "Mongo.cpp"
     "GameController.cpp"
     "Physics.cpp"
-    "Level.cpp"
     "LegoBrick.cpp"
     "PlayerView.cpp"
     "ConnectionWidget.cpp"
@@ -108,21 +104,22 @@ set(ALL_FILES
 )
 
 find_package(aws-cpp-sdk-core REQUIRED)
-add_library(core STATIC ${ALL_FILES} "indexed_map.h")
+add_library(game STATIC ${ALL_FILES} "indexed_map.h")
 
-target_precompile_headers(core PRIVATE "StdIncludes.h")
+target_precompile_headers(game PRIVATE "StdIncludes.h")
 
-add_dependencies(core shaders)
+add_dependencies(game shaders)
 ################################################################################
 # Include directories
 ################################################################################
 
 message("BGFX_INC_DIR = ${BGFX_INC_DIR}")
 
-target_include_directories(core PUBLIC
+target_include_directories(game PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/."
     "${CMAKE_CURRENT_SOURCE_DIR}/imgui/."
-    "${CMAKE_CURRENT_SOURCE_DIR}/../leveldb/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../core"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../core/leveldb/include"
     "${VCPKG_INSTALL_PATH}/include"
     "${VCPKG_INSTALL_PATH}/include/bullet"
     ${BGFX_INCLUDE_ROOT}
@@ -146,7 +143,7 @@ foreach (RSRC ${All_RESOURCES})
 get_filename_component(OUTNAME ${RSRC} NAME)
 
 add_custom_command(
-    TARGET core POST_BUILD
+    TARGET game POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
         ${RSRC}
         ${CMAKE_BINARY_DIR}/${OUTNAME})

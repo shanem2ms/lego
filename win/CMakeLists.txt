@@ -55,6 +55,7 @@ target_link_libraries(${PROJECT_NAME} LINK_PUBLIC
     fmt::fmt-header-only
     CURL::libcurl
     core 
+    game
     ${PLATFORMLIBS}
     zlibstatic
     leveldb
