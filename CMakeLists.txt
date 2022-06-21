@@ -36,22 +36,22 @@ set(CMAKE_FIND_DEBUG_MODE FALSE)
 
 include(${CMAKE_SOURCE_DIR}/../vcpkg/scripts/buildsystems/vcpkg.cmake)
 
-add_subdirectory(core)
-add_dependencies(core bgfx::bgfx)
+add_subdirectory(game)
+add_dependencies(game bgfx::bgfx)
 add_dependencies(shaders bgfx::bgfx)
 
 add_subdirectory(zlib)
 add_subdirectory(leveldb)
-add_dependencies(core zlibstatic)
-add_dependencies(core leveldb)
+add_dependencies(game zlibstatic)
+add_dependencies(game leveldb)
 
 if (APPLE)
 add_subdirectory(ios)
-add_dependencies(lego core)
+add_dependencies(lego game)
 else()
 add_subdirectory(server)
 add_subdirectory(win)
-add_dependencies(lego core)
+add_dependencies(lego game)
 endif()
  
 set(CMAKE_XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER ${BUNDLE_ID})
