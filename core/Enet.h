@@ -14,17 +14,41 @@ namespace sam
             SetOctTile = 2,
         };
 
-        ENetMsg(Type t, size_t s) :
-            m_size(s),
-            m_type(t),
-            m_uid(m_nextUid++) {}
+        struct Header
+        {
+            Header() {}
+            Header(Type t, size_t s) :
+                m_size(s),
+                m_type(t),
+                m_uid(m_nextUid++) {}
+            size_t m_size;
+            Type m_type;
+            size_t m_uid;
+        };
 
-        size_t m_size;
-        Type m_type;
-        size_t m_uid;
+        ENetMsg(Type t, size_t s) :
+            m_hdr(t, s)
+        {}
+
+        ENetMsg() {}
+        Header m_hdr;
+        virtual size_t GetSize() const
+        { return sizeof(m_hdr);}
+        virtual uint8_t *WriteData(uint8_t* data)
+        {
+            memcpy(data, &m_hdr, sizeof(m_hdr));
+            return data + sizeof(m_hdr);
+        }
+
+        virtual const uint8_t* ReadData(const uint8_t* data)
+        {
+            memcpy(&m_hdr, data, sizeof(m_hdr));
+            return data + sizeof(m_hdr);
+        }
 
         static std::atomic<size_t> m_nextUid;
     };
+    
 
     struct ENetResponse
     {
@@ -65,7 +89,7 @@ namespace sam
     class IServerHandler
     {
     public:
-        virtual ENetResponse HandleMessage(const ENetMsg *msg) = 0;
+        virtual ENetResponse HandleMessage(const ENetMsg::Header *msg) = 0;
     };
     class ENetServer
     {

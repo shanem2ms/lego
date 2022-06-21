@@ -334,15 +334,25 @@ namespace sam
 
     }
 
-    ENetResponse Application::HandleMessage(const ENetMsg* msg)
+    ENetResponse Application::HandleMessage(const ENetMsg::Header* msg)
     {
         ENetResponse response;
         if (msg->m_type == ENetMsg::GetOctTile)
         {
-            GetOctTileMsg* gmsg = (GetOctTileMsg*)msg;
+            GetOctTileMsg gmsg;
+            gmsg.ReadData((const uint8_t*)msg);
             std::string val;
-            bool result = m_levelSvr->GetOctChunk(gmsg->m_tileloc, &response.data);
+            bool result = m_levelSvr->GetOctChunk(gmsg.m_tileloc, &response.data);
             if (!result) response.data = std::string();
+        }
+        else if (msg->m_type == ENetMsg::SetOctTile)
+        {
+            SetOctTileMsg gmsg;
+            gmsg.ReadData((const uint8_t*)msg);
+            std::string val;
+            bool result = m_levelSvr->WriteOctChunk(gmsg.m_tileloc, gmsg.m_data.data(), gmsg.m_data.size());
+            if (!result) response.data = std::string();
+            
         }
         return response;
     }

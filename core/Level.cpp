@@ -115,8 +115,10 @@ namespace sam
         return true;
     }
     bool LevelCli::WriteOctChunk(const Loc& il, const char* byte, size_t len)
-    {
-        return true;
+    {        
+        auto promise = m_client->Send(std::make_shared<SetOctTileMsg>(il, byte, len));
+        ENetResponse resp = promise.get();
+        return resp.status == 1;
     }
 
     bool LevelCli::WritePlayerData(const PlayerData& pos)

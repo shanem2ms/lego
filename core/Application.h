@@ -24,16 +24,16 @@ class LevelSvr;
 
 class Application : public IServerHandler
 {
+    std::unique_ptr<LevelSvr> m_levelSvr;
+    std::unique_ptr<ENetServer> m_localSvr;
+    std::unique_ptr<ENetClient> m_client;
     std::unique_ptr<World> m_world;
     std::unique_ptr<Engine> m_engine;
     std::unique_ptr<LegoUI> m_legoUI;
     std::unique_ptr<Audio> m_audio;
     std::unique_ptr<Mongo> m_mongo;
-    std::unique_ptr<ENetClient> m_client;
-    std::unique_ptr<ENetServer> m_localSvr;
     std::unique_ptr<BrickManager> m_brickManager;
     std::unique_ptr<GameController> m_gameController;
-    std::unique_ptr<LevelSvr> m_levelSvr;
     bool m_touchMode;
     int m_width;
     int m_height;
@@ -84,7 +84,7 @@ public:
 
     void UIQuit();
 
-    ENetResponse HandleMessage(const ENetMsg* msg) override;
+    ENetResponse HandleMessage(const ENetMsg::Header* msg) override;
 };
 
 std::shared_ptr< bgfx::CallbackI> CreateCallback();

@@ -88,11 +88,12 @@ namespace sam
             }
             for (QueuedMsg& msg : queuedMsg)
             {
-                size_t msgSize = msg.msg->m_size;
-                void* msgPtr = msg.msg.get();
-                ENetPacket* packet = enet_packet_create(msgPtr, msgSize, ENET_PACKET_FLAG_RELIABLE);
+                std::vector<uint8_t> data(msg.msg->GetSize());
+                msg.msg->WriteData(data.data());
+
+                ENetPacket* packet = enet_packet_create(data.data(), data.size(), ENET_PACKET_FLAG_RELIABLE);
                 enet_peer_send(peer, 0, packet);
-                m_waitingResponse.insert(std::make_pair(msg.msg->m_uid, std::move(msg)));
+                m_waitingResponse.insert(std::make_pair(msg.msg->m_hdr.m_uid, std::move(msg)));
             }
             eventStatus = enet_host_service(m_enetHost, &evt, 5);
 
@@ -189,7 +190,7 @@ namespace sam
 
                 case ENET_EVENT_TYPE_RECEIVE:
                 {
-                    ENetMsg* msg = (ENetMsg*)evt.packet->data;
+                    ENetMsg::Header* msg = (ENetMsg::Header*)evt.packet->data;
                     ENetResponse resp = m_svrHandler->HandleMessage(msg);                    
                     std::string rdata;
                     rdata.resize(sizeof(ENetResponseHdr) + resp.data.size());
