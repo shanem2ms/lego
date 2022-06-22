@@ -65,7 +65,7 @@ namespace sam
             exit(EXIT_FAILURE);
         }
 
-        enet_address_set_host(&address, "localhost");
+        enet_address_set_host(&address, m_server.c_str());
         address.port = m_port;
 
         // c. Connect and user service

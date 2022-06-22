@@ -55,7 +55,7 @@ namespace sam
         m_world = std::make_unique<World>();
         m_audio = std::make_unique<Audio>();
         m_mongo = std::make_unique<Mongo>("mongodb://shanemor.ddns.net:27017");
-        m_client = std::make_unique<ENetClient>("127.0.0.1", 8000);
+        m_client = std::make_unique<ENetClient>("shanemor.ddns.net", 8000);
 #if WATCHDOGTHREAD
         sWatchdogThread = std::thread(WatchDogFunc);
 #endif

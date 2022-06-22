@@ -30,9 +30,7 @@ set(BUNDLE_ID "com.lego.shane")
 
 message("install path ${CMAKE_INSTALL_PREFIX}")
 
-set(CMAKE_FIND_DEBUG_MODE TRUE)
 find_package(bgfx CONFIG REQUIRED )
-set(CMAKE_FIND_DEBUG_MODE FALSE)
 
 include(${CMAKE_SOURCE_DIR}/../vcpkg/scripts/buildsystems/vcpkg.cmake)
 
