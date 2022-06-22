@@ -22,10 +22,8 @@ class ENetClient;
 class ENetServer;
 class LevelSvr;
 
-class Application : public IServerHandler
+class Application
 {
-    std::unique_ptr<LevelSvr> m_levelSvr;
-    std::unique_ptr<ENetServer> m_localSvr;
     std::unique_ptr<ENetClient> m_client;
     std::unique_ptr<World> m_world;
     std::unique_ptr<Engine> m_engine;
@@ -83,8 +81,6 @@ public:
     void UIImportMbx(const std::string& name);
 
     void UIQuit();
-
-    ENetResponse HandleMessage(const ENetMsg::Header* msg) override;
 };
 
 std::shared_ptr< bgfx::CallbackI> CreateCallback();

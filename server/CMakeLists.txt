@@ -33,7 +33,8 @@ find_package(aws-cpp-sdk-s3 REQUIRED)
 find_package(bsoncxx CONFIG REQUIRED)
 find_package(mongocxx CONFIG REQUIRED)
 find_package(unofficial-enet CONFIG REQUIRED)
-    
+find_package(cxxopts CONFIG REQUIRED)
+
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(LIBDBG "debug/")
   set(CMAKE_DEBUG_POSTFIX "_Debug")
@@ -50,6 +51,7 @@ target_link_libraries(${SERVER_NAME} LINK_PUBLIC
     libzip::zip
     aws-cpp-sdk-core
     aws-cpp-sdk-s3
+    cxxopts::cxxopts
        )
        
 target_include_directories(${SERVER_NAME} PUBLIC

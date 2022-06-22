@@ -67,6 +67,7 @@ namespace sam
         std::string m_server;
         std::thread m_thread;
         ENetHost* m_enetHost;
+        uint16_t m_port;
         void BackgroundThread();
 
         struct QueuedMsg
@@ -80,7 +81,7 @@ namespace sam
         bool m_terminate;
     public:
         ~ENetClient();
-        ENetClient(const std::string& svr);
+        ENetClient(const std::string& svr, uint16_t port);
 
         std::future<ENetResponse>
             Send(std::shared_ptr<ENetMsg> msg);
@@ -93,13 +94,14 @@ namespace sam
     };
     class ENetServer
     {
-        std::string m_server;
+        std::string m_hostaddr;
+        uint16_t m_port;
         std::thread m_thread;
         void BackgroundThread();
         ENetHost* m_enetHost;
-        IServerHandler* m_svrHandler;
+        IServerHandler* m_svrHandler;        
     public:
-        ENetServer(const std::string& svr, IServerHandler*);
+        ENetServer(const std::string& m_hostaddr, uint16_t port, IServerHandler*);
         ~ENetServer();
         void Start();
     };

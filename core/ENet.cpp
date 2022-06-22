@@ -11,7 +11,8 @@ using namespace gmtl;
 namespace sam
 {
     std::atomic<size_t> ENetMsg::m_nextUid(100);
-    ENetClient::ENetClient(const std::string& svr) :
+    ENetClient::ENetClient(const std::string& svr, uint16_t port) :
+        m_port(port),
         m_server(svr),
         m_terminate(false)
     {
@@ -65,7 +66,7 @@ namespace sam
         }
 
         enet_address_set_host(&address, "localhost");
-        address.port = 1234;
+        address.port = m_port;
 
         // c. Connect and user service
         peer = enet_host_connect(m_enetHost, &address, 2, 0);
@@ -129,7 +130,9 @@ namespace sam
         }
     }
 
-    ENetServer::ENetServer(const std::string& svr, IServerHandler* pHandler) :
+    ENetServer::ENetServer(const std::string& hostaddr, uint16_t port, IServerHandler* pHandler) :
+        m_hostaddr(hostaddr),
+        m_port(port),
         m_svrHandler(pHandler)
     {
     }
@@ -162,7 +165,7 @@ namespace sam
 
         // b. Create a host using enet_host_create
         address.host = ENET_HOST_ANY;
-        address.port = 1234;
+        address.port = m_port;
 
         m_enetHost = enet_host_create(&address, 32, 2, 0, 0);
 
