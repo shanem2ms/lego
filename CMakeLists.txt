@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15.0 FATAL_ERROR)
 set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
 include (ExternalProject)
 
-option(BLOCKO_GAME "Build game" OFF)
+option(BLOCKO_GAME "Build game" ON)
 option(BLOCKO_SERVER "Build Server" ON)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -54,7 +54,10 @@ add_subdirectory(win)
 add_dependencies(lego game)
 endif()
 endif()
+
+if (BLOCKO_SERVER)
 add_subdirectory(server)
+endif ()
  
 set(CMAKE_XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER ${BUNDLE_ID})
 set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "73CP3TPHE9")

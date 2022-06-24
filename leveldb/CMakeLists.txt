@@ -146,7 +146,7 @@ target_include_directories(leveldb PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/."
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/../"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../zlib"
+    "${VCPKG_INSTALL_PATH}/include"
     "${CMAKE_BINARY_DIR}/zlib"
     ${PlatformIncludeDirs}
 

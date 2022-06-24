@@ -33,6 +33,7 @@ find_package(aws-cpp-sdk-s3 REQUIRED)
 find_package(bsoncxx CONFIG REQUIRED)
 find_package(mongocxx CONFIG REQUIRED)
 find_package(unofficial-enet CONFIG REQUIRED)
+find_package(ZLIB REQUIRED)
     
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(LIBDBG "debug/")
@@ -57,7 +58,7 @@ target_link_libraries(${PROJECT_NAME} LINK_PUBLIC
     core 
     game
     ${PLATFORMLIBS}
-    zlibstatic
+    ZLIB::ZLIB
     leveldb
     libzip::zip
     aws-cpp-sdk-core

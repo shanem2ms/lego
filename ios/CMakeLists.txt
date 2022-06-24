@@ -72,6 +72,7 @@ find_package(libzip CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(aws-cpp-sdk-core REQUIRED)
 find_package(aws-cpp-sdk-s3 REQUIRED)
+find_package(ZLIB REQUIRED)
 
 set (PLATFORMLIBS 
 "${FOUNDATIONLIB};"
@@ -106,7 +107,7 @@ target_include_directories(${IOSAPPNAME} PUBLIC
 
 target_link_libraries(${IOSAPPNAME} LINK_PUBLIC
     ${PLATFORMLIBS}
-    zlibstatic
+    ZLIB::ZLIB
     libzip::zip
     core
     game
