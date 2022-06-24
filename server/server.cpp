@@ -1,9 +1,12 @@
 // server.c
+#include <StdIncludes.h>
 #include <stdio.h>
 #include <Enet.h>
 #include <Level.h>
-#include <conio.h>
 #include <cxxopts.hpp>
+#include <signal.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 namespace sam
 {
@@ -77,7 +80,12 @@ int main(int argc, char** argv)
         if (result.count("port"))
             port = result["port"].as<int>();
         server.Run(path, hostaddr, port);
-        getch();
+        while (true)
+        {
+#ifndef _WIN32
+            usleep(10);
+#endif
+        }
     }
     return 0;
 }

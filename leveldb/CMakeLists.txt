@@ -154,6 +154,8 @@ target_include_directories(leveldb PUBLIC
 
 if (MSVC)
 add_compile_definitions(DLLX=;WIN32;OS_WIN;_WINDLL;ssize_t=__int64)
-else ()
+elseif (APPLE)
 add_compile_definitions(DLLX=;LEVELDB_PLATFORM_POSIX;OS_MACOSX)
+else ()
+add_compile_definitions(DLLX=;LEVELDB_PLATFORM_POSIX)
 endif ()   

@@ -13,6 +13,7 @@ elseif (APPLE)
 set(BX_INC_DIR_COMPAT ${BGFX_INCLUDE_ROOT}/compat/osx)
 endif()
 
+find_package(nlohmann_json CONFIG REQUIRED)
 
 ################################################################################
 # Source groups
