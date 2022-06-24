@@ -17,7 +17,7 @@ namespace sam
     public:
         void Run(const std::string &path, const std::string &hostaddr, int hostport)
         {
-            std::cout << "Starting Enet server on port " << hostport << std::endl;
+            std::cout << "Starting Enet server on ip " << hostaddr << " port " << hostport << std::endl;
             m_server = std::make_unique<ENetServer>(hostaddr, hostport, this);
             m_levelSvr = std::make_unique<LevelSvr>(false);
             std::cout << "Loading level " << path << std::endl;

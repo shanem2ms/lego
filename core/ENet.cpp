@@ -99,8 +99,11 @@ namespace sam
             if (eventStatus > 0) {
                 switch (evt.type) {
                 case ENET_EVENT_TYPE_CONNECT:
-                    printf("(Client) We got a new connection from %x\n",
-                        evt.peer->address.host);
+                    printf("(Client) We got a new connection from %d.%d.%d.%d\n",
+                        (evt.peer->address.host >> 24) & 255, 
+                        (evt.peer->address.host >> 16) & 255, 
+                        (evt.peer->address.host >> 8) & 255, 
+                        (evt.peer->address.host >> 0) & 255);
                     break;
 
                 case ENET_EVENT_TYPE_RECEIVE:
@@ -164,7 +167,8 @@ namespace sam
         atexit(enet_deinitialize);
 
         // b. Create a host using enet_host_create
-        address.host = ENET_HOST_ANY;
+        enet_address_set_host(&address, m_hostaddr.c_str());
+        //address.host = ENET_HOST_ANY;
         address.port = m_port;
 
         m_enetHost = enet_host_create(&address, 32, 2, 0, 0);
@@ -184,8 +188,11 @@ namespace sam
             if (eventStatus > 0) {
                 switch (evt.type) {
                 case ENET_EVENT_TYPE_CONNECT:
-                    printf("(Server) We got a new connection from %x\n",
-                        evt.peer->address.host);
+                    printf("(Server) We got a new connection from %d.%d.%d.%d\n",
+                        (evt.peer->address.host >> 24) & 255,
+                        (evt.peer->address.host >> 16) & 255,
+                        (evt.peer->address.host >> 8) & 255,
+                        (evt.peer->address.host >> 0) & 255);
                     break;
 
                 case ENET_EVENT_TYPE_RECEIVE:

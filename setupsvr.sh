@@ -12,4 +12,4 @@ mkdir lego
 cd lego/
 mkdir bld
 ln -s /mnt/c/homep4/lego lego
-cmake -DVCPKG_DIR=/home/shanem/vcpkg -DVCPKG_INSTALL_PATH=/home/shanem/vcpkg/installed/x64-linux ../lego
+cmake -DVCPKG_DIR=/home/shanem/vcpkg -DVCPKG_INSTALL_PATH=/home/shanem/vcpkg/installed/x64-linux ../lego -DBLOCKO_GAME=FALSE
