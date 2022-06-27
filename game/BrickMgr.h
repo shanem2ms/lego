@@ -129,6 +129,7 @@ namespace sam
         std::shared_ptr<Brick> GetBrick(const PartId& name, bool hires = false);
         bgfx::TextureHandle GetBrickThumbnail(const PartId& name);
         BrickManager();
+        ~BrickManager();
         static Vec4f Color(uint32_t hex);
         const PartId& GetPartId(size_t idx);
         std::string PartDescription(const std::string& partname);

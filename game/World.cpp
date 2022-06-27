@@ -35,11 +35,11 @@ namespace sam
     {        
     }  
 
-    void World::Open(const std::string& path)
+    void World::Open(ENetClient* cli)
     {
         std::unique_ptr<LevelCli> level =
             std::make_unique<LevelCli>();
-        level->Connect(Application::Inst().Enet(), path);
+        level->Connect(cli);
         m_level = std::move(level);
     }
 
@@ -348,7 +348,6 @@ namespace sam
 
     World::~World()
     {
-
     }
 
 }

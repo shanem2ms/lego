@@ -7,6 +7,7 @@
 #include "Loc.h"
 #include "PartDefs.h"
 #include "Enet.h"
+#include "dbl_list.h"
 
 namespace leveldb
 {
@@ -51,10 +52,15 @@ namespace sam
     class LevelCli : public ILevel {
         bool m_disableWrite;
         ENetClient *m_client;
+        mutable std::map<Loc,
+            std::future<ENetResponse>> m_requests;
+        mutable std::map<Loc, std::string> m_cache;
     public:
         LevelCli();
-        void Connect(ENetClient *cli, const std::string& path);
+        void Connect(ENetClient *cli);
         bool GetOctChunk(const Loc& l, std::string* val) const override;
+
+        void CheckReady();
         bool WriteOctChunk(const Loc& il, const char* byte, size_t len) override;
         bool WritePlayerData(const PlayerData& pos) override;
         bool GetPlayerData(PlayerData& pos) override;
@@ -64,7 +70,7 @@ namespace sam
     {
         std::string m_key;
         GetLevelValueMsg(const uint8_t* key, size_t klen) :
-            ENetMsg(Type::GetValue),
+            ENetMsg(Type::GetLevelDbValue),
             m_key(key, key + klen)
         {}
 
@@ -108,12 +114,12 @@ namespace sam
 
         SetLevelValueMsg(const uint8_t* key, size_t klen,
             const char* byte, size_t len) :
-            ENetMsg(Type::SetValue),
+            ENetMsg(Type::SetLevelDbValue),
             m_key(key, key+klen),
             m_data(byte, byte + len)
         {}
 
-        SetLevelValueMsg() : ENetMsg(Type::SetValue) {}
+        SetLevelValueMsg() : ENetMsg(Type::SetLevelDbValue) {}
 
         size_t GetSize() const override
         {

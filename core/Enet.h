@@ -10,8 +10,8 @@ namespace sam
     struct ENetMsg
     {
         enum Type : int {
-            GetValue = 1,
-            SetValue = 2
+            GetLevelDbValue = 1,
+            SetLevelDbValue = 2
         };
 
         struct Header
@@ -73,7 +73,9 @@ namespace sam
         struct QueuedMsg
         {
             std::shared_ptr<ENetMsg> msg;
-            std::promise<ENetResponse> response;
+
+            std::unique_ptr<std::promise<ENetResponse>> response;
+            std::function<void(const ENetResponse& response)> callback;
         };
         std::mutex m_queueLock;
         std::list<QueuedMsg> m_queuedMsg;
@@ -85,6 +87,9 @@ namespace sam
 
         std::future<ENetResponse>
             Send(std::shared_ptr<ENetMsg> msg);
+
+        void Request(std::shared_ptr<ENetMsg> msg,
+            const std::function<void(const ENetResponse& response)>& func);
     };
 
     class IServerHandler

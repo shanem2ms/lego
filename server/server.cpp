@@ -27,7 +27,7 @@ namespace sam
         ENetResponse HandleMessage(const ENetMsg::Header* msg)
         {
             ENetResponse response;
-            if (msg->m_type == ENetMsg::GetValue)
+            if (msg->m_type == ENetMsg::GetLevelDbValue)
             {
                 GetLevelValueMsg gmsg;
                 gmsg.ReadData((const uint8_t*)msg);
@@ -35,7 +35,7 @@ namespace sam
                 bool result = m_levelSvr->GetValue(gmsg.m_key, &response.data);
                 if (!result) response.data = std::string();
             }
-            else if (msg->m_type == ENetMsg::SetValue)
+            else if (msg->m_type == ENetMsg::SetLevelDbValue)
             {
                 SetLevelValueMsg gmsg;
                 gmsg.ReadData((const uint8_t*)msg);

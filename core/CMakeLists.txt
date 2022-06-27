@@ -22,6 +22,7 @@ set(Header_Files
     "StdIncludes.h"
     "Enet.h"
     "Level.h"
+    "Server.h"
 )  
 
 source_group("Header Files" FILES ${Header_Files})
@@ -29,6 +30,7 @@ source_group("Header Files" FILES ${Header_Files})
 set(Source_Files
     "Enet.cpp"
     "Level.cpp"
+    "Server.cpp"
     )
 
 source_group("Source Files" FILES ${Source_Files} ${Main_Files})

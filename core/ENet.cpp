@@ -30,9 +30,10 @@ namespace sam
     std::future<ENetResponse>
         ENetClient::Send(std::shared_ptr<ENetMsg> msg)
     {
-        std::promise<ENetResponse> promise;
+        std::unique_ptr<std::promise<ENetResponse>> promise =
+            std::make_unique<std::promise<ENetResponse>>();
         
-        auto future = promise.get_future();
+        auto future = promise->get_future();
         uint64_t nextUid = 0;
         QueuedMsg qm{
             msg,
@@ -41,6 +42,22 @@ namespace sam
         std::lock_guard lock(m_queueLock);
         m_queuedMsg.push_back(std::move(qm));
         return future;
+    }
+
+    void 
+        ENetClient::Request(std::shared_ptr<ENetMsg> msg,
+            const std::function<void(const ENetResponse& response)>& func)
+    {
+        std::promise<ENetResponse> promise;
+
+        auto future = promise.get_future();
+        uint64_t nextUid = 0;
+        QueuedMsg qm{
+            msg
+        };
+        qm.callback = func;
+        std::lock_guard lock(m_queueLock);
+        m_queuedMsg.push_back(std::move(qm));
     }
 
     void ENetClient::BackgroundThread()
@@ -116,16 +133,16 @@ namespace sam
                         resp.data.resize(hdr->m_size);
                         memcpy(resp.data.data(), evt.packet->data + sizeof(ENetResponseHdr),
                             resp.data.size());
-                        itResp->second.response.set_value(resp);
+                        if (itResp->second.response)
+                            itResp->second.response->set_value(resp);
+                        if (itResp->second.callback != nullptr)
+                            itResp->second.callback(resp);
                     }
                     enet_packet_destroy(evt.packet);
                     break;
                 }
 
                 case ENET_EVENT_TYPE_DISCONNECT:
-                    printf("(Client) %s disconnected.\n", evt.peer->data);
-
-                    // Reset m_enetHost's information
                     evt.peer->data = NULL;
                     break;
                 }
@@ -167,8 +184,10 @@ namespace sam
         atexit(enet_deinitialize);
 
         // b. Create a host using enet_host_create
-        enet_address_set_host(&address, m_hostaddr.c_str());
-        //address.host = ENET_HOST_ANY;
+        if (m_hostaddr.length() > 0)
+            enet_address_set_host(&address, m_hostaddr.c_str());
+        else
+            address.host = ENET_HOST_ANY;
         address.port = m_port;
 
         m_enetHost = enet_host_create(&address, 32, 2, 0, 0);
@@ -181,6 +200,7 @@ namespace sam
         // c. Connect and user service
         eventStatus = 1;
 
+        printf("(Server) start host\n");
         while (1) {
             eventStatus = enet_host_service(m_enetHost, &evt, 50000);
 

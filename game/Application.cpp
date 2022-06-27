@@ -11,6 +11,8 @@
 #include "Audio.h"
 #include "imgui.h"
 #include "Enet.h"
+#include "Server.h"
+#include <filesystem>
 #include <chrono>
 
 #define WATCHDOGTHREAD 0
@@ -87,14 +89,18 @@ namespace sam
             m_gameController = std::make_unique<GameController>();
             m_gameController->ConnectPlayer(m_world->GetPlayer(), m_world.get());
         }
-        std::string servername("shanemor.ddns.net");
+        std::string servername("localhost");
         if (server != nullptr && strlen(server) > 0)
             servername = server;
         m_client = std::make_unique<ENetClient>(servername, 8000);
-
+        //m_localsvr->Start()
         m_startupPath = startFolder;
         m_documentsPath = docFolder;
-        m_world->Open("127.0.0.1");
+        std::filesystem::path path(m_documentsPath);
+        path = path / "testlvl";
+        m_localsvr = std::make_unique<Server>();
+        m_localsvr->Start(path.string(), "localhost", 8000);
+        m_world->Open(m_client.get());
         imguiCreate(32.0f);
         m_brickManager = std::make_unique<BrickManager>();
         m_engine->AddExternalDraw(m_brickManager.get());

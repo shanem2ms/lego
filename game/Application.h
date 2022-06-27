@@ -18,18 +18,18 @@ class BrickManager;
 class Audio;
 class GameController;
 class ENetClient;
-class ENetServer;
+class Server;
 class LevelSvr;
 
 class Application
 {
     std::unique_ptr<ENetClient> m_client;
-    std::unique_ptr<ENetClient> m_localsvr;
+    std::unique_ptr<Server> m_localsvr;
+    std::unique_ptr<BrickManager> m_brickManager;
     std::unique_ptr<World> m_world;
     std::unique_ptr<Engine> m_engine;
     std::unique_ptr<LegoUI> m_legoUI;
     std::unique_ptr<Audio> m_audio;
-    std::unique_ptr<BrickManager> m_brickManager;
     std::unique_ptr<GameController> m_gameController;
     bool m_touchMode;
     int m_width;

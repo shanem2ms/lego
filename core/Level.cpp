@@ -77,7 +77,7 @@ namespace sam
     ENetResponse LevelSvr::HandleMessage(const ENetMsg::Header* msg)
     {
         ENetResponse response;
-        if (msg->m_type == ENetMsg::GetValue)
+        if (msg->m_type == ENetMsg::GetLevelDbValue)
         {
             GetLevelValueMsg gmsg;
             gmsg.ReadData((const uint8_t*)msg);
@@ -85,7 +85,7 @@ namespace sam
             bool result = GetValue(gmsg.m_key, &response.data);
             if (!result) response.data = std::string();
         }
-        else if (msg->m_type == ENetMsg::SetValue)
+        else if (msg->m_type == ENetMsg::SetLevelDbValue)
         {
             SetLevelValueMsg gmsg;
             gmsg.ReadData((const uint8_t*)msg);
@@ -103,40 +103,88 @@ namespace sam
     {
 
     }
-    void LevelCli::Connect(ENetClient *cli, const std::string& path)
+    void LevelCli::Connect(ENetClient *cli)
     {
         m_client = cli;
     }
-
+    
+    template<typename R>
+    bool is_ready(std::future<R> const& f)
+    {
+        return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    }
     bool LevelCli::GetOctChunk(const Loc& l, std::string* val) const
     {
-        auto promise = m_client->Send(std::make_shared<GetLevelValueMsg>((const uint8_t*)&l, sizeof(l)));
-        ENetResponse resp = promise.get();
-        *val = resp.data;
-        return true;
+        auto itCache = m_cache.find(l);
+        if (itCache != m_cache.end())
+        {
+            *val = itCache->second;
+            return true;
+        }
+
+        int itemReady = 0;
+        for (auto itCheck = m_requests.begin(); itCheck != m_requests.end();)
+        {
+            if (is_ready(itCheck->second))
+            {
+                ENetResponse resp = itCheck->second.get();
+                *val = resp.data;
+                if (itCheck->first == l)
+                    itemReady = 1;
+                m_cache.insert(std::make_pair(itCheck->first, resp.data));
+                itCheck = m_requests.erase(itCheck);
+                *val = resp.data;
+                
+            }
+            else
+            {
+                if (itCheck->first == l)
+                    itemReady = -1;
+                ++itCheck;
+            }
+        }
+
+        if (itemReady == 1)
+            return true;
+        else if (itemReady == -1)
+            return false;
+
+        auto itRequest = m_requests.find(l);
+        if (itRequest == m_requests.end())
+        {
+            std::future<ENetResponse> future = m_client->Send(std::make_shared<GetLevelValueMsg>((const uint8_t*)&l, sizeof(l)));
+            itRequest =
+                m_requests.insert(std::move(std::make_pair(l, 
+                    std::move(future)))).first;
+        }
+        
+        return false;
     }
     bool LevelCli::WriteOctChunk(const Loc& il, const char* byte, size_t len)
     {        
-        auto promise = m_client->Send(std::make_shared<SetLevelValueMsg>((const uint8_t *) & il, sizeof(il), byte, len));
-        ENetResponse resp = promise.get();
+        auto future = m_client->Send(std::make_shared<SetLevelValueMsg>((const uint8_t *) & il, sizeof(il), byte, len));
+        ENetResponse resp = future.get();
         return resp.status == 1;
     }
 
     bool LevelCli::WritePlayerData(const PlayerData& pos)
     {
         const char* key = "cam";
-        auto promise = m_client->Send(std::make_shared<SetLevelValueMsg>((const uint8_t*)key, 3, (const char *)& pos, sizeof(pos)));
-        ENetResponse resp = promise.get();
-        return resp.status == 1;
+        auto future = m_client->Send(std::make_shared<SetLevelValueMsg>((const uint8_t*)key, 3, (const char *)& pos, sizeof(pos)));
+        return true;
     }
 
     bool LevelCli::GetPlayerData(PlayerData& pos)
     {
         const char* key = "cam";
-        auto promise = m_client->Send(std::make_shared<GetLevelValueMsg>((const uint8_t*)key, 3));
-        ENetResponse resp = promise.get();
-        memcpy(&pos, resp.data.data(), sizeof(pos));
-        return true;
+        auto future = m_client->Send(std::make_shared<GetLevelValueMsg>((const uint8_t*)key, 3));
+        ENetResponse resp = future.get();
+        if (resp.data.size() == sizeof(pos))
+        {
+            memcpy(&pos, resp.data.data(), sizeof(pos));
+            return true;
+        }
+        return false;
     }
 
 }

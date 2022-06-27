@@ -270,6 +270,8 @@ namespace sam
         while (!pThis->m_exit)
         {
             pThis->m_cv.wait(lk);
+            if (pThis->m_exit)
+                break;
             while (pThis->m_loaderTiles.size() > 0)
             {
                 std::shared_ptr<OctTile> tile;
