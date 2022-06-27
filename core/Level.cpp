@@ -74,6 +74,30 @@ namespace sam
         return status.ok();
     }   
 
+    ENetResponse LevelSvr::HandleMessage(const ENetMsg::Header* msg)
+    {
+        ENetResponse response;
+        if (msg->m_type == ENetMsg::GetValue)
+        {
+            GetLevelValueMsg gmsg;
+            gmsg.ReadData((const uint8_t*)msg);
+            std::string val;
+            bool result = GetValue(gmsg.m_key, &response.data);
+            if (!result) response.data = std::string();
+        }
+        else if (msg->m_type == ENetMsg::SetValue)
+        {
+            SetLevelValueMsg gmsg;
+            gmsg.ReadData((const uint8_t*)msg);
+            Loc tileLoc;
+            memcpy(&tileLoc, gmsg.m_key.data(), gmsg.m_key.size());
+            std::string val;
+            bool result = WriteValue(gmsg.m_key, gmsg.m_data.data(), gmsg.m_data.size());
+            if (!result) response.data = std::string();
+
+        }
+        return response;
+    }
 
     LevelCli::LevelCli()
     {

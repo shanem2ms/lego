@@ -10,7 +10,6 @@
 #include "PlayerView.h"
 #include "Audio.h"
 #include "imgui.h"
-#include "Mongo.h"
 #include "Enet.h"
 #include <chrono>
 
@@ -54,8 +53,6 @@ namespace sam
         m_engine = std::make_unique<Engine>();
         m_world = std::make_unique<World>();
         m_audio = std::make_unique<Audio>();
-        m_mongo = std::make_unique<Mongo>("mongodb://shanemor.ddns.net:27017");
-        m_client = std::make_unique<ENetClient>("shanemor.ddns.net", 8000);
 #if WATCHDOGTHREAD
         sWatchdogThread = std::thread(WatchDogFunc);
 #endif
@@ -82,7 +79,34 @@ namespace sam
         return *s_pInst;
     }
 
+    void Application::Initialize(const char* startFolder, const char* docFolder, const char* server, bool touchMode)
+    {
+        m_touchMode = touchMode;
+        if (m_touchMode)
+        {
+            m_gameController = std::make_unique<GameController>();
+            m_gameController->ConnectPlayer(m_world->GetPlayer(), m_world.get());
+        }
+        std::string servername("shanemor.ddns.net");
+        if (server != nullptr && strlen(server) > 0)
+            servername = server;
+        m_client = std::make_unique<ENetClient>(servername, 8000);
 
+        m_startupPath = startFolder;
+        m_documentsPath = docFolder;
+        m_world->Open("127.0.0.1");
+        imguiCreate(32.0f);
+        m_brickManager = std::make_unique<BrickManager>();
+        m_engine->AddExternalDraw(m_brickManager.get());
+        if (m_gameController != nullptr)
+            m_engine->AddExternalDraw(m_gameController.get());
+        m_legoUI = std::make_unique<LegoUI>();
+        m_world->OnShowInventory([this]()
+            {
+                OpenInventory();
+            });
+        OpenMainMenu();
+    }
     UIManager& Application::UIMgr()
     {
         return *m_legoUI;
@@ -213,30 +237,7 @@ namespace sam
     }
 
 
-    void Application::Initialize(const char* startFolder, const char* docFolder, bool touchMode)
-    {
-        m_touchMode = touchMode;
-        if (m_touchMode)
-        {
-            m_gameController = std::make_unique<GameController>();
-            m_gameController->ConnectPlayer(m_world->GetPlayer(), m_world.get());
-        }
 
-        m_startupPath = startFolder;
-        m_documentsPath = docFolder;
-        m_world->Open("127.0.0.1");
-        imguiCreate(32.0f);
-        m_brickManager = std::make_unique<BrickManager>();
-        m_engine->AddExternalDraw(m_brickManager.get());
-        if (m_gameController != nullptr)
-            m_engine->AddExternalDraw(m_gameController.get());
-        m_legoUI = std::make_unique<LegoUI>();
-        m_world->OnShowInventory([this]()
-            {
-                OpenInventory();
-            });
-        OpenMainMenu();
-    }
 
     const float Pi = 3.1415297;
     float g_Fps = 0;

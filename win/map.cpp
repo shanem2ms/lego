@@ -3,6 +3,7 @@
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 // Windows Header Files
 #include "map.h"
+#include <cxxopts.hpp>
 #include <chrono>
 #include <stdio.h>
 #include "shellscalingapi.h"
@@ -35,7 +36,7 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 BYTE prevKeys[256];
-
+std::string g_serverName;
 
 LRESULT KeyboardHookproc(
     int code,
@@ -43,15 +44,26 @@ LRESULT KeyboardHookproc(
     LPARAM lParam
 );
 
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
+int APIENTRY WinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
-    _In_ LPWSTR    lpCmdLine,
+    _In_ LPSTR    lpCmdLine,
     _In_ int       nCmdShow)
 {
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
+    cxxopts::Options options("Blocko Server", "Runs Blocko Game Server");
+    options.add_options()
+        ("l,level", "Load level", cxxopts::value<std::string>())
+        ("s,server", "host address", cxxopts::value<std::string>())
+        ("p,port", "host port", cxxopts::value<int>())
+        ("h,help", "Print usage")
+        ;
 
-    // TODO: Place code here.
+    char** argv = __argv;
+
+    auto result = options.parse(__argc, argv);
+    if (result.count("server"))
+    {
+        g_serverName = result["server"].as<std::string>();
+    }
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -204,7 +216,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     GetCurrentDirectoryA(2048, curdir);
     app->SetDebugMsgFunc(WriteDbgMessage);
     GetCurrentDirectory(MAX_PATH, my_documents);
-    app->Initialize(curdir, "C:\\homep4\\lego", simulateTouchMode);
+    app->Initialize(curdir, "C:\\homep4\\lego", 
+        g_serverName.c_str(), simulateTouchMode);
     app->Resize(rect.right, rect.bottom);
     app->SetHideMouseCursorFn(OnHideOrShowMouse);
     return TRUE;

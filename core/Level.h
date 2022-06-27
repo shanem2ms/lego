@@ -36,7 +36,7 @@ namespace sam
         virtual bool GetPlayerData(PlayerData& pos) = 0;
     };
 
-    class LevelSvr {
+    class LevelSvr : public IServerHandler {
         leveldb::DB* m_db;
         bool m_disableWrite;
     public: 
@@ -45,6 +45,7 @@ namespace sam
 
         bool GetValue(const std::string& key, std::string* val) const;
         bool WriteValue(const std::string& key, const char* byte, size_t len);
+        ENetResponse HandleMessage(const ENetMsg::Header* msg);
     };
 
     class LevelCli : public ILevel {
