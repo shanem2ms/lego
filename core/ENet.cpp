@@ -37,7 +37,10 @@ namespace sam
         uint64_t nextUid = 0;
         QueuedMsg qm{
             msg,
-            std::move(promise)
+            std::move(promise),
+            nullptr,
+            0,
+            0
         };
         std::lock_guard lock(m_queueLock);
         m_queuedMsg.push_back(std::move(qm));
@@ -67,6 +70,7 @@ namespace sam
         char message[1024];
         ENetEvent evt;
         int eventStatus;
+        const clock_t timeout = 2 * CLOCKS_PER_SEC;
 
         // a. Initialize enet
         if (enet_initialize() != 0) {
@@ -94,24 +98,28 @@ namespace sam
 
         eventStatus = 1;
 
+        std::list<QueuedMsg> retries;
         while (!m_terminate)
         {
             std::list<QueuedMsg> queuedMsg;
             {
                 std::lock_guard lock(m_queueLock);
                 std::swap(m_queuedMsg, queuedMsg);
+                for (auto& msg : retries)
+                    queuedMsg.push_back(std::move(msg));
+                retries.clear();
             }
             for (QueuedMsg& msg : queuedMsg)
             {
                 std::vector<uint8_t> data(msg.msg->GetSize());
                 msg.msg->WriteData(data.data());
-
+                msg.starttime = std::clock();
                 ENetPacket* packet = enet_packet_create(data.data(), data.size(), ENET_PACKET_FLAG_RELIABLE);
                 enet_peer_send(peer, 0, packet);
                 m_waitingResponse.insert(std::make_pair(msg.msg->m_hdr.m_uid, std::move(msg)));
             }
             eventStatus = enet_host_service(m_enetHost, &evt, 5);
-
+            
             // If we had some evt that interested us
             if (eventStatus > 0) {
                 switch (evt.type) {
@@ -137,6 +145,7 @@ namespace sam
                             itResp->second.response->set_value(resp);
                         if (itResp->second.callback != nullptr)
                             itResp->second.callback(resp);
+                        m_waitingResponse.erase(itResp);
                     }
                     enet_packet_destroy(evt.packet);
                     break;
@@ -146,6 +155,20 @@ namespace sam
                     evt.peer->data = NULL;
                     break;
                 }
+            }
+
+            clock_t curtime = std::clock();
+            for (auto itWaiting = m_waitingResponse.begin(); itWaiting !=
+                m_waitingResponse.end(); )
+            {
+                if ((curtime - itWaiting->second.starttime) > timeout)
+                {
+                    itWaiting->second.retries++;
+                    retries.push_back(std::move(itWaiting->second));                    
+                    itWaiting = m_waitingResponse.erase(itWaiting);
+                }
+                else
+                    ++itWaiting;
             }
         }
     }

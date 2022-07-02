@@ -31,8 +31,45 @@ namespace sam
             SlotPart slots[16];
         };
 
-        virtual bool GetOctChunk(const Loc& l, std::string* val) const = 0;
-        virtual bool WriteOctChunk(const Loc& il, const char* byte, size_t len) = 0;
+        struct OctKey
+        {
+            OctKey(const Loc& l, char type, uint16_t mdata = 0) :
+                x(l.m_x),
+                y(l.m_y),
+                z(l.m_z),
+                l((l.m_l & 0xFF) |
+                    ((type & 0xFF) << 8) |
+                    (mdata & 0xFFFF) << 16)
+            {
+
+            }
+            int x;
+            int y;
+            int z;
+            int l;
+
+            bool operator == (const OctKey& other) const
+            {
+                return x == other.x &&
+                    y == other.y &&
+                    z == other.z &&
+                    l == other.l;
+            }
+
+            bool operator < (const OctKey& rhs) const
+            {
+                if (l != rhs.l)
+                    return l < rhs.l;
+                if (x != rhs.x)
+                    return x < rhs.x;
+                if (y != rhs.y)
+                    return y < rhs.y;
+                return z < rhs.z;
+            }
+        };
+
+        virtual bool GetOctChunk(const OctKey &, std::string* val) const = 0;
+        virtual bool WriteOctChunk(const OctKey &, const char* byte, size_t len) = 0;
         virtual bool WritePlayerData(const PlayerData& pos) = 0;
         virtual bool GetPlayerData(PlayerData& pos) = 0;
     };
@@ -52,16 +89,15 @@ namespace sam
     class LevelCli : public ILevel {
         bool m_disableWrite;
         ENetClient *m_client;
-        mutable std::map<Loc,
+        mutable std::map<OctKey,
             std::future<ENetResponse>> m_requests;
-        mutable std::map<Loc, std::string> m_cache;
+        mutable std::map<OctKey, std::string> m_cache;
     public:
         LevelCli();
         void Connect(ENetClient *cli);
-        bool GetOctChunk(const Loc& l, std::string* val) const override;
+        bool GetOctChunk(const ILevel::OctKey& l, std::string* val) const override;
 
-        void CheckReady();
-        bool WriteOctChunk(const Loc& il, const char* byte, size_t len) override;
+        bool WriteOctChunk(const ILevel::OctKey& il, const char* byte, size_t len) override;
         bool WritePlayerData(const PlayerData& pos) override;
         bool GetPlayerData(PlayerData& pos) override;
     };
@@ -105,7 +141,7 @@ namespace sam
             return dataNext;
         };
 
-    };
+    };   
    
     struct SetLevelValueMsg : public ENetMsg
     {

@@ -73,9 +73,10 @@ namespace sam
         struct QueuedMsg
         {
             std::shared_ptr<ENetMsg> msg;
-
             std::unique_ptr<std::promise<ENetResponse>> response;
             std::function<void(const ENetResponse& response)> callback;
+            std::clock_t starttime;
+            uint32_t retries;
         };
         std::mutex m_queueLock;
         std::list<QueuedMsg> m_queuedMsg;

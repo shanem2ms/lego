@@ -113,8 +113,9 @@ namespace sam
     {
         return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
     }
-    bool LevelCli::GetOctChunk(const Loc& l, std::string* val) const
+    bool LevelCli::GetOctChunk(const ILevel::OctKey& l, std::string* val) const
     {
+        
         auto itCache = m_cache.find(l);
         if (itCache != m_cache.end())
         {
@@ -160,9 +161,9 @@ namespace sam
         
         return false;
     }
-    bool LevelCli::WriteOctChunk(const Loc& il, const char* byte, size_t len)
+    bool LevelCli::WriteOctChunk(const ILevel::OctKey& l, const char* byte, size_t len)
     {        
-        auto future = m_client->Send(std::make_shared<SetLevelValueMsg>((const uint8_t *) & il, sizeof(il), byte, len));
+        auto future = m_client->Send(std::make_shared<SetLevelValueMsg>((const uint8_t *)&l, sizeof(l), byte, len));
         ENetResponse resp = future.get();
         return resp.status == 1;
     }
