@@ -38,6 +38,7 @@ set(Header_Files
     "PlayerView.h"
     "LegoBrick.h"
     "ConnectionWidget.h"
+    "TextureFile.h"
     "LegoUI.h"
     "MbxImport.h"
     "LoresTile.h"
@@ -82,6 +83,7 @@ set(Source_Files
     "PlayerView.cpp"
     "ConnectionWidget.cpp"
     "ConnectionLogic.cpp"
+    "TextureFile.cpp"
     "LegoUI.cpp"
     "ZipFile.cpp"
     "MbxImport.cpp"
@@ -131,6 +133,9 @@ add_compile_definitions(DLLX=;PRId64="I64d";BX_CONFIG_DEBUG=${BX_CONFIG_DEBUG})
 file(GLOB LEGOSOUNDS ${CMAKE_SOURCE_DIR}/legosounds/*.wav)
 
 set (All_RESOURCES 
+    ${CMAKE_SOURCE_DIR}/hdri/scatter.wimg
+    ${CMAKE_SOURCE_DIR}/hdri/transmittance.wimg
+    ${CMAKE_SOURCE_DIR}/hdri/irradiance.wimg
     ${CMAKE_SOURCE_DIR}/hdri/bolonga_irr.dds
     ${CMAKE_SOURCE_DIR}/hdri/bolonga_lod.dds
     ${CMAKE_SOURCE_DIR}/LDConfig.ldr

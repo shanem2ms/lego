@@ -8,6 +8,7 @@
 #include "Mesh.h"
 #include "Physics.h"
 #include <bimg/decode.h>
+#include "TextureFile.h"
 
 bgfx::TextureHandle loadTexture(bx::FileReaderI* _reader, const char* _filePath, uint64_t _flags, uint8_t _skip, bgfx::TextureInfo* _info, bimg::Orientation::Enum* _orientation);
 
@@ -73,6 +74,22 @@ namespace sam
                 m_envTex = loadTexture(&texReader, path.c_str(), 0, 0, &ti, &o);
                 path = Application::Inst().StartupPath() + "/bolonga_lod.dds";
                 m_envIrrTex = loadTexture(&texReader, path.c_str(), 0, 0, &ti, &o);
+
+            }
+            {
+                std::string path = Application::Inst().StartupPath() + "/scatter.wimg";
+                auto reader = TextureFileReader::Create(path);
+                m_atmScatter = reader->LoadTexture();
+            }
+            {
+                std::string path = Application::Inst().StartupPath() + "/transmittance.wimg";
+                auto reader = TextureFileReader::Create(path);
+                m_atmTransmittance = reader->LoadTexture();
+            }
+            {
+                std::string path = Application::Inst().StartupPath() + "/irradiance.wimg";
+                auto reader = TextureFileReader::Create(path);
+                m_atmIrradiance = reader->LoadTexture();
             }
             m_needRebuild = false;
 

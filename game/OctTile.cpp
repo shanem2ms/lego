@@ -105,7 +105,7 @@ namespace sam
             {
                 bool success = false;
                 std::string strval;
-                if (pWorld->Level()->GetOctChunk(m_l, &strval))
+                if (pWorld->Level()->GetOctChunk(ILevel::OctKey(m_l, 0), &strval))
                 {
                     size_t parts = strval.size() / sizeof(PartInst);
                     m_parts.resize(parts);
@@ -128,7 +128,7 @@ namespace sam
                 Point3f parentCenter = m_l.GetCenter();
                 for (auto& cl : level8Locs)
                 {
-                    if (pWorld->Level()->GetOctChunk(cl, &strval))
+                    if (pWorld->Level()->GetOctChunk(ILevel::OctKey(cl, 0), &strval))
                     {
                         partsVec.push_back(std::vector<PartInst>());
                         std::vector<PartInst>& parts = partsVec.back();
@@ -269,7 +269,7 @@ namespace sam
 
     void OctTile::Persist(World *pWorld)
     {
-        pWorld->Level()->WriteOctChunk(m_l, (const char*)m_parts.data(), m_parts.size() *
+        pWorld->Level()->WriteOctChunk(ILevel::OctKey(m_l, 0), (const char*)m_parts.data(), m_parts.size() *
             sizeof(PartInst));
         m_needsPersist = false;
     }
