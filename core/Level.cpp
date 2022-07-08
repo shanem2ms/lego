@@ -14,8 +14,8 @@
 
 
 namespace sam
-{   
-    
+{
+
     class NullLogger : public leveldb::Logger {
     public:
         void Logv(const char*, va_list) override {
@@ -29,7 +29,7 @@ namespace sam
     {
     }
 
-      
+
     void LevelSvr::OpenDb(const std::string& path)
     {
         //leveldb::Env* env = leveldb::Env::Default();
@@ -57,11 +57,49 @@ namespace sam
         leveldb::Status status = leveldb::DB::Open(options, path.c_str(), &m_db);
     }
 
-    bool LevelSvr::GetValue(const std::string &k, std::string* val) const
+
+
+    bool LevelSvr::AutoGenerateTile(const ILevel::OctKey& k, std::string* val) const
     {
-        leveldb::Slice key(k);
-        leveldb::Status status = m_db->Get(leveldb::ReadOptions(), key, val);
-        return status.ok();
+        Loc l(k.x, k.y, k.z, k.l & 0xFF);
+        if (l.m_l == 8 && l.IsGroundLoc())
+        {
+            std::vector<PartInst> parts;
+            PartInst pi;
+            pi.id = "91405";
+            pi.atlasidx = 0;
+            pi.pos = Vec3f(0, -0.5f, 0);
+            pi.rot = Quatf();
+            pi.connected = true;
+            pi.canBeDestroyed = false;
+            parts.push_back(pi);
+            val->resize(parts.size() *
+                sizeof(PartInst));
+            memcpy(val->data(), (const char*)parts.data(), parts.size() *
+                sizeof(PartInst));
+            return true;
+        }
+        return false;
+    }
+
+    bool LevelSvr::GetValue(const std::string& k, std::string* val) const
+    {
+        if (k.length() == sizeof(ILevel::OctKey))
+        {
+            ILevel::OctKey* octkey = (ILevel::OctKey*)k.data();
+            leveldb::Slice key(k);
+            leveldb::Status status = m_db->Get(leveldb::ReadOptions(), key, val);
+            if (status.ok())
+                return true;
+            else
+                return AutoGenerateTile(*octkey, val);
+        }
+        else
+        {
+            leveldb::Slice key(k);
+            leveldb::Status status = m_db->Get(leveldb::ReadOptions(), key, val);
+            return status.ok();
+        }
     }
 
     bool LevelSvr::WriteValue(const std::string& k, const char* byte, size_t len)
@@ -72,7 +110,7 @@ namespace sam
         leveldb::Slice val(byte, len);
         leveldb::Status status = m_db->Put(leveldb::WriteOptions(), key, val);
         return status.ok();
-    }   
+    }
 
     ENetResponse LevelSvr::HandleMessage(const ENetMsg::Header* msg)
     {
@@ -103,11 +141,11 @@ namespace sam
     {
 
     }
-    void LevelCli::Connect(ENetClient *cli)
+    void LevelCli::Connect(ENetClient* cli)
     {
         m_client = cli;
     }
-    
+
     template<typename R>
     bool is_ready(std::future<R> const& f)
     {
@@ -115,7 +153,7 @@ namespace sam
     }
     bool LevelCli::GetOctChunk(const ILevel::OctKey& l, std::string* val) const
     {
-        
+
         auto itCache = m_cache.find(l);
         if (itCache != m_cache.end())
         {
@@ -135,7 +173,7 @@ namespace sam
                 m_cache.insert(std::make_pair(itCheck->first, resp.data));
                 itCheck = m_requests.erase(itCheck);
                 *val = resp.data;
-                
+
             }
             else
             {
@@ -155,15 +193,15 @@ namespace sam
         {
             std::future<ENetResponse> future = m_client->Send(std::make_shared<GetLevelValueMsg>((const uint8_t*)&l, sizeof(l)));
             itRequest =
-                m_requests.insert(std::move(std::make_pair(l, 
+                m_requests.insert(std::move(std::make_pair(l,
                     std::move(future)))).first;
         }
-        
+
         return false;
     }
     bool LevelCli::WriteOctChunk(const ILevel::OctKey& l, const char* byte, size_t len)
-    {        
-        auto future = m_client->Send(std::make_shared<SetLevelValueMsg>((const uint8_t *)&l, sizeof(l), byte, len));
+    {
+        auto future = m_client->Send(std::make_shared<SetLevelValueMsg>((const uint8_t*)&l, sizeof(l), byte, len));
         ENetResponse resp = future.get();
         return resp.status == 1;
     }
@@ -171,7 +209,7 @@ namespace sam
     bool LevelCli::WritePlayerData(const PlayerData& pos)
     {
         const char* key = "cam";
-        auto future = m_client->Send(std::make_shared<SetLevelValueMsg>((const uint8_t*)key, 3, (const char *)& pos, sizeof(pos)));
+        auto future = m_client->Send(std::make_shared<SetLevelValueMsg>((const uint8_t*)key, 3, (const char*)&pos, sizeof(pos)));
         return true;
     }
 

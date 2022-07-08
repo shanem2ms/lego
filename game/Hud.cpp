@@ -29,7 +29,7 @@ namespace sam
     extern Loc g_inLoc;
     extern float g_overlap;
 
-    bool g_showStats = false;
+    bool g_showStats = true;
 extern int g_buttonDown;
 
 	void Hud::Draw(DrawContext& ctx)

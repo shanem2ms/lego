@@ -76,6 +76,7 @@ namespace sam
                 m_envIrrTex = loadTexture(&texReader, path.c_str(), 0, 0, &ti, &o);
 
             }
+            
             {
                 std::string path = Application::Inst().StartupPath() + "/scatter.wimg";
                 auto reader = TextureFileReader::Create(path);
@@ -127,7 +128,9 @@ namespace sam
             m_invViewProjRef = bgfx::createUniform("u_deferredViewProj", bgfx::UniformType::Mat4);
             m_envTexRef = bgfx::createUniform("s_texCube", bgfx::UniformType::Sampler);
             m_envIrrTexRef = bgfx::createUniform("s_texCubeIrr", bgfx::UniformType::Sampler);
-            
+            m_transmittanceTexRef = bgfx::createUniform("s_transmittance", bgfx::UniformType::Sampler);
+            m_scatterTexRef = bgfx::createUniform("s_scatter", bgfx::UniformType::Sampler);
+            m_irradianceTexRef = bgfx::createUniform("s_irradiance", bgfx::UniformType::Sampler);
         }
         nOctTilesTotal = nOctTilesDrawn = 0;
         gmtl::identity(dc.m_mat);
@@ -163,6 +166,9 @@ namespace sam
         bgfx::setTexture(1, m_gbufTexRef, m_gbufferTex, 0);
         bgfx::setTexture(2, m_envTexRef, m_envTex, 0);
         bgfx::setTexture(3, m_envIrrTexRef, m_envIrrTex, 0);
+        bgfx::setTexture(4, m_transmittanceTexRef, m_atmTransmittance, 0);
+        bgfx::setTexture(5, m_scatterTexRef, m_atmScatter, 0);
+        bgfx::setTexture(6, m_irradianceTexRef, m_atmIrradiance, 0);
         Matrix44f invViewProj = proj0 * view;
         invert(invViewProj);
         bgfx::setUniform(m_invViewProjRef, invViewProj.getData());

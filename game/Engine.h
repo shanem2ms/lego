@@ -52,6 +52,9 @@ class Engine
     bgfxh<bgfx::UniformHandle> m_envTexRef;
     bgfxh<bgfx::UniformHandle> m_envIrrTexRef;
     bgfxh<bgfx::TextureHandle> m_pickColorRB;
+    bgfxh<bgfx::UniformHandle> m_transmittanceTexRef;
+    bgfxh<bgfx::UniformHandle> m_irradianceTexRef;
+    bgfxh<bgfx::UniformHandle> m_scatterTexRef;
     bgfxh<bgfx::UniformHandle> m_blitTexRef;
     bgfxh<bgfx::TextureHandle> m_atmTransmittance;
     bgfxh<bgfx::TextureHandle> m_atmIrradiance;

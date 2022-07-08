@@ -162,21 +162,7 @@ namespace sam
             }
         }
         if (m_readyState == 1)
-        {
-            if (m_l.m_l == 8 && m_l.IsGroundLoc())
-            {
-                PartInst pi;
-                pi.id = "91405";
-                pi.atlasidx = 0;
-                pi.pos = Vec3f(0, -0.5f, 0);
-                pi.rot = Quatf();
-                pi.connected = true;
-                pi.canBeDestroyed = false;
-                m_parts.push_back(pi);
-                m_bricks.push_back(BrickManager::Inst().GetBrick(pi.id));
-                m_needsPersist = true;
-                m_needsRefresh = true;
-            }
+        {        
             m_readyState = 2;
         }
 

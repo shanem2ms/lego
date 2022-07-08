@@ -77,6 +77,8 @@ namespace sam
     class LevelSvr : public IServerHandler {
         leveldb::DB* m_db;
         bool m_disableWrite;
+
+        bool AutoGenerateTile(const ILevel::OctKey& k, std::string* val) const;
     public: 
         LevelSvr(bool disableWrite);
         void OpenDb(const std::string& path);

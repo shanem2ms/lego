@@ -194,7 +194,7 @@ namespace sam
         memcpy(mem->data, image->m_data[0].data(), image->m_data[0].size());
         if (image->m_depth > 1)
         {
-            bgfxh<bgfx::TextureHandle> outTex = bgfx::createTexture3D(
+            bgfx::TextureHandle outTex = bgfx::createTexture3D(
                 uint16_t(image->m_width)
                 , uint16_t(image->m_height)
                 , uint16_t(image->m_depth)
@@ -208,7 +208,7 @@ namespace sam
         }
         else
         {
-            bgfxh<bgfx::TextureHandle> outTex = bgfx::createTexture2D(
+            bgfx::TextureHandle outTex = bgfx::createTexture2D(
                 uint16_t(image->m_width)
                 , uint16_t(image->m_height)
                 , 1 < image->m_miplevels
