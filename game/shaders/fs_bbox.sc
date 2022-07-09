@@ -13,3 +13,4 @@ void main()
 	gl_FragColor = vec4(v_texcoord0.xy, 1, 1) * u_params[0];
 	gl_FragColor.xyz *= gl_FragColor.a;
 } 
+ 

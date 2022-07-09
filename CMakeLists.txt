@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.15.0 FATAL_ERROR)
 set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
-include (ExternalProject)
 
 option(BLOCKO_GAME "Build game" ON)
 option(BLOCKO_SERVER "Build Server" ON)
@@ -15,18 +14,10 @@ project(lego C CXX)
 set(PROJECT_NAME lego)
 set(SERVER_NAME legosvr)
 
-set(BGFX_BUILD_EXAMPLES off)
-set(BGFX_CUSTOM_TARGETS off)
- 
-if (APPLE)
-    set(BGFX_BUILD_TOOLS off)
-endif()
-
 set (BX_CONFIG_DEBUG 0)
 set (BGFX_INCLUDE_ROOT ${CMAKE_INSTALL_PREFIX}/include)
 set (BGFX_INCLUDE ${BGFX_INCLUDE_ROOT}/bgfx)
 set (BGFX_LIB ${CMAKE_INSTALL_PREFIX}/lib)
-
 
 set(MainBinaryDir ${CMAKE_BINARY_DIR})
 set(BUNDLE_ID "com.lego.shane")

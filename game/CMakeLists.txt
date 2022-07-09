@@ -89,6 +89,7 @@ set(Source_Files
     "MbxImport.cpp"
     "LoresTile.cpp"
     "imgui/imgui.cpp"
+    "imgui/TextEditor.cpp"
     "imgui/dear-imgui/ImGuiFileDialog.cpp"
     "imgui/dear-imgui/imgui.cpp"
     "imgui/dear-imgui/imgui_draw.cpp"
@@ -114,8 +115,6 @@ add_dependencies(game shaders)
 ################################################################################
 # Include directories
 ################################################################################
-
-message("BGFX_INC_DIR = ${BGFX_INC_DIR}")
 
 target_include_directories(game PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/."
