@@ -31,7 +31,7 @@ namespace partmake
         public bool BSPPortals { get => Vis.BSPPortals; set => Vis.BSPPortals = value; }
         public bool BSPFaces { get => Vis.BSPFaces; set => Vis.BSPFaces = value; }
 
-        public PartVis Vis => _veldridControl.Vis;
+        public PartVis Vis => _veldridControl.PartVis;
         public RenderControl()
         {
             InitializeComponent();
@@ -62,10 +62,13 @@ namespace partmake
         private bool _isAnimated;
 
         PartVis _partVis = null;
-        public PartVis Vis => _partVis;        
+        LayoutVis _layoutVis = null;
+        public PartVis PartVis => _partVis;
+        public LayoutVis LayoutVis => _layoutVis;
         public VeldridControl()
         {
             _partVis = new PartVis(this);
+            _layoutVis = new LayoutVis(this);
             this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
             this.SetStyle(ControlStyles.DoubleBuffer, false);
             this.SetStyle(ControlStyles.Opaque, true);

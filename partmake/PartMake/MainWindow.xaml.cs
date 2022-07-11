@@ -31,7 +31,8 @@ namespace partmake
         LDrawFolders.Entry selectedItem = null;
         LDrawDatFile selectedPart = null;
         string textFilter = "";
-        PartVis vis = null;
+        PartVis partVis = null;
+        LayoutVis layoutVis = null;
 
         public string SelectedItemDesc { get { return selectedItem?.GetDesc(); } }
         public string SelectedItemMatrix
@@ -79,7 +80,7 @@ namespace partmake
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedConnector")); }
         }
 
-        public Topology.BSPNode SelectedBSPNode => vis?.SelectedBSPNode;
+        public Topology.BSPNode SelectedBSPNode => partVis?.SelectedBSPNode;
         public List<Topology.BSPNode> BSPNodes =>
             new List<Topology.BSPNode>() { selectedPart?.GetTopoMesh().bSPTree?.Top };
 
@@ -129,13 +130,13 @@ namespace partmake
             SelectedItem = LDrawFolders.GetEntry(part);
             SelectedType = SelectedItem.type;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedType"));
-            vis = _RenderControl.Vis;
-            vis.Part = selectedPart;
+            partVis = _RenderControl.Vis;
+            partVis.Part = selectedPart;
             EpsTB.Text = Eps.Epsilon.ToString();
             EpsTB2.Text = Topology.Mesh.VertexMinDist.ToString();
-            vis.OnINodeSelected += Vis_OnINodeSelected;
-            vis.OnBSPNodeSelected += Vis_OnBSPNodeSelected;
-            vis.OnLogUpdated += Vis_OnLogUpdated;
+            partVis.OnINodeSelected += Vis_OnINodeSelected;
+            partVis.OnBSPNodeSelected += Vis_OnBSPNodeSelected;
+            partVis.OnLogUpdated += Vis_OnLogUpdated;
             LDrawFolders.ApplyFilterMdx();
             LDrawFolders.FilterEnabled = true;
             FilteredCheckbox.IsChecked = true;
@@ -151,7 +152,7 @@ namespace partmake
             selectedPart.ClearTopoMesh();
             if (disableConnectors)
                 selectedPart.Connectors.DisableConnectors(selectedPart);
-            vis.Part = selectedPart;
+            partVis.Part = selectedPart;
         }
         private void Settings_SettingsChanged(object sender, EventArgs e)
         {
@@ -260,8 +261,8 @@ namespace partmake
             selectedPart.SetSubPartSizes();
             if (disableConnectors)
                 selectedPart.Connectors.DisableConnectors(selectedPart);
-            if (vis != null)
-                vis.Part = selectedPart;
+            if (partVis != null)
+                partVis.Part = selectedPart;
 
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentDatFile"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentPart"));
@@ -284,7 +285,7 @@ namespace partmake
             if (e.OldValue != null)
                 (e.OldValue as LDrawDatNode).IsSelected = false;
             selectedNode = (e.NewValue as LDrawDatNode);
-            vis.SelectedNode = selectedNode;
+            partVis.SelectedNode = selectedNode;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedNode"));
             //threeD.Refresh();
         }
@@ -329,12 +330,12 @@ namespace partmake
 
         private void _RenderControl_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
-            vis.OnKeyDown(e);
+            partVis.OnKeyDown(e);
         }
 
         private void _RenderControl_KeyUp(object sender, System.Windows.Input.KeyEventArgs e)
         {
-            vis.OnKeyUp(e);
+            partVis.OnKeyUp(e);
         }
 
         private void TreeView_SelectedINodeChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -343,7 +344,7 @@ namespace partmake
                 (e.OldValue as Topology.INode).IsSelected = false;
             if (e.NewValue != null)
                 (e.NewValue as Topology.INode).IsSelected = true;
-            vis.Part = selectedPart;
+            partVis.Part = selectedPart;
         }
 
         private void Eps_TextChanged(object sender, TextChangedEventArgs e)
@@ -387,14 +388,14 @@ namespace partmake
             Topology.BSPNode node = e.NewValue as Topology.BSPNode;
             if (node != null && node.nodeIdx == 0)
                 node = null;
-            vis.SelectedBSPNode = node;
+            partVis.SelectedBSPNode = node;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedBSPNode"));
 
         }
 
         void SelectBSPNode(Topology.BSPNode node)
         {
-            vis.SelectedBSPNode = node;
+            partVis.SelectedBSPNode = node;
 
             if (node != null)
             {
@@ -408,8 +409,8 @@ namespace partmake
         {
             Topology.BSPNode node = (sender as Button).Content as Topology.BSPNode;
 
-            vis.SelectedBSPNode = node;
-            vis.SelectedBSPNode.IsExpanded = true;
+            partVis.SelectedBSPNode = node;
+            partVis.SelectedBSPNode.IsExpanded = true;
             SelectBSPNode(node);
         }
 
@@ -423,7 +424,7 @@ namespace partmake
             if ((sender as Button).DataContext is Topology.PortalFace)
             {
                 Topology.PortalFace portalFace = (sender as Button).DataContext as Topology.PortalFace;
-                vis.SelectedPortalFace = portalFace;
+                partVis.SelectedPortalFace = portalFace;
                 Topology.PolygonClip.SetLogIdx(portalFace.PlaneNode.nodeIdx, true);
             }
             else if ((sender as Button).DataContext is Topology.BSPNode)
@@ -438,7 +439,7 @@ namespace partmake
         {
             Topology.PortalFace portalFace = (sender as Button).DataContext as Topology.PortalFace;
             polyLog.LogText = portalFace.GenPolyLog();
-            vis.SelectedPortalFace = portalFace;
+            partVis.SelectedPortalFace = portalFace;
         }
 
         private void BSPNodeTextBtn_Click(object sender, RoutedEventArgs e)
@@ -449,8 +450,8 @@ namespace partmake
                 Topology.BSPNode node =
                     selectedPart.GetTopoMesh().bSPTree.Top.FromIdx(nodeIdx);
                 selectedPart.GetTopoMesh().bSPTree.Top.IsExpanded = false;
-                vis.SelectedBSPNode = node;
-                vis.SelectedBSPNode.IsExpanded = true;
+                partVis.SelectedBSPNode = node;
+                partVis.SelectedBSPNode.IsExpanded = true;
                 SelectBSPNode(node);
             }
         }
@@ -470,7 +471,7 @@ namespace partmake
                 if (f != null)
                 {
                     SelectINode(f, false);
-                    vis.SelectFace(f);
+                    partVis.SelectFace(f);
                 }
             }
         }
@@ -491,7 +492,7 @@ namespace partmake
             var nextPortal = portals.FirstOrDefault(p => p.TraceIdx == traceNdext);
             if (nextPortal != null)
             {
-                vis.SelectedBSPNode = nextPortal.parentNode;
+                partVis.SelectedBSPNode = nextPortal.parentNode;
                 SelectBSPNode(nextPortal.parentNode);
             }
         }
@@ -505,7 +506,7 @@ namespace partmake
             var nextPortal = portals.FirstOrDefault(p => p.TraceIdx == traceNdext);
             if (nextPortal != null)
             {
-                vis.SelectedBSPNode = nextPortal.parentNode;
+                partVis.SelectedBSPNode = nextPortal.parentNode;
                 SelectBSPNode(nextPortal.parentNode);
             }
         }
@@ -563,7 +564,7 @@ namespace partmake
             Topology.Edge e1 = this.SelectedINodes[1] as Topology.Edge;
 
             selectedPart.Connectors.AddFromEdgeCrossing(selectedPart, e0, e1);
-            vis.Part = selectedPart;
+            partVis.Part = selectedPart;
             this.ConnectorsLB.InvalidateArrange();
             this.ConnectorsLB.UpdateLayout();
         }
@@ -571,7 +572,7 @@ namespace partmake
         private void Button_AddConnectorClick(object sender, RoutedEventArgs e)
         {
             selectedPart.Connectors.AddNew();
-            vis.Part = selectedPart;
+            partVis.Part = selectedPart;
             this.ConnectorsLB.InvalidateArrange();
             this.ConnectorsLB.UpdateLayout();
         }
