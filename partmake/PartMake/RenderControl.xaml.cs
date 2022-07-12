@@ -31,7 +31,10 @@ namespace partmake
         public bool BSPPortals { get => Vis.BSPPortals; set => Vis.BSPPortals = value; }
         public bool BSPFaces { get => Vis.BSPFaces; set => Vis.BSPFaces = value; }
 
+        public bool ShowLayoutView { get => _veldridControl.ShowLayoutView; set => _veldridControl.ShowLayoutView = value; }
+
         public PartVis Vis => _veldridControl.PartVis;
+
         public RenderControl()
         {
             InitializeComponent();
@@ -54,6 +57,14 @@ namespace partmake
         }
     }
 
+    public interface IRenderVis
+    {
+        void MouseDown(int btn, int X, int Y, System.Windows.Forms.Keys keys);
+        void MouseUp(int btn, int X, int Y);
+        void MouseMove(int X, int Y, System.Windows.Forms.Keys keys);
+        bool IsActive { get; set; }
+    }
+
     public class VeldridControl : System.Windows.Forms.Control, ApplicationWindow
     {
         private readonly System.Diagnostics.Stopwatch _stopwatch = new System.Diagnostics.Stopwatch();
@@ -65,10 +76,20 @@ namespace partmake
         LayoutVis _layoutVis = null;
         public PartVis PartVis => _partVis;
         public LayoutVis LayoutVis => _layoutVis;
+
+        public IRenderVis ActiveVis;
+
+        public bool ShowLayoutView { get { return ActiveVis == _layoutVis; } set {
+                         ActiveVis.IsActive = false;
+                         ActiveVis = value ? _layoutVis : _partVis;
+                        ActiveVis.IsActive = true;
+            } }
         public VeldridControl()
         {
             _partVis = new PartVis(this);
             _layoutVis = new LayoutVis(this);
+            ActiveVis = _partVis;
+            ActiveVis.IsActive = true;
             this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
             this.SetStyle(ControlStyles.DoubleBuffer, false);
             this.SetStyle(ControlStyles.Opaque, true);
@@ -166,21 +187,21 @@ namespace partmake
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
-            _partVis.MouseMove(e.X, e.Y, System.Windows.Forms.Control.ModifierKeys);
+            ActiveVis.MouseMove(e.X, e.Y, System.Windows.Forms.Control.ModifierKeys);
             base.OnMouseMove(e);
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
         {
             int btn = e.Button == MouseButtons.Left ? 0 : 1;
-            _partVis.MouseDown(btn, e.X, e.Y, System.Windows.Forms.Control.ModifierKeys);
+            ActiveVis.MouseDown(btn, e.X, e.Y, System.Windows.Forms.Control.ModifierKeys);
             base.OnMouseDown(e);
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
         {
             int btn = e.Button == MouseButtons.Left ? 0 : 1;
-            _partVis.MouseUp(btn, e.X, e.Y);
+            ActiveVis.MouseUp(btn, e.X, e.Y);
             base.OnMouseUp(e);
         }
         protected override void OnKeyDown(KeyEventArgs e)

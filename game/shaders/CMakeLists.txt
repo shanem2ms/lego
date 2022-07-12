@@ -41,8 +41,7 @@ set (SHADERC_FPROF metal)
 set (SHADERC_CPROF metal)
 endif()
 
-set (BGFX_SRC_DIR ${CMAKE_SOURCE_DIR}/bgfx.cmake/bgfx/src)
-
+message("BGFX_INCLUDE ${BGFX_INCLUDE}")
 
 add_custom_target(shaders ALL DEPENDS ${ALL_FILES})
 
@@ -51,12 +50,12 @@ string(REPLACE "\.sc" ".bin" SHDRBIN ${SHDR})
 
 message ("FS ${CMAKE_BINARY_DIR}/${SHDRBIN}")
 
-set (SHADERDBGON --debug -O 0)
+set (SHADERDBGOFF --debug -O 0)
 
 
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/${SHDRBIN}
-  COMMAND ${SHADERC} -f ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} --varyingdef ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
+  COMMAND ${SHADERC} -f ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} --varyingdef ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc 
                      -o ${CMAKE_BINARY_DIR}/${SHDRBIN} --type f --platform ${SHADERC_PLATFORM} --profile ${SHADERC_FPROF} -i ${BGFX_INCLUDE} ${SHADERDBG}
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} ${CMAKE_CURRENT_SOURCE_DIR}/uniforms.sh ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
   VERBATIM)

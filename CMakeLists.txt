@@ -25,6 +25,9 @@ set(BUNDLE_ID "com.lego.shane")
 message("vcpkg ${VCPKG_DIR}")
 
 include(${VCPKG_DIR}/scripts/buildsystems/vcpkg.cmake)
+if (MSVC)
+add_compile_options(/await:strict /Zc:__cplusplus)
+endif ()
 
 add_subdirectory(core)
 add_subdirectory(leveldb)

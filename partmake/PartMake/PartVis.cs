@@ -13,7 +13,7 @@ using System.Reflection;
 
 namespace partmake
 {
-    public class PartVis : SampleApplication
+    public class PartVis : SampleApplication, IRenderVis
     {
         private DeviceBuffer _projectionBuffer;
         private DeviceBuffer _viewBuffer;
@@ -150,6 +150,8 @@ namespace partmake
         int pickReady = -1;
         int meshSelectedOffset = -1;
         public LDrawDatFile Part { get => _part; set { _part = value; OnPartUpdated(); } }
+
+        public bool IsActive { get; set; }
 
         public PartVis(ApplicationWindow window) : base(window)
         {
@@ -993,6 +995,8 @@ namespace partmake
         }
         protected override void Draw(float deltaSeconds)
         {
+            if (!IsActive)
+                return;
             if (_vertexBuffer == null)
                 return;
             _cl.Begin();

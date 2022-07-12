@@ -65,6 +65,12 @@ namespace partmake
         }
         public string Log => selectedPart?.GetTopoMesh().LogString;
 
+        public bool ShowLayoutView
+        {
+            get => _RenderControl != null ? _RenderControl.ShowLayoutView : false;
+            set => _RenderControl.ShowLayoutView = value;
+       }
+
         Connector selectedConnector = null;
         public Connector SelectedConnector
         {

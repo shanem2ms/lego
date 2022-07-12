@@ -4,7 +4,6 @@ set (BGFX_INCLUDE ${BGFX_INCLUDE_ROOT}/bgfx)
 set (BGFX_LIB ${CMAKE_INSTALL_PREFIX}/lib)
 
 if (MSVC)
-add_compile_options(/await:strict)
 set(BX_INC_DIR_COMPAT ${BGFX_INCLUDE_ROOT}/compat/msvc)
 message(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 if (${CMAKE_CXX_FLAGS_RELEASE})
@@ -147,12 +146,23 @@ get_filename_component(OUTNAME ${RSRC} NAME)
 
 add_custom_command(
     TARGET game POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${RSRC}
         ${CMAKE_BINARY_DIR}/${OUTNAME})
     set (OUTRC ${OUTRC}
         ${CMAKE_BINARY_DIR}/${OUTNAME})
 endforeach()
+
+find_file(SHADERDYN shadercdyn.dll
+    PATH ${CMAKE_INSTALL_PREFIX}/bin)
+
+get_filename_component(OUTNAME ${SHADERDYN} NAME)
+add_custom_command(
+    TARGET game POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${SHADERDYN}
+        ${CMAKE_BINARY_DIR}/${OUTNAME})
+
 
 set (OUT_RESOURCES ${OUTRC} CACHE INTERNAL "OUT_RESOURCES")
 

@@ -87,7 +87,6 @@ namespace SampleBase
                 }
             }
         }
-
         private static string GetExtension(GraphicsBackend backendType)
         {
 			bool isMacOS = RuntimeInformation.OSDescription.Contains("Darwin");

@@ -37,7 +37,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(CMAKE_DEBUG_POSTFIX "_Debug")
 endif ()
 
-
 target_link_libraries(${PROJECT_NAME} LINK_PUBLIC 
     bgfx::bgfx
     bgfx::bimg

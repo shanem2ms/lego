@@ -175,7 +175,7 @@ vec3 IrradianceAtlas(float r, float muS, float i)
 // Ground radiance at end of ray x+tv, when sun in direction s.
 // Attenuated bewteen ground and viewer (=R[L0]+R[L*]).
 vec4 GroundColor(
-        vec4 inColor,
+        vec3 inColor,
         vec3 x, 
         vec3 v, 
         vec3 s, 
@@ -196,7 +196,7 @@ vec4 GroundColor(
         // ground reflectance at end of ray, x0
         vec3 x0 = x + d * v;
         vec3 n = normalize(x0);
-        vec4 reflectance = inColor;
+        vec3 reflectance = inColor;
 
         // direct sun light (radiance) reaching x0
         float muS = dot(n, s);
@@ -213,7 +213,7 @@ vec4 GroundColor(
 
         // light reflected at x0 (=(R[L0]+R[L*])/T(x,x0))
         vec3 groundReflect = (max(muS, 0.0) * sunLight + groundSkyLight) * ISun / M_PI;
-        vec3 groundColor = reflectance.rgb * max(groundReflect, 1);
+        vec3 groundColor = reflectance * max(groundReflect, 1);
         daylight = groundReflect.r;
 
         // attenuation of light to the viewer, T(x,x0)
@@ -284,7 +284,7 @@ void main()
     vec3 ld = lightdir;
 	vec3 clight = vec3(1,1,1) * ao;
 
-    vec3 s = vec3(0,1,0);
+    vec3 s = vec3(0,-1,0);
     vec3 x = u_eyePos;
     vec3 v = (wpos.xyz - u_eyePos);
     float dist = length(v) * 1;
@@ -322,6 +322,9 @@ void main()
                 Texture4DAtlas(r2, mu2, abs(muS), nu, 0.5, 0.5), fAtmosphereFog), 0.0);
         result2 = max(inscatter.rgb * phaseR + GetMie(inscatter) * phaseM , 0.0);
     }
+
+    float x0l = abs(wpos.y);
+    vec4 outColorHDR = GroundColor(color, x, v, s, r, mu, dist, x0l, dr, result, result2, fAtmosphereFog);
 	// Input.
 	vec3 nn = normalize(normal);
 	vec3 vv = viewDir;
@@ -335,7 +338,7 @@ void main()
 	vec3 cubeR = vr;
 	vec3 cubeN = nn;
 
-    float inReflectivity = 0.43;
+    float inReflectivity = 0.13;
     vec3 inAlbedo = color;
     vec3 refl = mix(vec3_splat(0.04), inAlbedo, inReflectivity);
     vec3 albedo = inAlbedo * (1.0 - inReflectivity);
@@ -358,7 +361,7 @@ void main()
 	// Color.
 	vec3 outColor = direct + indirect;
 	outColor = outColor * exp2(1);
-	gl_FragColor.xyz = mix(outColor,HDR(result.xyz - result2),1);
+	gl_FragColor.xyz = mix(outColor,HDR(outColorHDR),0);
 	gl_FragColor.w = 1.0;
 } 
 

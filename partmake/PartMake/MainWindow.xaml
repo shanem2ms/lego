@@ -414,6 +414,7 @@
             <StackPanel Orientation="Horizontal">
                 <TextBox x:Name="EpsTB" Width="200" TextChanged="Eps_TextChanged" LostFocus="Eps_LostFocus" />
                 <TextBox x:Name="EpsTB2" Width="200" TextChanged="Eps2_TextChanged" LostFocus="Eps2_LostFocus" />
+                <CheckBox Content="Layout View" IsChecked="{Binding Path=ShowLayoutView, Mode=TwoWay}" />
             </StackPanel>
             <TabControl Grid.Row="1" >
                 <TabItem Header="Render">
