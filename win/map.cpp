@@ -18,6 +18,7 @@
 #include "Application.h"
 #include <string>
 #include <vector>
+#include <shaderc.h>
 
 #define MAX_LOADSTRING 100
 bool simulateTouchMode = false;
@@ -37,6 +38,11 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 BYTE prevKeys[256];
 std::string g_serverName;
+
+namespace bgfx
+{
+    int compileShader();
+}
 
 LRESULT KeyboardHookproc(
     int code,
@@ -179,6 +185,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
         return FALSE;
     }
 
+    const char* argvArgs[] = { "-f", "C:/homep4/lego/game/shaders/fs_pickbrick.sc", "--varyingdef", "C:/homep4/lego/game/shaders/varying.def.sc", "-o", "C:/homep4/lego/out/build/x64-Debug/fs_pickbrick.bin", "--type", "f", "--platform", "windows", "--profile", "ps_4_0", "-i", "C:/homep4/lego/../install/x64-Debug/include/bgfx" };
+    constexpr int argcArgs = sizeof(argvArgs) / sizeof(argvArgs[0]);
+    bgfx::compileShader();
     RECT rect;
     GetClientRect(hWnd, &rect);
     ShowWindow(hWnd, nCmdShow);

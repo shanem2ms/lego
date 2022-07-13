@@ -153,16 +153,6 @@ add_custom_command(
         ${CMAKE_BINARY_DIR}/${OUTNAME})
 endforeach()
 
-find_file(SHADERDYN shadercdyn.dll
-    PATH ${CMAKE_INSTALL_PREFIX}/bin)
-
-get_filename_component(OUTNAME ${SHADERDYN} NAME)
-add_custom_command(
-    TARGET game POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${SHADERDYN}
-        ${CMAKE_BINARY_DIR}/${OUTNAME})
-
 
 set (OUT_RESOURCES ${OUTRC} CACHE INTERNAL "OUT_RESOURCES")
 
