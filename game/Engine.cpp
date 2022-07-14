@@ -9,6 +9,7 @@
 #include "Physics.h"
 #include <bimg/decode.h>
 #include "TextureFile.h"
+#include "../shadercmp/shadercmp.h"
 
 bgfx::TextureHandle loadTexture(bx::FileReaderI* _reader, const char* _filePath, uint64_t _flags, uint8_t _skip, bgfx::TextureInfo* _info, bimg::Orientation::Enum* _orientation);
 
@@ -309,8 +310,12 @@ namespace sam
         std::string path = Application::Inst().StartupPath();
         std::string vtxpath = path + "\\" + vtx;
         std::string pxpath = path + "\\" + px;
-        bgfx::ShaderHandle vtxShader = bgfx::createShader(loadMem(&fileReader, vtxpath.c_str()));
-        bgfx::ShaderHandle fragShader = bgfx::createShader(loadMem(&fileReader, pxpath.c_str()));
+        const bgfx::Memory* frgCompiled = bgfx::compileShader(pxpath, 'f');
+        const bgfx::Memory* vtxCompiled = bgfx::compileShader(vtxpath, 'v');
+        bgfx::ShaderHandle vtxShader = bgfx::createShader(vtxCompiled);
+        bgfx::ShaderHandle fragShader = bgfx::createShader(frgCompiled);
+        //bgfx::ShaderHandle vtxShader = bgfx::createShader(loadMem(&fileReader, vtxpath.c_str()));
+        //bgfx::ShaderHandle fragShader = bgfx::createShader(loadMem(&fileReader, pxpath.c_str()));
         bgfx::ProgramHandle pgm = bgfx::createProgram(vtxShader, fragShader, true);
         m_shaders.insert(std::make_pair(key, pgm));
         return pgm;

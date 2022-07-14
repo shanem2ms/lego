@@ -10,7 +10,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${MainBinaryDir})
 ################################################################################
 set(Main_Files
 "map.cpp"
-"shadercmp.cpp"
 "Resource.h"
 "map.h"
 "map.rc"
@@ -51,6 +50,7 @@ target_link_libraries(${PROJECT_NAME} LINK_PUBLIC
     fmt::fmt-header-only
     CURL::libcurl
     core 
+    shadercmp
     game
     ${PLATFORMLIBS}
     ZLIB::ZLIB
@@ -69,13 +69,3 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     )
     
 add_compile_definitions(BX_CONFIG_DEBUG=${BX_CONFIG_DEBUG})
-
-find_file(SHADERDYN shadercdyn.dll
-    PATH ${CMAKE_INSTALL_PREFIX}/bin)
-
-get_filename_component(OUTNAME ${SHADERDYN} NAME)
-add_custom_command(
-    TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${SHADERDYN}
-        ${CMAKE_BINARY_DIR}/${OUTNAME})

@@ -4,6 +4,7 @@
 // Windows Header Files
 #include <shaderc.h>
 #include <Windows.h>
+#include <filesystem>
 
 namespace bgfx
 {
@@ -81,6 +82,13 @@ namespace bgfx
             return _size;
         }
 
+        const bgfx::Memory* Get()
+        {
+            const bgfx::Memory* mem = bgfx::alloc(m_buffer.size());
+            memcpy(mem->data, m_buffer.data(), m_buffer.size());
+            return mem;
+        }
+
     private:
         std::string m_buffer;
     };
@@ -111,38 +119,43 @@ namespace bgfx
         , optimizationLevel(3)
     {
     }
+    static HMODULE hShaderDyn = nullptr;
+    static CompileShaderFunc compileShaderFunc = nullptr;
 
-    int compileShader()
-    {
-        HMODULE hShaderDyn = LoadLibrary("shadercdyn.dll");
-        CompileShaderFunc compileShader = (CompileShaderFunc)GetProcAddress(hShaderDyn, "compileShader");
-
+    const bgfx::Memory *compileShader(const std::string &shader, char shadertype)
+    { 
+        if (compileShaderFunc == nullptr)
+        {
+            hShaderDyn = LoadLibrary("shadercdyn.dll");
+            compileShaderFunc = (CompileShaderFunc)GetProcAddress(hShaderDyn, "compileShader");
+        }
+        std::filesystem::path src(shader);
+        src.replace_extension("sc");
         Options options;
-        const char* filePath = "C:/homep4/lego/game/shaders/fs_pickbrick.sc";
-        const char* varyingdef = "C:/homep4/lego/game/shaders/varying.def.sc";
-
+        const char* varyingdef = "varying.def.sc";
+        std::string filePath = src.string();
         options.inputFilePath = filePath;
-        options.shaderType = 'f';
+        options.shaderType = shadertype;
         options.platform = "windows";
-        options.profile = "ps_4_0";
-        options.preprocessOnly = true;
-     
-        options.includeDirs.push_back("C:/homep4/lego/../install/x64-Debug/include/bgfx");
+        options.profile = shadertype == 'f' ? "ps_4_0" : "vs_4_0";
 
+        options.preprocessOnly = false;     
         std::string dir;
         {
-            bx::FilePath fp(filePath);
+            bx::FilePath fp(src.string().c_str());
             bx::StringView path(fp.getPath());
 
             dir.assign(path.getPtr(), path.getTerm());
             options.includeDirs.push_back(dir);
         }
-       
+
+
         std::string commandLineComment = "// shaderc command line:\n";
         bool compiled = false;
 
+        const bgfx::Memory* compiledShader = nullptr;
         bx::FileReader reader;
-        if (!bx::open(&reader, filePath))
+        if (!bx::open(&reader, filePath.c_str()))
         {
             bx::printf("Unable to open file '%s'.\n", filePath);
         }
@@ -173,18 +186,17 @@ namespace bgfx
             bx::memSet(&data[size + 1], 0, padding);
             bx::close(&reader);
 
-            bx::WriterI* writer = new StringWriter();
-            compiled = compileShader(varying, commandLineComment.c_str(), data, size, options, writer);
+            StringWriter* writer = new StringWriter();
+            compiled = compileShaderFunc(varying, commandLineComment.c_str(), data, size, options, writer);
+            if (compiled)
+            {
+                compiledShader = writer->Get();
+            }
+            delete writer;
 
         }
 
-        if (compiled)
-        {
-            return bx::kExitSuccess;
-        }
-
-        bx::printf("Failed to build shader.\n");
-        return bx::kExitFailure;
+        return compiledShader;
     }
 
 }

@@ -35,8 +35,10 @@ add_dependencies(core leveldb)
 
 if (BLOCKO_GAME)
 find_package(bgfx CONFIG REQUIRED )
+add_subdirectory(shadercmp)
 add_subdirectory(game)
 add_dependencies(game core)
+add_dependencies(game shadercmp)
 add_dependencies(game bgfx::bgfx)
 add_dependencies(shaders bgfx::bgfx)
 
