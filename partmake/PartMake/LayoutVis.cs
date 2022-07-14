@@ -98,16 +98,37 @@ namespace partmake
         {
         }
 
-        public void MouseDown(int btn, int X, int Y, Keys keys)
+        bool mouseMoved = false;
+        public void MouseDown(int btn, int X, int Y, System.Windows.Forms.Keys keys)
         {
+            mouseDown |= 1 << btn;
+            mouseDownLookDir = lookDir;
+            mouseDownZoom = zoom;
+            rMouseDownPt = lMouseDownPt = new Vector2(X, Y);
+            mouseDownCameraPos = cameraPos;
+            mouseMoved = false;
         }
-
-        public void MouseMove(int X, int Y, Keys keys)
-        {
-        }
-
         public void MouseUp(int btn, int X, int Y)
         {
+            mouseDown &= ~(1 << btn);
+        }
+        public void MouseMove(int X, int Y, System.Windows.Forms.Keys keys)
+        {
+            mouseMoved = true;
+            if ((mouseDown & 1) != 0)
+                lookDir = mouseDownLookDir + (new Vector2(X, Y) - lMouseDownPt) * 0.01f;
+            if ((mouseDown & 2) != 0)
+            {
+                if ((keys & System.Windows.Forms.Keys.Shift) != 0)
+                {
+                    zoom = mouseDownZoom + (Y - rMouseDownPt.Y) * 0.005f;
+                }
+                else
+                {
+                    float tscale = 0.01f;
+                    cameraPos = mouseDownCameraPos - new Vector3(-X + lMouseDownPt.X, Y - lMouseDownPt.Y, 0) * tscale;
+                }
+            }
         }
 
         protected unsafe override void CreateResources(ResourceFactory factory)
@@ -126,6 +147,27 @@ namespace partmake
             _primStgTexture = factory.CreateTexture(
                 new TextureDescription(1024, 1024, 1, 1, 1, PixelFormat.R32_G32_B32_A32_Float, TextureUsage.Staging, TextureType.Texture2D, TextureSampleCount.Count1));
 
+
+            {
+                var cubeVertices = GetCubeVertices();
+                _cubeVertexBuffer = factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * cubeVertices.Length), BufferUsage.VertexBuffer));
+                GraphicsDevice.UpdateBuffer(_cubeVertexBuffer, 0, cubeVertices);
+
+                var cubeIndices = GetCubeIndices();
+                _cubeIndexBuffer = factory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)cubeIndices.Length, BufferUsage.IndexBuffer));
+                _cubeIndexCount = (uint)cubeIndices.Length;
+                GraphicsDevice.UpdateBuffer(_cubeIndexBuffer, 0, cubeIndices);
+            }
+            {
+                var planeVertices = GetPlaneVertices();
+                _planeVertexBuffer = factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * planeVertices.Length), BufferUsage.VertexBuffer));
+                GraphicsDevice.UpdateBuffer(_planeVertexBuffer, 0, planeVertices);
+
+                var planeIndices = GetPlaneIndices();
+                _planeIndexBuffer = factory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)planeIndices.Length, BufferUsage.IndexBuffer));
+                _planeIndexCount = (uint)planeIndices.Length;
+                GraphicsDevice.UpdateBuffer(_planeIndexBuffer, 0, planeIndices);
+            }
 
             var assembly = Assembly.GetExecutingAssembly();
 
@@ -160,6 +202,7 @@ namespace partmake
             {
                 var vsfile = "partmake.vs.glsl";
                 var fsfile = "partmake.fs.glsl";
+                var floorgridfile = "partmake.floorgrid.glsl";
 
                 string VertexCode;
                 string FragmentCode;
@@ -168,7 +211,7 @@ namespace partmake
                 {
                     VertexCode = reader.ReadToEnd();
                 }
-                using (Stream stream = assembly.GetManifestResourceStream(fsfile))
+                using (Stream stream = assembly.GetManifestResourceStream(floorgridfile))
                 using (StreamReader reader = new StreamReader(stream))
                 {
                     FragmentCode = reader.ReadToEnd();
@@ -276,19 +319,108 @@ namespace partmake
                 Matrix4x4.CreateRotationX(lookDir.Y) *
                 Matrix4x4.CreateTranslation(cameraPos / System.MathF.Pow(2.0f, zoom));
             _cl.UpdateBuffer(_viewBuffer, 0, viewmat);
-
             Matrix4x4 mat =
                 Matrix4x4.CreateTranslation(-partOffset) *
                 Matrix4x4.CreateScale(partScale);
             _cl.SetPipeline(_pipeline);
+            _cl.SetGraphicsResourceSet(0, _projViewSet);
+            _cl.SetGraphicsResourceSet(1, _worldTextureSet);
             _cl.SetFramebuffer(MainSwapchain.Framebuffer);
             _cl.ClearColorTarget(0, RgbaFloat.Black);
             _cl.ClearDepthStencil(1f);
-
+            Vector4 candidateColor = new Vector4(0f, 0.5f, 1.0f, 1.0f);
+            _cl.UpdateBuffer(_materialBuffer, 0, ref candidateColor);
+            _cl.SetVertexBuffer(0, _planeVertexBuffer);
+            _cl.SetIndexBuffer(_planeIndexBuffer, IndexFormat.UInt16);
+            Matrix4x4 cm = Matrix4x4.CreateRotationX(MathF.PI * 0.5f);
+            _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+            _cl.DrawIndexed((uint)_planeIndexCount);
+            _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
             GraphicsDevice.SwapBuffers(MainSwapchain);
             GraphicsDevice.WaitForIdle();
         }
+
+        private Vtx[] GetCubeVertices()
+        {
+            Vtx[] vertices = new Vtx[]
+            {
+                // Top
+                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector2(0, 0)),
+                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector2(1, 0)),
+                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f), new Vector2(1, 1)),
+                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector2(0, 1)),
+                // Bottom                                                             
+                new Vtx(new Vector3(-0.5f,-0.5f, +0.5f),  new Vector2(0, 0)),
+                new Vtx(new Vector3(+0.5f,-0.5f, +0.5f),  new Vector2(1, 0)),
+                new Vtx(new Vector3(+0.5f,-0.5f, -0.5f),  new Vector2(1, 1)),
+                new Vtx(new Vector3(-0.5f,-0.5f, -0.5f),  new Vector2(0, 1)),
+                // Left                                                               
+                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector2(0, 0)),
+                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector2(1, 0)),
+                new Vtx(new Vector3(-0.5f, -0.5f, +0.5f), new Vector2(1, 1)),
+                new Vtx(new Vector3(-0.5f, -0.5f, -0.5f), new Vector2(0, 1)),
+                // Right                                                              
+                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f), new Vector2(0, 0)),
+                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector2(1, 0)),
+                new Vtx(new Vector3(+0.5f, -0.5f, -0.5f), new Vector2(1, 1)),
+                new Vtx(new Vector3(+0.5f, -0.5f, +0.5f), new Vector2(0, 1)),
+                // Back                                                               
+                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector2(0, 0)),
+                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector2(1, 0)),
+                new Vtx(new Vector3(-0.5f, -0.5f, -0.5f), new Vector2(1, 1)),
+                new Vtx(new Vector3(+0.5f, -0.5f, -0.5f), new Vector2(0, 1)),
+                // Front                                                              
+                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector2(0, 0)),
+                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f), new Vector2(1, 0)),
+                new Vtx(new Vector3(+0.5f, -0.5f, +0.5f), new Vector2(1, 1)),
+                new Vtx(new Vector3(-0.5f, -0.5f, +0.5f), new Vector2(0, 1)),
+            };
+
+            return vertices;
+        }
+
+        private static ushort[] GetCubeIndices()
+        {
+            ushort[] indices =
+            {
+                0,1,2, 0,2,3,
+                4,5,6, 4,6,7,
+                8,9,10, 8,10,11,
+                12,13,14, 12,14,15,
+                16,17,18, 16,18,19,
+                20,21,22, 20,22,23,
+            };
+
+            return indices;
+        }
+
+        private Vtx[] GetPlaneVertices()
+        {
+            Vtx[] vertices = new Vtx[]
+            {
+                // Back                                                               
+                new Vtx(new Vector3(+1.0f, +1.0f, 0.0f), new Vector2(0, 0)),
+                new Vtx(new Vector3(-1.0f, +1.0f, 0.0f), new Vector2(1, 0)),
+                new Vtx(new Vector3(-1.0f, -1.0f, 0.0f), new Vector2(1, 1)),
+                new Vtx(new Vector3(+1.0f, -1.0f, 0.0f), new Vector2(0, 1)),
+            };
+
+            return vertices;
+        }
+
+        private static ushort[] GetPlaneIndices()
+        {
+            ushort[] indices =
+            {
+                0,1,2, 0,2,3
+            };
+
+            return indices;
+        }
+
+
+
     }
 
 

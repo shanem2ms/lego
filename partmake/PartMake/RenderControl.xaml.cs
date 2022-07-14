@@ -88,7 +88,7 @@ namespace partmake
         {
             _partVis = new PartVis(this);
             _layoutVis = new LayoutVis(this);
-            ActiveVis = _partVis;
+            ActiveVis = _layoutVis;
             ActiveVis.IsActive = true;
             this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
             this.SetStyle(ControlStyles.DoubleBuffer, false);

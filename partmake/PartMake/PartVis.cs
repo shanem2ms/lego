@@ -149,7 +149,9 @@ namespace partmake
         int pickX, pickY;
         int pickReady = -1;
         int meshSelectedOffset = -1;
-        public LDrawDatFile Part { get => _part; set { _part = value; OnPartUpdated(); } }
+        public LDrawDatFile Part { get => _part; set {                
+                    _part = value; if (IsActive) OnPartUpdated();                
+            } }
 
         public bool IsActive { get; set; }
 

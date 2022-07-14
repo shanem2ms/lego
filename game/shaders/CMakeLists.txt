@@ -6,14 +6,23 @@ set (FS_SHADERS fs_cubes.sc fs_pickconnector.sc fs_pickbrick.sc fs_brickpreview.
 set (CS_BINS ${CS_SHADERS})
 list(TRANSFORM CS_BINS REPLACE "\\.sc" ".bin" )
 list(TRANSFORM CS_BINS PREPEND ${CMAKE_BINARY_DIR}/ )
+set (CS_PP ${CS_SHADERS})
+list(TRANSFORM CS_PP REPLACE "\\.sc" ".pp" )
+list(TRANSFORM CS_PP PREPEND ${CMAKE_BINARY_DIR}/ )
 
 set (FS_BINS ${FS_SHADERS})
 list(TRANSFORM FS_BINS REPLACE "\\.sc" ".bin" )
 list(TRANSFORM FS_BINS PREPEND ${CMAKE_BINARY_DIR}/ )
+set (FS_PP ${FS_SHADERS})
+list(TRANSFORM FS_PP REPLACE "\\.sc" ".pp" )
+list(TRANSFORM FS_PP PREPEND ${CMAKE_BINARY_DIR}/ )
 
 set (VS_BINS ${VS_SHADERS})
 list(TRANSFORM VS_BINS REPLACE "\\.sc" ".bin" )
 list(TRANSFORM VS_BINS PREPEND ${CMAKE_BINARY_DIR}/ )
+set (VS_PP ${VS_SHADERS})
+list(TRANSFORM VS_PP REPLACE "\\.sc" ".pp" )
+list(TRANSFORM VS_PP PREPEND ${CMAKE_BINARY_DIR}/ )
 
 message(${VS_BINS})
 message(${FS_BINS})
@@ -21,8 +30,11 @@ message(${FS_BINS})
 
 set(ALL_FILES        
     ${FS_BINS}
+    ${FS_PP}
     ${CS_BINS}
+    ${CS_PP}
     ${VS_BINS}
+    ${VS_PP}
 )
 
 set (ALL_SHADERS ${ALL_FILES} CACHE INTERNAL "ALL_SHADERS")
@@ -47,8 +59,7 @@ add_custom_target(shaders ALL DEPENDS ${ALL_FILES})
 
 foreach (SHDR ${FS_SHADERS})
 string(REPLACE "\.sc" ".bin" SHDRBIN ${SHDR})
-
-message ("FS ${CMAKE_BINARY_DIR}/${SHDRBIN}")
+string(REPLACE "\.sc" ".pp" SHDRPP ${SHDR})
 
 set (SHADERDBGOFF --debug -O 0)
 
@@ -59,12 +70,20 @@ add_custom_command(
                      -o ${CMAKE_BINARY_DIR}/${SHDRBIN} --type f --platform ${SHADERC_PLATFORM} --profile ${SHADERC_FPROF} -i ${BGFX_INCLUDE} ${SHADERDBG}
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} ${CMAKE_CURRENT_SOURCE_DIR}/uniforms.sh ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
   VERBATIM)
+
+add_custom_command(
+  OUTPUT ${CMAKE_BINARY_DIR}/${SHDRPP}
+  COMMAND ${SHADERC} -f ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} --varyingdef ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc 
+                     -o ${CMAKE_BINARY_DIR}/${SHDRPP} --type f --preprocess --platform ${SHADERC_PLATFORM} --profile ${SHADERC_FPROF} -i ${BGFX_INCLUDE}
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} ${CMAKE_CURRENT_SOURCE_DIR}/uniforms.sh ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
+  VERBATIM)
   
 endforeach()
 
 foreach (SHDR ${CS_SHADERS})
 
 string(REPLACE "\.sc" ".bin" SHDRBIN ${SHDR})
+string(REPLACE "\.sc" ".pp" SHDRPP ${SHDR})
 
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/${SHDRBIN}
@@ -73,11 +92,19 @@ add_custom_command(
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} ${CMAKE_CURRENT_SOURCE_DIR}/uniforms.sh ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
   VERBATIM)
   
+add_custom_command(
+  OUTPUT ${CMAKE_BINARY_DIR}/${SHDRPP}
+  COMMAND ${SHADERC} -f ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} --varyingdef ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
+                     -o ${CMAKE_BINARY_DIR}/${SHDRPP} --type c --preprocess --platform ${SHADERC_PLATFORM} --profile ${SHADERC_CPROF} -i ${BGFX_INCLUDE}
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} ${CMAKE_CURRENT_SOURCE_DIR}/uniforms.sh ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
+  VERBATIM)
+  
 endforeach()
 
 foreach (SHDR ${VS_SHADERS})
 
 string(REPLACE "\.sc" ".bin" SHDRBIN ${SHDR})
+string(REPLACE "\.sc" ".pp" SHDRPP ${SHDR})
 
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/${SHDRBIN}
@@ -85,7 +112,13 @@ add_custom_command(
                      -o ${CMAKE_BINARY_DIR}/${SHDRBIN} --type v --platform ${SHADERC_PLATFORM} --profile ${SHADERC_VPROF} -i ${BGFX_INCLUDE} ${SHADERDBG}
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} ${CMAKE_CURRENT_SOURCE_DIR}/uniforms.sh ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
   VERBATIM)
-  
+
+add_custom_command(
+   OUTPUT ${CMAKE_BINARY_DIR}/${SHDRPP}
+  COMMAND ${SHADERC} -f ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} --varyingdef ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
+                     -o ${CMAKE_BINARY_DIR}/${SHDRPP} --type v --preprocess --platform ${SHADERC_PLATFORM} --profile ${SHADERC_VPROF} -i ${BGFX_INCLUDE}
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${SHDR} ${CMAKE_CURRENT_SOURCE_DIR}/uniforms.sh ${CMAKE_CURRENT_SOURCE_DIR}/varying.def.sc
+  VERBATIM)
 endforeach()
 
 
