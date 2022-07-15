@@ -241,6 +241,12 @@ namespace sam
                 }
             }));        
 
+        panel->AddControl(std::make_shared<UIStateBtn>(20, 305, 165, 85, "Shaders",
+            [](bool isBtnDown)
+            {
+                Application::Inst().UIQuit();
+            }));
+
         panel->AddControl(std::make_shared<UIStateBtn>(20, -105, 165, 85, "Quit",
             [](bool isBtnDown)
             {

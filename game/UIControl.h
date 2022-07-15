@@ -164,6 +164,18 @@ namespace sam
         UIControl* IsHit(float x, float y, int buttonId) override;
     };
 
+    class UITextEditor : public UIControl
+    {
+        bool m_isOpen;
+        std::string m_dir;
+        std::function<void(bool, const std::string& file)> m_resultFunc;
+    public:
+        UITextEditor(float x, float y, float w, float h,
+            const std::string& directory, std::function<void(bool, const std::string& file)> resultFunc);
+        void DrawUI(UIContext& ctx) override;
+        UIControl* IsHit(float x, float y, int buttonId) override;
+    };
+
     class UIManager
     {
     protected:

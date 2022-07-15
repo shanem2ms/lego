@@ -63,13 +63,7 @@ namespace partmake
             get => SelectedINodes.Count > 0 ? SelectedINodes[0] : null; set
             { SelectedINodes.Clear(); SelectedINodes.Add(value); }
         }
-        public string Log => selectedPart?.GetTopoMesh().LogString;
-
-        public bool ShowLayoutView
-        {
-            get => _RenderControl != null ? _RenderControl.ShowLayoutView : false;
-            set => _RenderControl.ShowLayoutView = value;
-       }
+        public string Log => selectedPart?.TopoMesh?.LogString;
 
         Connector selectedConnector = null;
         public Connector SelectedConnector
@@ -88,7 +82,7 @@ namespace partmake
 
         public Topology.BSPNode SelectedBSPNode => partVis?.SelectedBSPNode;
         public List<Topology.BSPNode> BSPNodes =>
-            new List<Topology.BSPNode>() { selectedPart?.GetTopoMesh().bSPTree?.Top };
+            new List<Topology.BSPNode>() { selectedPart?.TopoMesh?.bSPTree?.Top };
 
         public bool disableConnectors = false;
         public bool DisableConnectors { get => disableConnectors; set { disableConnectors = value; Rebuild(); } }
@@ -264,17 +258,26 @@ namespace partmake
             if (item == null)
                 return;
             selectedPart = LDrawFolders.GetPart(item);
-            selectedPart.SetSubPartSizes();
-            if (disableConnectors)
-                selectedPart.Connectors.DisableConnectors(selectedPart);
-            if (partVis != null)
-                partVis.Part = selectedPart;
-
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentDatFile"));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentPart"));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Log"));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("BSPNodes"));
+            selectedPart.AsyncInit();
+            selectedPart.Initialized += SelectedPart_Initialized;
             File.WriteAllLines("PartMake.ini", new string[] { item.name });
+        }
+
+        private void SelectedPart_Initialized(object sender, bool e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                selectedPart.SetSubPartSizes();
+                if (disableConnectors)
+                    selectedPart.Connectors.DisableConnectors(selectedPart);
+                if (partVis != null)
+                    partVis.Part = selectedPart;
+
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentDatFile"));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CurrentPart"));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Log"));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("BSPNodes"));
+            });
         }
 
         private void TextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)

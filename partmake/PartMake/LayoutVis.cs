@@ -303,9 +303,6 @@ namespace partmake
 
         protected override void Draw(float deltaSeconds)
         {
-            if (!IsActive)
-                return;
-
             _cl.Begin();
 
             Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(

@@ -13,34 +13,21 @@ namespace partmake
     /// <summary>
     ///     Interaction logic for RenderControl.xaml
     /// </summary>
-    public partial class RenderControl : System.Windows.Controls.UserControl, IDisposable
+    public partial class LayoutRenderControl : System.Windows.Controls.UserControl, IDisposable
     {
-        private readonly PartRendererControl _veldridControl;
-       
-        public bool DoMesh { get => Vis.DoMesh; set => Vis.DoMesh = value; }
+        private readonly LayoutRendererControlChild _veldridControl;
+               
 
-        public bool DoDecomp { get => Vis.DoDecomp; set => Vis.DoDecomp = value; }
-        public bool ShowBisector { get => Vis.ShowBisector; set => Vis.ShowBisector = value; }
-        public bool NonManifold { get => Vis.NonManifold; set => Vis.NonManifold = value; }        
-        public bool ShowConnectors { get => Vis.ShowConnectors; set => Vis.ShowConnectors = value; }
-        public bool ShowExteriorPortals { get => Vis.ShowExteriorPortals; set => Vis.ShowExteriorPortals = value; }
-        public bool ShowLdrLoader { get => Vis.ShowLdrLoader; set => Vis.ShowLdrLoader = value; }
-        public bool ShowMbx { get => Vis.ShowMbx; set => Vis.ShowMbx = value; }        
-        public bool DoRaycast { get => Vis.DoRaycast; set => Vis.DoRaycast = value; }
-        public bool ShowEdges { get => Vis.ShowEdges; set => Vis.ShowEdges = value; }
-        public bool BSPPortals { get => Vis.BSPPortals; set => Vis.BSPPortals = value; }
-        public bool BSPFaces { get => Vis.BSPFaces; set => Vis.BSPFaces = value; }
+        public LayoutVis Vis => _veldridControl.LayoutVis;
 
-        public PartVis Vis => _veldridControl.PartVis;
-
-        public RenderControl()
+        public LayoutRenderControl()
         {
             InitializeComponent();
 
             // Subscribe to render events to trigger WinForms Application.Idle event
             System.Windows.Media.CompositionTarget.Rendering += OnRendering;
 
-            _veldridControl = new PartRendererControl { IsAnimated = true};
+            _veldridControl = new LayoutRendererControlChild { IsAnimated = true};
             _host.Child = _veldridControl;
         }
 
@@ -54,26 +41,19 @@ namespace partmake
             System.Windows.Media.CompositionTarget.Rendering -= OnRendering;
         }
     }
-
-    public interface IRenderVis
-    {
-        void MouseDown(int btn, int X, int Y, System.Windows.Forms.Keys keys);
-        void MouseUp(int btn, int X, int Y);
-        void MouseMove(int X, int Y, System.Windows.Forms.Keys keys);
-    }
-
-    public class PartRendererControl : System.Windows.Forms.Control, ApplicationWindow
+    public class LayoutRendererControlChild : System.Windows.Forms.Control, ApplicationWindow
     {
         private readonly System.Diagnostics.Stopwatch _stopwatch = new System.Diagnostics.Stopwatch();
         private GraphicsDevice _device;
         private DisposeCollectorResourceFactory _resources;
         private bool _isAnimated;
 
-        PartVis _partVis = null;
-        public PartVis PartVis => _partVis;
-        public PartRendererControl()
+        LayoutVis _layoutVis = null;
+        public LayoutVis LayoutVis => _layoutVis;
+
+        public LayoutRendererControlChild()
         {
-            _partVis = new PartVis(this);
+            _layoutVis = new LayoutVis(this);
             this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
             this.SetStyle(ControlStyles.DoubleBuffer, false);
             this.SetStyle(ControlStyles.Opaque, true);
@@ -171,21 +151,21 @@ namespace partmake
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
-            _partVis.MouseMove(e.X, e.Y, System.Windows.Forms.Control.ModifierKeys);
+            LayoutVis.MouseMove(e.X, e.Y, System.Windows.Forms.Control.ModifierKeys);
             base.OnMouseMove(e);
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
         {
             int btn = e.Button == MouseButtons.Left ? 0 : 1;
-            _partVis.MouseDown(btn, e.X, e.Y, System.Windows.Forms.Control.ModifierKeys);
+            LayoutVis.MouseDown(btn, e.X, e.Y, System.Windows.Forms.Control.ModifierKeys);
             base.OnMouseDown(e);
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
         {
             int btn = e.Button == MouseButtons.Left ? 0 : 1;
-            _partVis.MouseUp(btn, e.X, e.Y);
+            LayoutVis.MouseUp(btn, e.X, e.Y);
             base.OnMouseUp(e);
         }
         protected override void OnKeyDown(KeyEventArgs e)

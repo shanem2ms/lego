@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -27,7 +28,7 @@ namespace partmake
         AABB? aabb;
 
         Matrix4x4? partMatrix;
-        public Matrix4x4 PartMatrix { get { if (!partMatrix.HasValue) RefreshPartMatrix(); return partMatrix.Value; } }
+        public Matrix4x4 PartMatrix { get { if (partMatrix.HasValue) return partMatrix.Value; return Matrix4x4.Identity; } }
 
         Connectors connectors = null;
         public Connectors Connectors
@@ -37,7 +38,6 @@ namespace partmake
                 if (connectors == null)
                 {
                     connectors = new Connectors();
-                    connectors.Init(this);
                 }
                 return connectors;
             }
@@ -222,6 +222,21 @@ namespace partmake
             topoMesh = null;
         }
 
+        public event EventHandler<bool> Initialized;
+        public bool IsInitialized = false;
+        public void AsyncInit()
+        {
+            Thread t = new Thread(() =>
+            {
+                RefreshPartMatrix();
+                Connectors.Init(this);
+                IsInitialized = true;
+                Initialized?.Invoke(this, true);
+            }
+            );
+            t.Start();
+
+        }
 
         void RefreshPartMatrix()
         {
@@ -247,6 +262,8 @@ namespace partmake
                 partMatrix = Matrix4x4.CreateScale(new Vector3(-1, -1, 1)) * Matrix4x4.CreateTranslation(new Vector3(0, aabb.Max.Y, 0));
             }
         }
+
+        public Topology.Mesh TopoMesh { get => topoMesh; }
         public Topology.Mesh GetTopoMesh()
         {
             if (topoMesh == null)
@@ -346,7 +363,7 @@ namespace partmake
             }
         }
         public void GetVertices(List<Vtx> vertices, bool onlySelected, bool useMbxMatrix)
-        {            
+        {
             GetVerticesRecursive(false, useMbxMatrix ? PartMatrix : Matrix4x4.Identity, vertices, !onlySelected);
         }
 

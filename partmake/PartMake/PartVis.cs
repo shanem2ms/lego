@@ -150,10 +150,8 @@ namespace partmake
         int pickReady = -1;
         int meshSelectedOffset = -1;
         public LDrawDatFile Part { get => _part; set {                
-                    _part = value; if (IsActive) OnPartUpdated();                
+                    _part = value; OnPartUpdated();                
             } }
-
-        public bool IsActive { get; set; }
 
         public PartVis(ApplicationWindow window) : base(window)
         {
@@ -960,7 +958,7 @@ namespace partmake
 
             }
             _cl = factory.CreateCommandList();
-            if (this._part != null)
+            if (this._part != null && this._part.IsInitialized)
                 OnPartUpdated();
         }
 
@@ -997,8 +995,6 @@ namespace partmake
         }
         protected override void Draw(float deltaSeconds)
         {
-            if (!IsActive)
-                return;
             if (_vertexBuffer == null)
                 return;
             _cl.Begin();

@@ -6,6 +6,7 @@
 #include "World.h"
 #include "imgui.h"
 #include "dear-imgui/ImGuiFileDialog.h"
+#include "TextEditor.h"
 #include <chrono>
 
 namespace sam
@@ -408,6 +409,25 @@ namespace sam
     }
 
     UIControl* UIFileDialog::IsHit(float x, float y, int buttonId)
+    {
+        return nullptr;
+    }
+
+
+    UITextEditor::UITextEditor(float x, float y, float w, float h,
+        const std::string& directory, std::function<void(bool, const std::string& file)> resultFunc) :
+        UIControl(x, y, w, h),
+        m_isOpen(false),
+        m_resultFunc(resultFunc)
+    {
+
+    }
+
+    void UITextEditor::DrawUI(UIContext& ctx)
+    {
+    }
+
+    UIControl* UITextEditor::IsHit(float x, float y, int buttonId)
     {
         return nullptr;
     }
