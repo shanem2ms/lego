@@ -158,7 +158,34 @@ namespace partmake
             outParts.Sort();
             return outParts;
         }
-        public static void SetRoot(string folder)
+        public static void SetCacheRoot(string folder)
+        {
+            Directory.CreateDirectory(folder);
+            DirectoryInfo di = new DirectoryInfo(folder);
+
+            HashSet<string> cacheItems = new HashSet<string>();
+            StreamReader streamReader = new StreamReader(Path.Combine(folder, "categories.json"));
+            string str = streamReader.ReadToEnd();
+            JObject json = JObject.Parse(str);
+            Dictionary<string, List<string>> typegroups = new Dictionary<string, List<string>>();
+            foreach (var prop in json.Properties())
+            {
+                string grp = (string)prop.Value;
+                List<string> items;
+                if (!typegroups.TryGetValue(grp, out items))
+                {
+                    items = new List<string>();
+                    typegroups.Add(grp, items);
+                }
+                items.Add(prop.Name);
+            }
+            
+            foreach (var fi in di.GetFiles("*.json"))
+            {
+                //cacheItems.Add(fi.Name);
+            }
+        }
+        public static void SetLDrawRoot(string folder)
         {
             string descFile = "partdesc.txt";
             rootFolder = folder;

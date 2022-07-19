@@ -113,11 +113,10 @@ namespace partmake
 
         public MainWindow()
         {
-            System.IO.Directory.CreateDirectory(
-                LDrawFolders.Root + "\\cache");
             Topology.Mesh.settings = this.TopoSettings;
             Topology.Mesh.settings.SettingsChanged += Settings_SettingsChanged;
-            LDrawFolders.SetRoot(Path.Combine(LDrawFolders.Root, "ldraw"));
+            LDrawFolders.SetCacheRoot(Path.Combine(LDrawFolders.Root, "cache"));
+            LDrawFolders.SetLDrawRoot(Path.Combine(LDrawFolders.Root, "ldraw"));
             this.DataContext = this;
             InitializeComponent();
             string part = "4733.dat";
