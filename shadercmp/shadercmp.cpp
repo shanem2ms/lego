@@ -5,6 +5,7 @@
 #include <shaderc.h>
 #include <Windows.h>
 #include <filesystem>
+#include "shadercmp.h"
 
 namespace bgfx
 {
@@ -199,4 +200,11 @@ namespace bgfx
         return compiledShader;
     }
 
+}
+namespace sam
+{
+    const bgfx::Memory* ShaderCompiler::CompileShader(const std::string& shader, char shadertype)
+    {
+        return bgfx::compileShader(shader, shadertype);
+    }
 }

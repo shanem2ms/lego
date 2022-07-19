@@ -3,5 +3,14 @@
 namespace bgfx
 {
     struct Memory;
-    const Memory* compileShader(const std::string& shader, char shadertype);
 }
+namespace sam
+{
+    class ShaderCompiler
+    {
+        std::string m_varying;
+    public:
+        const bgfx::Memory* CompileShader(const std::string& shader, char shadertype);
+    };
+}
+
