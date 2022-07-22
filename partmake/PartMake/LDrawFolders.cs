@@ -158,6 +158,8 @@ namespace partmake
             outParts.Sort();
             return outParts;
         }
+
+        public static Dictionary<string, List<string>> cacheTypeGroups;
         public static void SetCacheRoot(string folder)
         {
             Directory.CreateDirectory(folder);
@@ -179,11 +181,16 @@ namespace partmake
                 }
                 items.Add(prop.Name);
             }
-            
-            foreach (var fi in di.GetFiles("*.json"))
+
+            var grps = typegroups.Where(t => t.Value.Count < 20);
+            List<string> miscList = new List<string>();
+            foreach (var grp in grps)
             {
-                //cacheItems.Add(fi.Name);
+                typegroups.Remove(grp.Key);
+                miscList.AddRange(grp.Value);
             }
+            typegroups.Add("Misc", miscList);
+            cacheTypeGroups = typegroups;
         }
         public static void SetLDrawRoot(string folder)
         {

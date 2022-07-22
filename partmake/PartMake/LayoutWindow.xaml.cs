@@ -20,6 +20,7 @@ namespace partmake
     /// </summary>
     public partial class LayoutWindow : UserControl
     {
+
         public LayoutWindow()
         {
             InitializeComponent();
