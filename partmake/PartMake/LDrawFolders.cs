@@ -165,6 +165,8 @@ namespace partmake
             Directory.CreateDirectory(folder);
             DirectoryInfo di = new DirectoryInfo(folder);
 
+            if (!File.Exists(Path.Combine(folder, "categories.json")))
+                return;
             HashSet<string> cacheItems = new HashSet<string>();
             StreamReader streamReader = new StreamReader(Path.Combine(folder, "categories.json"));
             string str = streamReader.ReadToEnd();

@@ -11,6 +11,13 @@
             <ColumnDefinition Width="200"></ColumnDefinition>
             <ColumnDefinition Width="*"></ColumnDefinition>
         </Grid.ColumnDefinitions>
+        <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <ComboBox Height="20" ItemsSource="{Binding Path=CacheGroups}" SelectedItem="{Binding Path=SelectedType}" />
+        </Grid>
         <local:LayoutRenderControl Grid.Column="1"
                     d:IsHidden="true" x:Name="_LayoutControl" KeyDown="_RenderControl_KeyDown" KeyUp="_RenderControl_KeyUp" />
     </Grid>
