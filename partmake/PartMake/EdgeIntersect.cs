@@ -30,6 +30,7 @@ namespace partmake
             [DllImport("EdgeIntersect.dll")]
             static extern int FindAllIntersections(IntPtr vertices, int vtxCount, IntPtr edges, int edgeCount,
                 IntPtr outIntersections, int maxIntersectionCnt);
+
             public List<Intersection> FindAllIntersections(List<Vertex> vertices, List<Edge> edges, Mesh.LogDel logdel)
             {
                 int v3size = Marshal.SizeOf<Vector3>();

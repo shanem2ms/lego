@@ -115,6 +115,16 @@ add_dependencies(game shaders)
 # Include directories
 ################################################################################
 
+set (incdirs "${CMAKE_CURRENT_SOURCE_DIR}/."
+    "${CMAKE_CURRENT_SOURCE_DIR}/imgui/."
+    "${CMAKE_CURRENT_SOURCE_DIR}/../core"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../core/leveldb/include"
+    "${VCPKG_INSTALL_PATH}/include"
+    "${VCPKG_INSTALL_PATH}/include/bullet"
+    ${BGFX_INCLUDE_ROOT}
+    ${BX_INC_DIR_COMPAT})
+
+message ("incdirs ${incdirs}")
 target_include_directories(game PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/."
     "${CMAKE_CURRENT_SOURCE_DIR}/imgui/."

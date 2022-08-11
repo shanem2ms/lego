@@ -310,8 +310,9 @@ namespace sam
         std::string path = Application::Inst().StartupPath();
         std::string vtxpath = path + "\\" + vtx;
         std::string pxpath = path + "\\" + px;
-        const bgfx::Memory* frgCompiled = bgfx::compileShader(pxpath, 'f');
-        const bgfx::Memory* vtxCompiled = bgfx::compileShader(vtxpath, 'v');
+        ShaderCompiler sc;
+        const bgfx::Memory* frgCompiled = sc.CompileShader(pxpath, 'f');
+        const bgfx::Memory* vtxCompiled = sc.CompileShader(vtxpath, 'v');
         bgfx::ShaderHandle vtxShader = bgfx::createShader(vtxCompiled);
         bgfx::ShaderHandle fragShader = bgfx::createShader(frgCompiled);
         //bgfx::ShaderHandle vtxShader = bgfx::createShader(loadMem(&fileReader, vtxpath.c_str()));

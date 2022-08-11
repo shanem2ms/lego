@@ -19,7 +19,6 @@
       "buildRoot": "${projectDir}\\out\\build\\${name}",
       "installRoot": "${projectDir}\\..\\install\\${name}",
       "cmakeCommandArgs": "-DVCPKG_DIR=C:\\homep4\\vcpkg -DVCPKG_INSTALL_PATH=C:\\homep4\\vcpkg\\installed\\x64-windows\\ -DCMAKE_PREFIX_PATH=c:\\homep4\\install  -DBLOCKO_GAME=true -DBLOCKO_SERVER=false",
-      "buildCommandArgs": "",
       "ctestCommandArgs": ""
     }
   ]

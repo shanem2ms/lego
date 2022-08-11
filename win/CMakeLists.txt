@@ -31,6 +31,7 @@ find_package(CURL CONFIG REQUIRED)
 find_package(unofficial-enet CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(cxxopts CONFIG REQUIRED)
+find_path(RAPIDXML_INCLUDE_DIRS "rapidxml/rapidxml.hpp" REQUIRED_FILES)
     
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(LIBDBG "debug/")

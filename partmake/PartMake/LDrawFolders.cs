@@ -322,7 +322,7 @@ namespace partmake
                     float[] dims = null;
                     if (vals.Length == 3)
                     {
-                        aliases.Add(vals[0], vals[1]);
+                        aliases.TryAdd(vals[0], vals[1]);
                         continue;
                     }
                     string line2 = sr.ReadLine();

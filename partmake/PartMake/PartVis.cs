@@ -94,6 +94,12 @@ namespace partmake
         public event EventHandler<string> OnLogUpdated;
         private bool onlyShowCoveredPortalFaces = false;
 
+        private Pipeline _pipelinesnapshot;
+        private Texture _snapshotStgTexture;
+        private Texture _snapshotTexture;
+        private TextureView _snapshotTextureView;
+        private Framebuffer _snapshotFB;
+
         public bool DoMesh { get; set; } = true;
         public bool DoDecomp { get; set; } = false;
         public bool BSPPortals { get; set; } = false;
@@ -148,6 +154,7 @@ namespace partmake
 
         int pickX, pickY;
         int pickReady = -1;
+        int snapshotReady = -1;
         int meshSelectedOffset = -1;
         public LDrawDatFile Part { get => _part; set {                
                     _part = value; OnPartUpdated();                
@@ -203,6 +210,9 @@ namespace partmake
                         break;
                     case System.Windows.Input.Key.S:
                         _testPrimPos.Z -= move;
+                        break;
+                    case System.Windows.Input.Key.C:
+                        snapshotReady = 0;
                         break;
                     case System.Windows.Input.Key.E:
                         ShowExteriorPortals = !ShowExteriorPortals;
@@ -957,6 +967,63 @@ namespace partmake
                     _pickFB.OutputDescription));
 
             }
+
+            {
+                var vsfile = "partmake.vs.glsl";
+                var fsfile = "partmake.fs.glsl";
+
+                string VertexCode;
+                string FragmentCode;
+                using (Stream stream = assembly.GetManifestResourceStream(vsfile))
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    VertexCode = reader.ReadToEnd();
+                }
+                using (Stream stream = assembly.GetManifestResourceStream(fsfile))
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    FragmentCode = reader.ReadToEnd();
+                }
+
+                ShaderSetDescription shaderSet = new ShaderSetDescription(
+                    new[]
+                    {
+                    new VertexLayoutDescription(
+                        new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
+                        new VertexElementDescription("Normal", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
+                        new VertexElementDescription("TexCoords", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2))
+                    },
+                    factory.CreateFromSpirv(
+                        new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(VertexCode), "main"),
+                        new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(FragmentCode), "main")));
+
+                _snapshotTexture = factory.CreateTexture(TextureDescription.Texture2D(
+                              1024, 1024, 1, 1,
+                               PixelFormat.R8_G8_B8_A8_UNorm, TextureUsage.RenderTarget | TextureUsage.Sampled));
+                _snapshotStgTexture = factory.CreateTexture(TextureDescription.Texture2D(
+                    1024,
+                    1024,
+                    1,
+                    1,
+                    PixelFormat.R8_G8_B8_A8_UNorm,
+                    TextureUsage.Staging));
+
+                _snapshotTextureView = factory.CreateTextureView(_snapshotTexture);
+                Texture offscreenDepth = factory.CreateTexture(TextureDescription.Texture2D(
+                    1024, 1024, 1, 1, PixelFormat.R16_UNorm, TextureUsage.DepthStencil));
+                _snapshotFB = factory.CreateFramebuffer(new FramebufferDescription(offscreenDepth, _snapshotTexture));
+
+
+                _pipelinesnapshot = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
+                    BlendStateDescription.SingleOverrideBlend,
+                    DepthStencilStateDescription.DepthOnlyLessEqual,
+                    new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
+                    PrimitiveTopology.TriangleList,
+                    shaderSet,
+                    new[] { projViewLayout, worldTextureLayout },
+                    _snapshotFB.OutputDescription));
+
+            }
             _cl = factory.CreateCommandList();
             if (this._part != null && this._part.IsInitialized)
                 OnPartUpdated();
@@ -1052,12 +1119,41 @@ namespace partmake
                 DrawPickingBSP(ref mat, ref viewmat, ref projMat);
             else
                 DrawPicking(ref mat, ref viewmat, ref projMat);
+            DrawSnapshot(ref mat, ref viewmat, ref projMat);
             _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
             GraphicsDevice.SwapBuffers(MainSwapchain);
             GraphicsDevice.WaitForIdle();
 
             HandlePick();
+            HandleSnapshot();
+        }
+
+        void DrawSnapshot(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
+        {
+            if (snapshotReady == 0)
+            {
+                Matrix4x4 viewPrj = viewmat * projMat;
+
+                _cl.SetPipeline(_pipelinesnapshot);
+                _cl.SetFramebuffer(_snapshotFB);
+                _cl.ClearColorTarget(0, RgbaFloat.Black);
+                _cl.ClearDepthStencil(1f);
+                _cl.SetGraphicsResourceSet(0, _projViewSet);
+                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+                Matrix4x4 wmat =
+                    Matrix4x4.CreateTranslation(-partOffset) *
+                    Matrix4x4.CreateScale(partScale);
+                _cl.UpdateBuffer(_worldBuffer, 0, ref wmat);
+                _cl.SetVertexBuffer(0, _vertexBuffer);
+                _cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt32);
+
+                _cl.DrawIndexed((uint)_indexCount);
+
+                _cl.CopyTexture(this._snapshotTexture, this._snapshotStgTexture);
+                snapshotReady = 1;
+            }
+
         }
 
         void DrawPicking(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
@@ -1181,6 +1277,22 @@ namespace partmake
             int fIdx = _part.GetTopoMesh().faces.IndexOf(f);
             meshSelectedOffset = faceIndices.IndexOf(fIdx);
         }
+
+        void HandleSnapshot()
+        {
+            if (snapshotReady == 1)
+            {
+                meshSelectedOffset = -1;
+                MappedResourceView<Rgba> rView = GraphicsDevice.Map<Rgba>(_snapshotStgTexture, MapMode.Read);
+                System.Drawing.Bitmap bitmap = new System.Drawing.Bitmap((int)_snapshotStgTexture.Width,
+                    (int)_snapshotStgTexture.Height, (int)rView.MappedResource.RowPitch, System.Drawing.Imaging.PixelFormat.Format32bppArgb,
+                    rView.MappedResource.Data);
+                GraphicsDevice.Unmap(_snapshotStgTexture);
+                snapshotReady = -1;
+                bitmap.Save("test.png");
+            }
+        }
+
         void HandlePick()
         {
             if (pickReady == 1)
