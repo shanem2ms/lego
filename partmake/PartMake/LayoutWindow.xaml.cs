@@ -22,6 +22,10 @@ namespace partmake
     public partial class LayoutWindow : UserControl, INotifyPropertyChanged
     {
         public IEnumerable<string> CacheGroups { get => LDrawFolders.LDrawGroups; }
+
+        public string FilterText { get; set; }
+
+        public IEnumerable<LDrawFolders.CacheItem> AllItems { get => LDrawFolders.CacheItems.Values; }
         public string SelectedType
         {
             get => LDrawFolders.SelectedType;
@@ -55,5 +59,14 @@ namespace partmake
             //partVis.OnKeyUp(e);
         }
 
+        private void TextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+
+        }
     }
 }

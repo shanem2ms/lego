@@ -47,7 +47,7 @@
             </Grid>
         </DataTemplate>
 
-        <DataTemplate x:Key="FaceTmp" DataType="x:Type topo:Face}">
+        <DataTemplate x:Key="FaceTmp" DataType="x:Type topo:Face">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -161,10 +161,12 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <Button Grid.Column="0" Content="Write All" Click="WriteAll_Button_Click" Margin="10,4"/>
-                        <Button Grid.Column="1" Content="Write Sel" Click="WriteSelected_Button_Click" Margin="10,4"/>
+                        <Button Grid.Column="0" Content="All" Click="WriteAll_Button_Click" Margin="10,4"/>
+                        <Button Grid.Column="1" Content="Sel" Click="WriteSelected_Button_Click" Margin="10,4"/>
                         <Button Grid.Column="2" Content="MBX" Click="ImportMbx_Button_Click" Margin="10,4"/>
+                        <Button Grid.Column="3" Content="Thumb" Click="Thumbnail_Button_Click" Margin="10,4"/>
                     </Grid>
                     <StackPanel Grid.Row="4" Orientation="Horizontal">
                         <TextBlock x:Name="StatusTb" />

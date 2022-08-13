@@ -303,6 +303,10 @@ namespace partmake
             Rebuild();
         }
 
+        private void Thumbnail_Button_Click(object sender, RoutedEventArgs e)
+        {
+            LDrawFolders.GenerateAllThumbnails(this.partVis);
+        }
         private void WriteAll_Button_Click(object sender, RoutedEventArgs e)
         {
             LDrawFolders.WriteAll((completed, total, name) =>
@@ -310,7 +314,7 @@ namespace partmake
                 Dispatcher.BeginInvoke(new Action(() =>
                     StatusTb.Text = $"[{completed} / {total}]  [{name}]"));
                 return true;
-            });
+            }, partVis);
         }
 
         private void WriteSelected_Button_Click(object sender, RoutedEventArgs e)

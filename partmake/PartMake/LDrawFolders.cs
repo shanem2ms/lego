@@ -159,17 +159,69 @@ namespace partmake
             return outParts;
         }
 
+        public class CacheItem
+        {
+            public CacheItem(string name, string thumb, LDrawDatFile.Descriptor d)
+            {
+                Name = name;
+                thumbnailPath = thumb;
+                descriptor = d;
+            }
+            public string Name { get;  }
+            string thumbnailPath;
+
+            System.Windows.Media.ImageSource thumb = null;
+            public System.Windows.Media.ImageSource Thumb 
+            { 
+                get
+                {
+                    if (thumb != null) return thumb;
+                    if (File.Exists(thumbnailPath))
+                    {
+                        thumb = new System.Windows.Media.Imaging.BitmapImage(
+                        new Uri(thumbnailPath));
+                    }
+
+                    return thumb;
+                }
+            }
+
+            LDrawDatFile.Descriptor descriptor;
+
+            public string MainType => descriptor.type;
+            public string Subtype => descriptor.subtype;
+            public string Desc => descriptor.desc;
+            public string Dims => String.Join('x', descriptor.dims);
+
+        }
+
+        public static Dictionary<string, CacheItem> CacheItems = new Dictionary<string, CacheItem>();
         public static Dictionary<string, List<string>> cacheTypeGroups;
         public static void SetCacheRoot(string folder)
         {
             Directory.CreateDirectory(folder);
             DirectoryInfo di = new DirectoryInfo(folder);
 
+            foreach (FileInfo fi in di.GetFiles("*.json"))
+            {
+                string name = Path.GetFileNameWithoutExtension(fi.Name);
+
+                string text = File.ReadAllText(fi.FullName);
+                LDrawDatFile.Descriptor d =
+                    JsonConvert.DeserializeObject<LDrawDatFile.Descriptor>(text);
+                
+                CacheItems.TryAdd(name, new CacheItem(name, Path.Combine(di.FullName, name + ".png"), d));
+            }
             if (!File.Exists(Path.Combine(folder, "categories.json")))
                 return;
+
             HashSet<string> cacheItems = new HashSet<string>();
-            StreamReader streamReader = new StreamReader(Path.Combine(folder, "categories.json"));
-            string str = streamReader.ReadToEnd();
+            string str;
+            {
+                StreamReader streamReader = new StreamReader(Path.Combine(folder, "categories.json"));
+                str = streamReader.ReadToEnd();
+                streamReader.Close();
+            }
             JObject json = JObject.Parse(str);
             Dictionary<string, List<string>> typegroups = new Dictionary<string, List<string>>();
             foreach (var prop in json.Properties())
@@ -553,9 +605,9 @@ namespace partmake
             //string path = Path.Combine(LDrawFolders.Root, "ingame.txt");
             //File.WriteAllLines(path, fileLines);
         }
-        public static void WriteAll(Func<int, int, string, bool> updateFunc)
+        public static void WriteAll(Func<int, int, string, bool> updateFunc, PartVis partVis)
         {            
-            WriteAllCacheFiles(updateFunc);
+            WriteAllCacheFiles(updateFunc, partVis);
         }
 
         public static void WriteSelected(List<Entry> parts)
@@ -565,11 +617,13 @@ namespace partmake
             foreach (Entry part in parts)
             {
                 LDrawDatFile df = GetPart(part);
+                df.Init();
                 if (df.GetFaceCount() < 1000 || df.Name == "91405")
                 {
                     Entry e = part;
                     string outname = e.mbxNum?.Length > 0 ?
                         e.mbxNum : df.Name;
+                    df.AsyncInit();
                     df.WriteDescriptorFile(e, path, outname, true);
                     df.WriteCollisionFile(path, outname, true);
                     df.WriteMeshFile(path, outname);
@@ -595,14 +649,24 @@ namespace partmake
             File.WriteAllText(Path.Combine(path, "categories.json"), outstr);
         }
 
-        static void WriteAllCacheFiles(Func<int, int, string, bool> updateFunc)
+        public static void GenerateAllThumbnails(PartVis partVis)
+        {
+            string path = Path.Combine(LDrawFolders.Root, "cache");
+            DirectoryInfo di = new DirectoryInfo(path);
+            foreach (var fi in di.GetFiles("*.hr_mesh"))
+            {
+                partVis.ThumbnailList.Add(fi.FullName);
+            }
+        }
+        static void WriteAllCacheFiles(Func<int, int, string, bool> updateFunc, PartVis partVis)
         {
             string path = Path.Combine(LDrawFolders.Root, "cache");
 
             //if (Directory.Exists(path))
             //    Directory.Delete(path, true);
             Directory.CreateDirectory(path);
-            List<Entry> partsToWrite = ldrawParts.Where(ld => ld.HasMbx).ToList();
+            List<Entry> partsToWrite = ldrawParts.Where(ld => ld.HasMbx &&
+                !File.Exists(Path.Combine(path, Path.GetFileNameWithoutExtension(ld.name) + ".json"))).ToList();
             int completCnt = 0;
             int totalCnt = partsToWrite.Count;
 
@@ -612,6 +676,7 @@ namespace partmake
                 {
                     int idx = (int)o;
                     LDrawDatFile df = GetPart(partsToWrite[idx]);
+                    df.Init();
                     if (df.GetFaceCount() < 1000 || df.Name == "91405")
                     {
                         Entry e = partsToWrite[idx];
@@ -656,11 +721,7 @@ namespace partmake
         public static void GetLDrLoader(string _name, Matrix4x4 transform, out LdrLoader.PosTexcoordNrmVertex []
             vertices, out int []indices)
         {
-            Entry e = GetEntry(_name + ".dat");
             LdrLoader ldrLoader = new LdrLoader();
-            //ldrLoader.Load(rootFolder, e.name,
-            //    transform,
-            //    out vertices, out indices);
             string path = Path.Combine(LDrawFolders.Root, "cache", _name);
             LDrWrite(_name, transform, path, true);
             path += ".hr_mesh";

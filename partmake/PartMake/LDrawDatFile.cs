@@ -228,14 +228,22 @@ namespace partmake
         {
             Thread t = new Thread(() =>
             {
-                RefreshPartMatrix();
-                Connectors.Init(this);
-                IsInitialized = true;
+                Init();
                 Initialized?.Invoke(this, true);
             }
             );
             t.Start();
 
+        }
+
+        public void Init()
+        {
+            if (!IsInitialized)
+            {
+                RefreshPartMatrix();
+                Connectors.Init(this);
+                IsInitialized = true;
+            }
         }
 
         void RefreshPartMatrix()
@@ -423,7 +431,7 @@ namespace partmake
             }
         }
 
-        class Descriptor
+        public class Descriptor
         {
             public string type;
             public string subtype;

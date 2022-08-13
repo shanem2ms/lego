@@ -100,6 +100,7 @@ namespace partmake
         private TextureView _snapshotTextureView;
         private Framebuffer _snapshotFB;
 
+        public List<string> ThumbnailList = new List<string>();
         public bool DoMesh { get; set; } = true;
         public bool DoDecomp { get; set; } = false;
         public bool BSPPortals { get; set; } = false;
@@ -154,7 +155,6 @@ namespace partmake
 
         int pickX, pickY;
         int pickReady = -1;
-        int snapshotReady = -1;
         int meshSelectedOffset = -1;
         public LDrawDatFile Part { get => _part; set {                
                     _part = value; OnPartUpdated();                
@@ -210,9 +210,6 @@ namespace partmake
                         break;
                     case System.Windows.Input.Key.S:
                         _testPrimPos.Z -= move;
-                        break;
-                    case System.Windows.Input.Key.C:
-                        snapshotReady = 0;
                         break;
                     case System.Windows.Input.Key.E:
                         ShowExteriorPortals = !ShowExteriorPortals;
@@ -417,10 +414,12 @@ namespace partmake
         
         [DllImport("kernel32.dll", EntryPoint = "RtlCopyMemory", SetLastError = false)]
         public static extern void CopyMemory(IntPtr dest, IntPtr src, uint count);
+
         void OnPartUpdated()
         {
             if (_factory == null)
                 return;
+
             meshSelectedOffset = -1;
             List<Vtx> vlist = new List<Vtx>();
             faceIndices = new List<int>();
@@ -985,6 +984,8 @@ namespace partmake
                     FragmentCode = reader.ReadToEnd();
                 }
 
+                uint snapSize = 64;
+
                 ShaderSetDescription shaderSet = new ShaderSetDescription(
                     new[]
                     {
@@ -998,11 +999,11 @@ namespace partmake
                         new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(FragmentCode), "main")));
 
                 _snapshotTexture = factory.CreateTexture(TextureDescription.Texture2D(
-                              1024, 1024, 1, 1,
+                              snapSize, snapSize, 1, 1,
                                PixelFormat.R8_G8_B8_A8_UNorm, TextureUsage.RenderTarget | TextureUsage.Sampled));
                 _snapshotStgTexture = factory.CreateTexture(TextureDescription.Texture2D(
-                    1024,
-                    1024,
+                    snapSize,
+                    snapSize,
                     1,
                     1,
                     PixelFormat.R8_G8_B8_A8_UNorm,
@@ -1010,7 +1011,7 @@ namespace partmake
 
                 _snapshotTextureView = factory.CreateTextureView(_snapshotTexture);
                 Texture offscreenDepth = factory.CreateTexture(TextureDescription.Texture2D(
-                    1024, 1024, 1, 1, PixelFormat.R16_UNorm, TextureUsage.DepthStencil));
+                    snapSize, snapSize, 1, 1, PixelFormat.R16_UNorm, TextureUsage.DepthStencil));
                 _snapshotFB = factory.CreateFramebuffer(new FramebufferDescription(offscreenDepth, _snapshotTexture));
 
 
@@ -1060,8 +1061,96 @@ namespace partmake
             cm = m * mat;
             return cm;
         }
+
+        void DrawThumbnail()
+        {
+            string path = ThumbnailList[0];
+            ThumbnailList.RemoveAt(0);
+
+            LdrLoader.PosTexcoordNrmVertex[] ldrvertices;
+            int[] ldrindices;
+            LdrLoader ldrLoader = new LdrLoader();
+            ldrLoader.LoadCached(path, out ldrvertices, out ldrindices);
+            if (ldrvertices.Length > 0 && ldrindices.Length > 0)
+            {
+                Vector3 vmax = new Vector3(
+                    ldrvertices.Select(v => v.m_x).Max(),
+                    ldrvertices.Select(v => v.m_y).Max(),
+                    ldrvertices.Select(v => v.m_z).Max());
+
+                Vector3 vmin = new Vector3(
+                    ldrvertices.Select(v => v.m_x).Min(),
+                    ldrvertices.Select(v => v.m_y).Min(),
+                    ldrvertices.Select(v => v.m_z).Min());
+
+                Vector3 vecscale = vmax - vmin;
+                partScale = 1.0f / Math.Max(Math.Max(vecscale.X, vecscale.Y), vecscale.Z);
+                Vtx[] vlvertices = ldrvertices.Select(v => new Vtx(new Vector3(v.m_x, v.m_y, v.m_z), new Vector3(v.m_nx, v.m_ny, v.m_nz),
+                    new Vector2(v.m_u, v.m_v))).ToArray();
+
+                Vector3 vmid = (vmax + vmin) * 0.5f;
+                partOffset = vmid;
+
+                uint[] vlindices = ldrindices.Select(i => (uint)i).ToArray();
+
+                DeviceBuffer ldrLoaderVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vlvertices.Length), BufferUsage.VertexBuffer));
+                GraphicsDevice.UpdateBuffer(ldrLoaderVertexBuffer, 0, vlvertices);
+
+                DeviceBuffer ldrLoaderIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)vlindices.Length, BufferUsage.IndexBuffer));
+                GraphicsDevice.UpdateBuffer(ldrLoaderIndexBuffer, 0, vlindices);
+                int ldrLoaderIndexCount = vlindices.Length;
+
+                _cl.Begin();
+
+                _cl.SetPipeline(_pipelinesnapshot);
+                _cl.SetFramebuffer(_snapshotFB);
+
+                Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(
+                                1.0f,
+                                (float)Window.Width / Window.Height,
+                                0.05f,
+                                20f);
+                _cl.UpdateBuffer(_projectionBuffer, 0, ref projMat);
+
+                Matrix4x4 viewmat = Matrix4x4.CreateRotationY(-0.75f) *
+                    Matrix4x4.CreateRotationX(0.5f) *
+                    Matrix4x4.CreateTranslation(cameraPos / System.MathF.Pow(2.0f, zoom));
+                _cl.UpdateBuffer(_viewBuffer, 0, viewmat);
+
+                Matrix4x4 mat =
+                    Matrix4x4.CreateTranslation(-partOffset) *
+                    Matrix4x4.CreateScale(partScale);
+                _cl.ClearColorTarget(0, RgbaFloat.Black);
+                _cl.ClearDepthStencil(1f);
+
+                _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
+                Vector4 col = new Vector4(1, 1, 1, 1);
+                _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+
+
+                _cl.SetVertexBuffer(0, ldrLoaderVertexBuffer);
+                _cl.SetIndexBuffer(ldrLoaderIndexBuffer, IndexFormat.UInt32);
+                _cl.SetGraphicsResourceSet(0, _projViewSet);
+                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+                _cl.DrawIndexed((uint)ldrLoaderIndexCount);
+
+                _cl.CopyTexture(this._snapshotTexture, this._snapshotStgTexture);
+                _cl.End();
+                GraphicsDevice.SubmitCommands(_cl);
+                GraphicsDevice.SwapBuffers(MainSwapchain);
+                GraphicsDevice.WaitForIdle();
+                string pngpath = Path.Combine(Path.GetDirectoryName(path),
+                    Path.GetFileNameWithoutExtension(path) + ".png");
+                HandleSnapshot(pngpath);
+            }
+        }
         protected override void Draw(float deltaSeconds)
         {
+            if (ThumbnailList.Count > 0)
+            {
+                DrawThumbnail();
+                return;
+            }
             if (_vertexBuffer == null)
                 return;
             _cl.Begin();
@@ -1089,7 +1178,8 @@ namespace partmake
             else
             {
                 DrawMesh(ref mat);
-                DrawLdrLoaderMesh(ref mat);
+                if (ShowLdrLoader && _ldrLoaderVertexBuffer != null)
+                    DrawLdrLoaderMesh(ref mat);
                 DrawMbxMesh(ref mat);
                 DrawDecomp(ref mat, ref viewmat, ref projMat);
 
@@ -1119,40 +1209,34 @@ namespace partmake
                 DrawPickingBSP(ref mat, ref viewmat, ref projMat);
             else
                 DrawPicking(ref mat, ref viewmat, ref projMat);
-            DrawSnapshot(ref mat, ref viewmat, ref projMat);
             _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
             GraphicsDevice.SwapBuffers(MainSwapchain);
             GraphicsDevice.WaitForIdle();
 
             HandlePick();
-            HandleSnapshot();
         }
 
         void DrawSnapshot(ref Matrix4x4 mat, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
-            if (snapshotReady == 0)
-            {
-                Matrix4x4 viewPrj = viewmat * projMat;
+            Matrix4x4 viewPrj = viewmat * projMat;
 
-                _cl.SetPipeline(_pipelinesnapshot);
-                _cl.SetFramebuffer(_snapshotFB);
-                _cl.ClearColorTarget(0, RgbaFloat.Black);
-                _cl.ClearDepthStencil(1f);
-                _cl.SetGraphicsResourceSet(0, _projViewSet);
-                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
-                Matrix4x4 wmat =
-                    Matrix4x4.CreateTranslation(-partOffset) *
-                    Matrix4x4.CreateScale(partScale);
-                _cl.UpdateBuffer(_worldBuffer, 0, ref wmat);
-                _cl.SetVertexBuffer(0, _vertexBuffer);
-                _cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt32);
+            _cl.SetPipeline(_pipelinesnapshot);
+            _cl.SetFramebuffer(_snapshotFB);
+            _cl.ClearColorTarget(0, RgbaFloat.Black);
+            _cl.ClearDepthStencil(1f);
+            _cl.SetGraphicsResourceSet(0, _projViewSet);
+            _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+            Matrix4x4 wmat =
+                Matrix4x4.CreateTranslation(-partOffset) *
+                Matrix4x4.CreateScale(partScale);
+            _cl.UpdateBuffer(_worldBuffer, 0, ref wmat);
+            _cl.SetVertexBuffer(0, _vertexBuffer);
+            _cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt32);
 
-                _cl.DrawIndexed((uint)_indexCount);
+            _cl.DrawIndexed((uint)_indexCount);
 
-                _cl.CopyTexture(this._snapshotTexture, this._snapshotStgTexture);
-                snapshotReady = 1;
-            }
+            _cl.CopyTexture(this._snapshotTexture, this._snapshotStgTexture);
 
         }
 
@@ -1278,19 +1362,15 @@ namespace partmake
             meshSelectedOffset = faceIndices.IndexOf(fIdx);
         }
 
-        void HandleSnapshot()
+        void HandleSnapshot(string outpath)
         {
-            if (snapshotReady == 1)
-            {
-                meshSelectedOffset = -1;
-                MappedResourceView<Rgba> rView = GraphicsDevice.Map<Rgba>(_snapshotStgTexture, MapMode.Read);
-                System.Drawing.Bitmap bitmap = new System.Drawing.Bitmap((int)_snapshotStgTexture.Width,
-                    (int)_snapshotStgTexture.Height, (int)rView.MappedResource.RowPitch, System.Drawing.Imaging.PixelFormat.Format32bppArgb,
-                    rView.MappedResource.Data);
-                GraphicsDevice.Unmap(_snapshotStgTexture);
-                snapshotReady = -1;
-                bitmap.Save("test.png");
-            }
+            meshSelectedOffset = -1;
+            MappedResourceView<Rgba> rView = GraphicsDevice.Map<Rgba>(_snapshotStgTexture, MapMode.Read);
+            System.Drawing.Bitmap bitmap = new System.Drawing.Bitmap((int)_snapshotStgTexture.Width,
+                (int)_snapshotStgTexture.Height, (int)rView.MappedResource.RowPitch, System.Drawing.Imaging.PixelFormat.Format32bppArgb,
+                rView.MappedResource.Data);
+            GraphicsDevice.Unmap(_snapshotStgTexture);
+            bitmap.Save(outpath);
         }
 
         void HandlePick()
@@ -1455,19 +1535,16 @@ namespace partmake
         }
         void DrawLdrLoaderMesh(ref Matrix4x4 mat)
         {
-            if (ShowLdrLoader && _ldrLoaderVertexBuffer != null)
-            {
-                _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
-                Vector4 col = new Vector4(0.2f, 0.6f, 0.6f, 1);
-                _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+            _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
+            Vector4 col = new Vector4(0.2f, 0.6f, 0.6f, 1);
+            _cl.UpdateBuffer(_materialBuffer, 0, ref col);
 
-                _cl.SetPipeline(_pipeline);
-                _cl.SetVertexBuffer(0, _ldrLoaderVertexBuffer);
-                _cl.SetIndexBuffer(_ldrLoaderIndexBuffer, IndexFormat.UInt32);
-                _cl.SetGraphicsResourceSet(0, _projViewSet);
-                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
-                _cl.DrawIndexed((uint)_ldrLoaderIndexCount);
-            }
+            _cl.SetPipeline(_pipeline);
+            _cl.SetVertexBuffer(0, _ldrLoaderVertexBuffer);
+            _cl.SetIndexBuffer(_ldrLoaderIndexBuffer, IndexFormat.UInt32);
+            _cl.SetGraphicsResourceSet(0, _projViewSet);
+            _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+            _cl.DrawIndexed((uint)_ldrLoaderIndexCount);
         }
         void DrawMbxMesh(ref Matrix4x4 mat)
         {

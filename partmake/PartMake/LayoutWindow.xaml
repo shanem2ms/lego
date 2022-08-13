@@ -9,16 +9,47 @@
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="200"></ColumnDefinition>
+            <ColumnDefinition Width="Auto"></ColumnDefinition>
             <ColumnDefinition Width="*"></ColumnDefinition>
         </Grid.ColumnDefinitions>
         <Grid Grid.Column="0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <ComboBox Height="20" ItemsSource="{Binding Path=CacheGroups}" SelectedItem="{Binding Path=SelectedType}" />
+            <TextBox Text="{Binding FilterText, Mode=TwoWay}" LostFocus="TextBox_LostFocus" 
+                     TextChanged="TextBox_TextChanged"/>
+            <ListView Name="ItemsList" Grid.Row="1" ItemsSource="{Binding Path=AllItems}">
+                <ListView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Width="{Binding (FrameworkElement.ActualWidth), 
+            RelativeSource={RelativeSource AncestorType=ScrollContentPresenter}}"
+            ItemWidth="{Binding (ListView.View).ItemWidth, 
+            RelativeSource={RelativeSource AncestorType=ListView}}"
+            MinWidth="{Binding ItemWidth, RelativeSource={RelativeSource Self}}"
+            ItemHeight="{Binding (ListView.View).ItemHeight, 
+            RelativeSource={RelativeSource AncestorType=ListView}}" />
+                    </ItemsPanelTemplate>
+                </ListView.ItemsPanel>
+                <ListView.ItemTemplate>
+                    <DataTemplate DataType="x:Type local:LDrawFolders.CacheItem">
+                        <Grid>
+                            <Image Source="{Binding Thumb}" Width="64" Height="64"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <StackPanel Orientation="Vertical" Grid.Row="2">
+                <TextBlock Text="{Binding Path=SelectedItem.Name, ElementName=ItemsList}"/>
+                <TextBlock Text="{Binding Path=SelectedItem.MainType, ElementName=ItemsList}"/>
+                <TextBlock Text="{Binding Path=SelectedItem.SubType, ElementName=ItemsList}"/>
+                <TextBlock Text="{Binding Path=SelectedItem.Desc, ElementName=ItemsList}"/>
+                <TextBlock Text="{Binding Path=SelectedItem.Dims, ElementName=ItemsList}"/>
+            </StackPanel>
         </Grid>
-        <local:LayoutRenderControl Grid.Column="1"
+        <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>
+        <local:LayoutRenderControl Grid.Column="2"
                     d:IsHidden="true" x:Name="_LayoutControl" KeyDown="_RenderControl_KeyDown" KeyUp="_RenderControl_KeyUp" />
     </Grid>
 
