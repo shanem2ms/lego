@@ -25,7 +25,9 @@ namespace partmake
         MFigRWrist = 12,
         MFigWrist = 13,
         MFigRHandGrip = 14,
-        MFigRHipStud = 15
+        MFigRHipStud = 15,
+        Stem = 16,
+        StemHole = 17
     }
 
     public static class Vector3Parse
@@ -354,27 +356,50 @@ namespace partmake
                 }
             }
             else if ((file.Name == "4-4cyli" ||
-                file.Name == "4-4cylo")
-                && inverted)
+                file.Name == "4-4cylo"))
             {
                 Vector3 scale = transform.GetScale();
-                if (Eps.Eq2(scale.X, 3) &&
-                    Eps.Eq2(scale.Z, 3))
+                if (inverted)
                 {
-                    connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
-                        ConnectorType.MFigRHipLeg));
+                    if (Eps.Eq2(scale.X, 3) &&
+                        Eps.Eq2(scale.Z, 3))
+                    {
+                        connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
+                            ConnectorType.MFigRHipLeg));
+                    }
+                    if (Eps.Eq2(scale.X, 5) &&
+                        Eps.Eq2(scale.Z, 5))
+                    {
+                        connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
+                            ConnectorType.MFigTorsoRArm));
+                    }
+                    if (Eps.Eq2(scale.X, 6) &&
+                        Eps.Eq2(scale.Z, 6))
+                    {
+                        connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
+                            ConnectorType.MFigHeadRNeck));
+                    }
+                    if (Eps.Eq2(scale.X, 2) &&
+                        Eps.Eq2(scale.Z, 2))
+                    {
+                        connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
+                            ConnectorType.StemHole));
+                    }
                 }
-                if (Eps.Eq2(scale.X, 5) &&
-                    Eps.Eq2(scale.Z, 5))
+                else
                 {
-                    connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
-                        ConnectorType.MFigTorsoRArm));
-                }
-                if (Eps.Eq2(scale.X, 6) &&
-                    Eps.Eq2(scale.Z, 6))
-                {
-                    connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
-                        ConnectorType.MFigHeadRNeck));
+                    if (Eps.Eq2(scale.X, 2) &&
+                        Eps.Eq2(scale.Z, 2))
+                    {
+                        connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, 0.0, 0) * transform,
+                            ConnectorType.Stem));
+                    }
+                    if (Eps.Eq2(scale.X, 2) &&
+                        Eps.Eq2(scale.Z, 2.236))
+                    {
+                        connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, 0.0, 0) * transform,
+                            ConnectorType.Stem));
+                    }
                 }
             }
             else if (file.Name == "knob1")

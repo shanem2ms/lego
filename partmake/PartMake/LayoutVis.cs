@@ -21,41 +21,11 @@ namespace partmake
         private DeviceBuffer _viewBuffer;
         private DeviceBuffer _worldBuffer;
         private DeviceBuffer _materialBuffer;
-        private DeviceBuffer _vertexBuffer;
-        private DeviceBuffer _indexBuffer;
-        private DeviceBuffer _selectedVertexBuffer;
-        private DeviceBuffer _selectedIndexBuffer;
         private DeviceBuffer _cubeVertexBuffer;
         private DeviceBuffer _cubeIndexBuffer;
         private DeviceBuffer _planeVertexBuffer;
         private DeviceBuffer _planeIndexBuffer;
-        private DeviceBuffer _bspSelVertexBuffer;
-        private DeviceBuffer _bspSelIndexBuffer;
-        uint _bspSelIndexCount;
-        List<int> faceIndices;
-        private DeviceBuffer _ldrLoaderVertexBuffer;
-        private DeviceBuffer _ldrLoaderIndexBuffer;
-        private int _ldrLoaderIndexCount;
 
-        private DeviceBuffer _mbxVertexBuffer;
-        private DeviceBuffer _mbxIndexBuffer;
-        private int _mbxIndexCount;
-
-        private DeviceBuffer _bspPortalsVertexBuffer;
-        private DeviceBuffer _bspPortalsIndexBuffer;
-        List<Tuple<uint, uint>> _bspPortalsIndexCounts;
-        List<Topology.BSPPortal> _bspPortals;
-        List<Topology.PortalFace> _bspPortalFaces;
-
-        private DeviceBuffer _decompVertexBuffer;
-        private DeviceBuffer _decompIndexBuffer;
-        List<Tuple<uint, uint>> _decompIndexCounts;
-        List<Topology.ConvexMesh> _decompMeshes;
-
-        private DeviceBuffer _bspFacesVertexBuffer;
-        private DeviceBuffer _bspFacesIndexBuffer;
-        uint _bspFacesIndexCount;
-        List<Tuple<uint, uint>> _bspFacesIndexCounts;
 
         uint _cubeIndexCount;
         uint _planeIndexCount;
@@ -64,35 +34,33 @@ namespace partmake
         private Pipeline _pipelinePick;
         private ResourceSet _projViewSet;
         private ResourceSet _worldTextureSet;
-        private ResourceSet _raycastSet;
         private Texture _primStgTexture;
         private Texture _pickStgTexture;
-        bool _primTexUpdate = false;
         private Texture _primTexture;
         private TextureView _primTextureView;
         private Texture _pickTexture;
         private TextureView _pickTextureView;
         private Framebuffer _pickFB;
         private Sampler _primSampler;
-        private int _indexCount;
-        private int _triangleCount;
-        private int _selectedIndexCount;
         Vector2 lookDir;
         int mouseDown = 0;
         Vector2 lMouseDownPt;
         Vector2 rMouseDownPt;
         Vector2 mouseDownLookDir;
-        Vector3 partOffset;
         Vector3 cameraPos = new Vector3(0, 0, -8.5f);
         Vector3 mouseDownCameraPos;
-        float partScale;
         float zoom = 2.3f;
         float mouseDownZoom = 0;
-        AABB primBbox;
-        public event EventHandler<Topology.INode> OnINodeSelected;
+        int pickX, pickY;
+        int pickReady = -1;
+        int pickIdx = -1;
+        int meshSelectedOffset = -1;
+
+        public event EventHandler<int> OnPartPicked;
         public event EventHandler<Topology.BSPNode> OnBSPNodeSelected;
         public event EventHandler<string> OnLogUpdated;
-        private bool onlyShowCoveredPortalFaces = false;
+        public List<PartInst> PartList { get; set; } = new List<PartInst>();
+
         public bool IsActive { get; set; }
         public LayoutVis(ApplicationWindow window) : base(window)
         {
@@ -111,6 +79,12 @@ namespace partmake
         public void MouseUp(int btn, int X, int Y)
         {
             mouseDown &= ~(1 << btn);
+            if (!mouseMoved)
+            {
+                pickX = (int)((float)X / (float)Window.Width * 1024.0f);
+                pickY = (int)((float)Y / (float)Window.Height * 1024.0f);
+                pickReady = 0;
+            }
         }
         public void MouseMove(int X, int Y, System.Windows.Forms.Keys keys)
         {
@@ -202,7 +176,7 @@ namespace partmake
             {
                 var vsfile = "partmake.vs.glsl";
                 var fsfile = "partmake.fs.glsl";
-                var floorgridfile = "partmake.floorgrid.glsl";
+                //var floorgridfile = "partmake.floorgrid.glsl";
 
                 string VertexCode;
                 string FragmentCode;
@@ -211,7 +185,7 @@ namespace partmake
                 {
                     VertexCode = reader.ReadToEnd();
                 }
-                using (Stream stream = assembly.GetManifestResourceStream(floorgridfile))
+                using (Stream stream = assembly.GetManifestResourceStream(fsfile))
                 using (StreamReader reader = new StreamReader(stream))
                 {
                     FragmentCode = reader.ReadToEnd();
@@ -298,11 +272,12 @@ namespace partmake
                     _pickFB.OutputDescription));
 
             }
+            
             _cl = factory.CreateCommandList();
         }
 
         protected override void Draw(float deltaSeconds)
-        {
+        {            
             _cl.Begin();
 
             Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(
@@ -316,26 +291,120 @@ namespace partmake
                 Matrix4x4.CreateRotationX(lookDir.Y) *
                 Matrix4x4.CreateTranslation(cameraPos / System.MathF.Pow(2.0f, zoom));
             _cl.UpdateBuffer(_viewBuffer, 0, viewmat);
-            Matrix4x4 mat =
-                Matrix4x4.CreateTranslation(-partOffset) *
-                Matrix4x4.CreateScale(partScale);
             _cl.SetPipeline(_pipeline);
             _cl.SetGraphicsResourceSet(0, _projViewSet);
             _cl.SetGraphicsResourceSet(1, _worldTextureSet);
             _cl.SetFramebuffer(MainSwapchain.Framebuffer);
             _cl.ClearColorTarget(0, RgbaFloat.Black);
             _cl.ClearDepthStencil(1f);
-            Vector4 candidateColor = new Vector4(0f, 0.5f, 1.0f, 1.0f);
-            _cl.UpdateBuffer(_materialBuffer, 0, ref candidateColor);
-            _cl.SetVertexBuffer(0, _planeVertexBuffer);
-            _cl.SetIndexBuffer(_planeIndexBuffer, IndexFormat.UInt16);
-            Matrix4x4 cm = Matrix4x4.CreateRotationX(MathF.PI * 0.5f);
-            _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
-            _cl.DrawIndexed((uint)_planeIndexCount);
+            foreach (var part in PartList)
+            {
+                if (part.item == null)
+                    continue;
+                if (part.item.ldrLoaderVertexBuffer == null)
+                    part.item.LoadLdr(_factory, GraphicsDevice);
+                if (part.item.ldrLoaderVertexBuffer == null)
+                    continue;
+                _cl.SetVertexBuffer(0, part.item.ldrLoaderVertexBuffer);
+                _cl.SetIndexBuffer(part.item.ldrLoaderIndexBuffer, IndexFormat.UInt32);
+                Matrix4x4 cm =
+                    Matrix4x4.CreateFromQuaternion(part.rotation) *
+                    Matrix4x4.CreateTranslation(part.position) *
+                    Matrix4x4.CreateScale(0.0025f);
+                _cl.UpdateBuffer(_worldBuffer, 0, ref cm);               
+                _cl.UpdateBuffer(_materialBuffer, 0, ref Palette.AllItems[part.paletteIdx].RGBA);
+                _cl.DrawIndexed((uint)part.item.ldrLoaderIndexCount);
+            }
+            
+            if (pickIdx >= 0  && pickIdx < PartList.Count)
+            {
+                var part = PartList[pickIdx];
+                Matrix4x4 cm =
+                            Matrix4x4.CreateFromQuaternion(part.rotation) *
+                            Matrix4x4.CreateTranslation(part.position) *
+                            Matrix4x4.CreateScale(0.0025f);
+                foreach (var connector in part.item.Connectors)
+                {
+                    Matrix4x4 cmat = connector.Mat.ToM44() * cm;
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cmat);
+                    Vector4 color = new Vector4(1, 1, 0, 1);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref color);
+                    _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+                    _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+                    _cl.DrawIndexed(_cubeIndexCount);
+                }
+            }
+            DrawPicking(ref viewmat, ref projMat);
             _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
             GraphicsDevice.SwapBuffers(MainSwapchain);
             GraphicsDevice.WaitForIdle();
+            HandlePick();
+        }
+
+        void DrawPicking(ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
+        {
+            if (pickReady == 0)
+            {
+                Matrix4x4 viewPrj = viewmat * projMat;
+
+                _cl.SetPipeline(_pipelinePick);
+                _cl.SetFramebuffer(_pickFB);
+                _cl.ClearColorTarget(0, RgbaFloat.Black);
+                _cl.ClearDepthStencil(1f);
+                _cl.SetGraphicsResourceSet(0, _projViewSet);
+                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+
+                
+                for (int partIdx = 0; partIdx < PartList.Count; ++partIdx)
+                {
+                    var part = PartList[partIdx];
+                    if (part.item == null)
+                        continue;
+                    if (part.item.ldrLoaderVertexBuffer == null)
+                        part.item.LoadLdr(_factory, GraphicsDevice);
+                    if (part.item.ldrLoaderVertexBuffer == null)
+                        continue;
+                    _cl.SetVertexBuffer(0, part.item.ldrLoaderVertexBuffer);
+                    _cl.SetIndexBuffer(part.item.ldrLoaderIndexBuffer, IndexFormat.UInt32);
+                    Matrix4x4 cm =
+                        Matrix4x4.CreateFromQuaternion(part.rotation) *
+                        Matrix4x4.CreateTranslation(part.position) *
+                        Matrix4x4.CreateScale(0.0025f);
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                    int r = partIdx & 0xFF;
+                    int g = (partIdx >> 8) & 0xFF;
+                    int b = (partIdx >> 16) & 0xFF;
+                    Vector4 meshColor = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref meshColor);
+                    _cl.DrawIndexed((uint)part.item.ldrLoaderIndexCount);
+                }
+
+                _cl.CopyTexture(this._pickTexture, this._pickStgTexture);
+                pickReady = 1;
+            }
+
+        }
+        struct Rgba
+        {
+            public byte r;
+            public byte g;
+            public byte b;
+            public byte a;
+        }
+
+        void HandlePick()
+        {
+            if (pickReady == 1)
+            {
+                meshSelectedOffset = -1;
+                MappedResourceView<Rgba> rView = GraphicsDevice.Map<Rgba>(_pickStgTexture, MapMode.Read);
+                Rgba r = rView[pickX, pickY];
+                pickIdx = r.r + (r.g << 8) + (r.b << 16);
+                OnPartPicked?.Invoke(this, pickIdx);
+                GraphicsDevice.Unmap(_pickStgTexture);
+                pickReady = -1;
+            }
         }
 
         private Vtx[] GetCubeVertices()

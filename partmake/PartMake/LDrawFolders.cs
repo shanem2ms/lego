@@ -159,49 +159,22 @@ namespace partmake
             return outParts;
         }
 
-        public class CacheItem
+        public static CacheItem[] CacheItems;
+        static Dictionary<string, int> cacheItemLookup = new Dictionary<string, int>();
+
+        public static CacheItem GetCacheItem(string name)
         {
-            public CacheItem(string name, string thumb, LDrawDatFile.Descriptor d)
-            {
-                Name = name;
-                thumbnailPath = thumb;
-                descriptor = d;
-            }
-            public string Name { get;  }
-            string thumbnailPath;
-
-            System.Windows.Media.ImageSource thumb = null;
-            public System.Windows.Media.ImageSource Thumb 
-            { 
-                get
-                {
-                    if (thumb != null) return thumb;
-                    if (File.Exists(thumbnailPath))
-                    {
-                        thumb = new System.Windows.Media.Imaging.BitmapImage(
-                        new Uri(thumbnailPath));
-                    }
-
-                    return thumb;
-                }
-            }
-
-            LDrawDatFile.Descriptor descriptor;
-
-            public string MainType => descriptor.type;
-            public string Subtype => descriptor.subtype;
-            public string Desc => descriptor.desc;
-            public string Dims => String.Join('x', descriptor.dims);
-
+            int idx;
+            if (cacheItemLookup.TryGetValue(name, out idx))
+                return CacheItems[idx];
+            return null;
         }
-
-        public static Dictionary<string, CacheItem> CacheItems = new Dictionary<string, CacheItem>();
-        public static Dictionary<string, List<string>> cacheTypeGroups;
         public static void SetCacheRoot(string folder)
         {
             Directory.CreateDirectory(folder);
             DirectoryInfo di = new DirectoryInfo(folder);
 
+            List < CacheItem > cacheItems = new List<CacheItem>();
             foreach (FileInfo fi in di.GetFiles("*.json"))
             {
                 string name = Path.GetFileNameWithoutExtension(fi.Name);
@@ -209,48 +182,28 @@ namespace partmake
                 string text = File.ReadAllText(fi.FullName);
                 LDrawDatFile.Descriptor d =
                     JsonConvert.DeserializeObject<LDrawDatFile.Descriptor>(text);
-                
-                CacheItems.TryAdd(name, new CacheItem(name, Path.Combine(di.FullName, name + ".png"), d));
-            }
-            if (!File.Exists(Path.Combine(folder, "categories.json")))
-                return;
 
-            HashSet<string> cacheItems = new HashSet<string>();
-            string str;
-            {
-                StreamReader streamReader = new StreamReader(Path.Combine(folder, "categories.json"));
-                str = streamReader.ReadToEnd();
-                streamReader.Close();
+                cacheItems.Add(new CacheItem(name,
+                    Path.Combine(di.FullName, name + ".hr_mesh"),
+                    Path.Combine(di.FullName, 
+                    name + ".png"), d));
             }
-            JObject json = JObject.Parse(str);
-            Dictionary<string, List<string>> typegroups = new Dictionary<string, List<string>>();
-            foreach (var prop in json.Properties())
-            {
-                string grp = (string)prop.Value;
-                List<string> items;
-                if (!typegroups.TryGetValue(grp, out items))
-                {
-                    items = new List<string>();
-                    typegroups.Add(grp, items);
-                }
-                items.Add(prop.Name);
-            }
+            cacheItems.Sort();
+            CacheItems = cacheItems.ToArray();
 
-            var grps = typegroups.Where(t => t.Value.Count < 20);
-            List<string> miscList = new List<string>();
-            foreach (var grp in grps)
+            for (int idx = 0; idx < CacheItems.Length; ++idx)
             {
-                typegroups.Remove(grp.Key);
-                miscList.AddRange(grp.Value);
+                cacheItemLookup.Add(CacheItems[idx].Name, idx);
             }
-            typegroups.Add("Misc", miscList);
-            cacheTypeGroups = typegroups;
         }
+
         public static void SetLDrawRoot(string folder)
         {
             string descFile = "partdesc.txt";
             rootFolder = folder;
             ConnectorsFolder = Path.Combine(rootFolder, @"partmake\connectors");
+            Palette.LoadColors(rootFolder);
+
             if (!File.Exists(Path.Combine(folder, descFile)))
             {
                 List<string> allFiles = new List<string>();

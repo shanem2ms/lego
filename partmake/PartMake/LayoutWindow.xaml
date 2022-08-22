@@ -12,45 +12,108 @@
             <ColumnDefinition Width="Auto"></ColumnDefinition>
             <ColumnDefinition Width="*"></ColumnDefinition>
         </Grid.ColumnDefinitions>
-        <Grid Grid.Column="0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <TextBox Text="{Binding FilterText, Mode=TwoWay}" LostFocus="TextBox_LostFocus" 
+        <TabControl Grid.Column="0">
+            <TabItem Header="Parts">
+                <Grid Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBox Text="{Binding FilterText, Mode=TwoWay}" LostFocus="TextBox_LostFocus" 
                      TextChanged="TextBox_TextChanged"/>
-            <ListView Name="ItemsList" Grid.Row="1" ItemsSource="{Binding Path=AllItems}">
-                <ListView.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel Width="{Binding (FrameworkElement.ActualWidth), 
+                    <ListView Name="ItemsList" Grid.Row="1" ItemsSource="{Binding Path=FilteredItems}"
+                      SelectionChanged="ItemsList_SelectionChanged">
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Width="{Binding (FrameworkElement.ActualWidth), 
             RelativeSource={RelativeSource AncestorType=ScrollContentPresenter}}"
             ItemWidth="{Binding (ListView.View).ItemWidth, 
             RelativeSource={RelativeSource AncestorType=ListView}}"
             MinWidth="{Binding ItemWidth, RelativeSource={RelativeSource Self}}"
             ItemHeight="{Binding (ListView.View).ItemHeight, 
             RelativeSource={RelativeSource AncestorType=ListView}}" />
-                    </ItemsPanelTemplate>
-                </ListView.ItemsPanel>
-                <ListView.ItemTemplate>
-                    <DataTemplate DataType="x:Type local:LDrawFolders.CacheItem">
-                        <Grid>
-                            <Image Source="{Binding Thumb}" Width="64" Height="64"/>
-                        </Grid>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
-            <StackPanel Orientation="Vertical" Grid.Row="2">
-                <TextBlock Text="{Binding Path=SelectedItem.Name, ElementName=ItemsList}"/>
-                <TextBlock Text="{Binding Path=SelectedItem.MainType, ElementName=ItemsList}"/>
-                <TextBlock Text="{Binding Path=SelectedItem.SubType, ElementName=ItemsList}"/>
-                <TextBlock Text="{Binding Path=SelectedItem.Desc, ElementName=ItemsList}"/>
-                <TextBlock Text="{Binding Path=SelectedItem.Dims, ElementName=ItemsList}"/>
-            </StackPanel>
-        </Grid>
+                            </ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
+                        <ListView.ItemTemplate>
+                            <DataTemplate DataType="x:Type local:CacheItem">
+                                <Grid>
+                                    <Image Source="{Binding Thumb}" Width="64" Height="64"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <StackPanel Orientation="Vertical" Grid.Row="2">
+                        <TextBlock Text="{Binding Path=SelectedItem.Name, ElementName=ItemsList}"/>
+                        <TextBlock Text="{Binding Path=SelectedItem.MainType, ElementName=ItemsList}"/>
+                        <TextBlock Text="{Binding Path=SelectedItem.SubType, ElementName=ItemsList}"/>
+                        <TextBlock Text="{Binding Path=SelectedItem.Desc, ElementName=ItemsList}"/>
+                        <TextBlock Text="{Binding Path=SelectedItem.Dims, ElementName=ItemsList}"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Colors">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ListView Name="PaletteList" ItemsSource="{Binding Path=Colors}" >
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Width="{Binding (FrameworkElement.ActualWidth), 
+            RelativeSource={RelativeSource AncestorType=ScrollContentPresenter}}"
+            ItemWidth="{Binding (ListView.View).ItemWidth, 
+            RelativeSource={RelativeSource AncestorType=ListView}}"
+            MinWidth="{Binding ItemWidth, RelativeSource={RelativeSource Self}}"
+            ItemHeight="{Binding (ListView.View).ItemHeight, 
+            RelativeSource={RelativeSource AncestorType=ListView}}" />
+                            </ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
+                        <ListView.ItemTemplate>
+                            <DataTemplate DataType="x:Type local:Pallete.Item">
+                                <Rectangle Fill="{Binding Brush}" Width="32" Height="32"/>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <StackPanel Orientation="Vertical" Grid.Row="1">
+                        <TextBlock Text="{Binding Path=SelectedItem.Index, ElementName=PaletteList}"/>
+                        <TextBlock Text="{Binding Path=SelectedItem.Name, ElementName=PaletteList}"/>
+                        <TextBlock Text="{Binding Path=SelectedItem.HSL, ElementName=PaletteList}"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+        </TabControl>
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>
-        <local:LayoutRenderControl Grid.Column="2"
-                    d:IsHidden="true" x:Name="_LayoutControl" KeyDown="_RenderControl_KeyDown" KeyUp="_RenderControl_KeyUp" />
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <local:LayoutRenderControl 
+                        d:IsHidden="true" x:Name="_LayoutControl" KeyDown="_RenderControl_KeyDown" KeyUp="_RenderControl_KeyUp" />
+            <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"/>
+            <Grid Grid.Row="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Orientation="Horizontal">
+                    <Button Content="Run" Click="RunButton_Click"/>
+                    <Button Content="SaveAs" Click="SaveAsButton_Click"/>
+                    <Button Content="Load" Click="LoadButton_Click"/>
+                </StackPanel>
+                <TabControl Grid.Row="1" >
+                    <TabItem Header="Script">
+                        <local:ScriptTextEditor x:Name="ScriptTB" VerticalScrollBarVisibility="Auto"/>
+                    </TabItem>
+                    <TabItem Header="Output">
+                        <TextBox x:Name="OutputTB" VerticalScrollBarVisibility="Auto"/>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+        </Grid>
     </Grid>
 
 </UserControl>
