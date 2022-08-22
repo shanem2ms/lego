@@ -17,12 +17,17 @@ namespace partmake
         static Action<string> Write = (string? message) => { System.Diagnostics.Debug.WriteLine(message); };
 
         public delegate void WriteDel(string text);
-        public WriteDel WriteLine;
+        public static WriteDel WriteLine;
         MetadataReference[] references;
 
-        CSharpCompilation Compile(string codeToCompile)
+        CSharpCompilation Compile(List<string> sources)
         {
-            SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(codeToCompile);
+            List<SyntaxTree> syntaxTrees = new List<SyntaxTree>();
+            foreach (string src in sources)
+            {
+                syntaxTrees.Add(
+                    CSharpSyntaxTree.ParseText(src));
+            }
 
 
             if (this.references == null)
@@ -43,15 +48,14 @@ namespace partmake
 
             CSharpCompilation compilation = CSharpCompilation.Create(
                 assemblyName,
-                syntaxTrees: new[] { syntaxTree },
+                syntaxTrees: syntaxTrees,
                 references: references,
                 options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
             return compilation;
         }
 
-        public void Run(string codeToCompile, LayoutVis vis)
+        public void Run(List<string> codeToCompile, LayoutVis vis)
         {
-            Compile(codeToCompile);
             using (var ms = new MemoryStream())
             {
                 var compilation = Compile(codeToCompile);
@@ -71,8 +75,6 @@ namespace partmake
                 }
                 else
                 {
-                    WriteLine("Compilation successful!");
-
                     ms.Seek(0, SeekOrigin.Begin);
 
                     Assembly assembly = AssemblyLoadContext.Default.LoadFromStream(ms);
@@ -100,8 +102,6 @@ namespace partmake
 
         public List<string> CodeComplete(string codeToCompile, int position, string variable, CodeCompleteType ccType)
         {
-            Write("Let's compile!");
-
             //Write("Parsing the code into the SyntaxTree");
             SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(codeToCompile);
             if (this.references == null)
@@ -120,7 +120,6 @@ namespace partmake
             }
             string assemblyName = Path.GetRandomFileName();
 
-            WriteLine("Compiling ...");
             CSharpCompilation compilation = CSharpCompilation.Create(
                 assemblyName,
                 syntaxTrees: new[] { syntaxTree },

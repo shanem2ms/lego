@@ -439,7 +439,7 @@ namespace partmake
             public string desc;
             public float[] dims;
             public List<string> aliases;
-            public IEnumerable<Connector> Connectors;
+            public Connector []Connectors;
         }
         public void WriteDescriptorFile(LDrawFolders.Entry e, string folder, string outname, bool overwrite)
         {
@@ -454,7 +454,7 @@ namespace partmake
             desc.desc = e.desc;
             desc.dims = e.dims;
             desc.aliases = e.aliases;
-            desc.Connectors = Connectors.Items;
+            desc.Connectors = Connectors.Items.ToArray();
             string jsonstr = JsonConvert.SerializeObject(desc);
             File.WriteAllText(outPath, jsonstr);
         }

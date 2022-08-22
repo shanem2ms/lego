@@ -12,15 +12,24 @@ using ICSharpCode.AvalonEdit.CodeCompletion;
 using ICSharpCode.AvalonEdit.Editing;
 using System.Reflection;
 using System.Xml;
+using System.IO.Packaging;
+using System.ComponentModel;
 
 namespace partmake
 {
-    public class ScriptTextEditor : TextEditor
+    public class ScriptTextEditor : TextEditor, INotifyPropertyChanged
     {
         CompletionWindow completionWindow;
         public ScriptEngine Engine;
-        public ScriptTextEditor()
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public string ScriptName { get; set; }
+
+        string filepath;
+        public ScriptTextEditor(string path)
         {
+            this.filepath = path;
             this.FontFamily = new FontFamily("Consolas");
             this.FontSize = 14;
             this.Foreground = new SolidColorBrush(Color.FromArgb(255, 200, 200, 200));
@@ -38,6 +47,21 @@ namespace partmake
             // in the constructor:
             this.TextArea.TextEntering += TextArea_TextEntering;
             this.TextArea.TextEntered += TextArea_TextEntered;
+            ScriptName = Path.GetFileName(path);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("ScriptName"));
+            Load(this.filepath);
+        }
+
+        public void SaveAs(string path)
+        {
+            this.filepath = path;
+            ScriptName = Path.GetFileName(path);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("ScriptName"));
+            Save(path);
+        }
+        public void Save()
+        {
+            Save(this.filepath);
         }
 
         private void TextArea_TextEntered(object sender, System.Windows.Input.TextCompositionEventArgs e)

@@ -64,7 +64,7 @@ namespace partmake
         public string Subtype => descriptor.subtype;
         public string Desc => descriptor.desc;
         public string Dims => descriptor.dims != null ? String.Join('x', descriptor.dims) : null;
-        public IEnumerable<Connector> Connectors => descriptor.Connectors;
+        public Connector []Connectors => descriptor.Connectors;
 
         public int CompareTo(CacheItem other)
         {

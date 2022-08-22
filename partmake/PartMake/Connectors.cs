@@ -110,14 +110,38 @@ namespace partmake
     [JsonObject(MemberSerialization.OptIn)]
     public class Connector : IComparable<Connector>
     {
-
-
         ConnectorType type;
         [JsonProperty]
         public ConnectorType Type { get => type; set { type = value; Changed?.Invoke(this, true); } }
 
         [JsonProperty]
         public Matrix4x4 Mat { get; set; }
+
+        System.Numerics.Matrix4x4? im44;
+        System.Numerics.Matrix4x4? m44;
+        public System.Numerics.Matrix4x4 IM44
+        {
+            get
+            {
+                if (!im44.HasValue)
+                {
+                    System.Numerics.Matrix4x4 outmat;
+                    System.Numerics.Matrix4x4.Invert(M44, out outmat); im44 = outmat;
+                }
+                return im44.Value;
+            }
+        }
+        public System.Numerics.Matrix4x4 M44
+        {
+            get
+            {
+                if (!m44.HasValue)
+                {
+                    m44 = Mat.ToM44();
+                }
+                return m44.Value;
+            }
+        }
 
         [JsonProperty]
         public bool IsCustom { get; set; } = false;

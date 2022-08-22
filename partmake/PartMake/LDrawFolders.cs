@@ -66,9 +66,9 @@ namespace partmake
 
         }
         public static string Root = @"C:\homep4\lego";
-        static string rootFolder;
-        public static string RootFolder => rootFolder ?? string.Empty;
-        public static string MdxFolder => Path.Combine(RootFolder, "Mbx");
+        static string ldrawFolder;
+        public static string LDrawFolder => ldrawFolder ?? string.Empty;
+        public static string MdxFolder => Path.Combine(LDrawFolder, "Mbx");
         static List<Entry> ldrawParts = new List<Entry>();
         static Dictionary<string, Entry> partPaths = new Dictionary<string, Entry>();
         static string selectedType;
@@ -200,9 +200,9 @@ namespace partmake
         public static void SetLDrawRoot(string folder)
         {
             string descFile = "partdesc.txt";
-            rootFolder = folder;
-            ConnectorsFolder = Path.Combine(rootFolder, @"partmake\connectors");
-            Palette.LoadColors(rootFolder);
+            ldrawFolder = folder;
+            ConnectorsFolder = Path.Combine(ldrawFolder, @"partmake\connectors");
+            Palette.LoadColors(ldrawFolder);
 
             if (!File.Exists(Path.Combine(folder, descFile)))
             {
@@ -356,7 +356,7 @@ namespace partmake
                         type += " Mod";
                     Entry e = new Entry()
                     {
-                        path = Path.Combine(rootFolder, vals[5], name),
+                        path = Path.Combine(ldrawFolder, vals[5], name),
                         name = name,
                         type = type,
                         subtype = subtype,
@@ -685,7 +685,7 @@ namespace partmake
         {
             Entry e = GetEntry(_name + ".dat");
             LdrLoader ldrLoader = new LdrLoader();
-            ldrLoader.Write(rootFolder, e.name,
+            ldrLoader.Write(ldrawFolder, e.name,
                 transform, outPath, force);
         }
         public static LDrawDatFile GetPart(string _name)

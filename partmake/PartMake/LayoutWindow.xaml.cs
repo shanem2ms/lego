@@ -11,11 +11,12 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Text.RegularExpressions;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using Microsoft.Win32;
+using System.Collections.ObjectModel;
 
 namespace partmake
 {
@@ -29,8 +30,13 @@ namespace partmake
         public string FilterText { get; set; }
 
         public IEnumerable<Palette.Item> Colors { get => Palette.SortedItems; }
+        public List<string> ScriptFiles { get; set; }
+
+        string scriptFolder;
 
         public List<CacheItem> FilteredItems { get; set; }
+
+        public ObservableCollection<ScriptTextEditor> OpenEditors { get; } = new ObservableCollection<ScriptTextEditor>();
         public string SelectedType
         {
             get => LDrawFolders.SelectedType;
@@ -45,6 +51,7 @@ namespace partmake
             OutputTB.AppendText(line + "\n");
             OutputTB.ScrollToEnd();
         }
+        ScriptTextEditor ActiveScriptTB;
         public LayoutWindow()
         {
             this.DataContext = this;
@@ -54,14 +61,33 @@ namespace partmake
 
             MCStructure mcs = new MCStructure(@"C:\Users\shane\Documents\manvillage.mcstructure");
             scriptEngine = new ScriptEngine();
-            scriptEngine.WriteLine = WriteLine;
+            ScriptEngine.WriteLine = WriteLine;
 
+            scriptFolder = System.IO.Path.Combine(LDrawFolders.Root, "Partmake\\Scripts");
             FilteredItems = LDrawFolders.CacheItems.ToList();
-            ScriptTB.Engine = scriptEngine;
-            ScriptTB.Load(@"C:\homep4\lego\partmake\Script.cs");
             _LayoutControl.Vis.OnPartPicked += Vis_OnPartPicked;
+            RefrehScriptsFolder();
+            foreach (var file in ScriptFiles)
+            {
+                OpenFile(file);
+            }
         }
 
+        void OpenFile(string name)
+        {
+            string filepath = 
+                System.IO.Path.Combine(scriptFolder, name);
+            ScriptTextEditor ScriptTB = new ScriptTextEditor(filepath);
+            ScriptTB.Engine = scriptEngine;
+            OpenEditors.Add(ScriptTB);
+        }
+        void RefrehScriptsFolder()
+        {
+            DirectoryInfo di = new DirectoryInfo(scriptFolder);
+            this.ScriptFiles = 
+                di.GetFiles("*.cs").Select(fi => fi.Name).ToList();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("ScriptFiles"));
+        }
         private void Vis_OnPartPicked(object sender, int e)
         {
             WriteLine($"Part picked {e}");
@@ -147,8 +173,12 @@ namespace partmake
 
         private void RunButton_Click(object sender, RoutedEventArgs e)
         {
-            ScriptTB.Save(@"C:\homep4\lego\partmake\Script.cs");
-            scriptEngine.Run(ScriptTB.Text, _LayoutControl.Vis);
+            foreach (var editor in OpenEditors)
+            {
+                editor.Save();
+            }
+            List<string> allFiles = this.ScriptFiles.Select(fname => File.ReadAllText(Path.Combine(scriptFolder, fname))).ToList();
+            scriptEngine.Run(allFiles, _LayoutControl.Vis);
         }
         private void SaveAsButton_Click(object sender, RoutedEventArgs e)
         {
@@ -158,13 +188,17 @@ namespace partmake
             sfd.Filter = "CSharp Scripts (.cs)|*.cs"; // Filter files by extension
             if (sfd.ShowDialog() == true)
             {
-                ScriptTB.Save(sfd.FileName);
+                ActiveScriptTB.SaveAs(sfd.FileName);
             }
         }
         private void LoadButton_Click(object sender, RoutedEventArgs e)
         {
-            ScriptTB.Save(@"C:\homep4\lego\partmake\Script.cs");
-            scriptEngine.Run(ScriptTB.Text, _LayoutControl.Vis);
+            //scriptEngine.Run(ActiveScriptTB.Text, _LayoutControl.Vis);
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+
         }
     }
 

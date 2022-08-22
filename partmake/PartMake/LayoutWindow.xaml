@@ -104,14 +104,41 @@
                     <Button Content="SaveAs" Click="SaveAsButton_Click"/>
                     <Button Content="Load" Click="LoadButton_Click"/>
                 </StackPanel>
-                <TabControl Grid.Row="1" >
-                    <TabItem Header="Script">
-                        <local:ScriptTextEditor x:Name="ScriptTB" VerticalScrollBarVisibility="Auto"/>
-                    </TabItem>
-                    <TabItem Header="Output">
-                        <TextBox x:Name="OutputTB" VerticalScrollBarVisibility="Auto"/>
-                    </TabItem>
-                </TabControl>
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TabControl ItemsSource="{Binding Path=OpenEditors}">
+                        <TabControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Label Content="{Binding Path=ScriptName}" />
+                                    <Button Content="x" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </TabControl.ItemTemplate>
+                    </TabControl>
+                    <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
+                    <TabControl Grid.Column="2">
+                        <TabItem Header="Output">
+                            <TextBox x:Name="OutputTB" VerticalScrollBarVisibility="Auto"/>
+                        </TabItem>
+                        <TabItem Header="Script Files" >
+                            <Grid >
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="New" />
+                                </StackPanel>
+                                <ListBox Grid.Row="1" ItemsSource="{Binding Path=ScriptFiles}"/>
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
+                </Grid>
             </Grid>
         </Grid>
     </Grid>

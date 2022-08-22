@@ -328,7 +328,7 @@ namespace partmake
             dlg.FileName = "ZMBX Files"; // Default file name
             dlg.DefaultExt = ".zmbx"; // Default file extension
             dlg.Filter = "ZMBX (.zmbx)|*.zmbx"; // Filter files by extension
-            string importDir = Path.GetFullPath(Path.Combine(LDrawFolders.RootFolder, @"..\Import"));
+            string importDir = Path.GetFullPath(Path.Combine(LDrawFolders.LDrawFolder, @"..\Import"));
             dlg.InitialDirectory = importDir;
             if (dlg.ShowDialog() == true)
             {
