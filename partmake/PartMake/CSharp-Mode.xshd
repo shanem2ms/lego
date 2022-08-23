@@ -3,7 +3,7 @@
 	<!-- The named colors 'Comment' and 'String' are used in SharpDevelop to detect if a line is inside a multiline string/comment -->
 	<Color name="Comment" foreground="Green" exampleText="// comment" />
 	<Color name="String" foreground="Orange" exampleText="string text = &quot;Hello, World!&quot;"/>
-	<Color name="StringInterpolation" foreground="Black" exampleText="string text = $&quot;Hello, {name}!&quot;"/>
+	<Color name="StringInterpolation" foreground="White" exampleText="string text = $&quot;Hello, {name}!&quot;"/>
 	<Color name="Char" foreground="Magenta" exampleText="char linefeed = '\n';"/>
 	<Color name="Preprocessor" foreground="Green" exampleText="#region Title" />
 	<Color name="Punctuation" exampleText="a(b.c);" />
@@ -21,7 +21,7 @@
 	<Color name="UnsafeKeywords" foreground="Olive" exampleText="unsafe { fixed (..) {} }"/>
 	<Color name="OperatorKeywords" fontWeight="bold" foreground="Pink" exampleText="public static implicit operator..."/>
 	<Color name="ParameterModifiers" fontWeight="bold" foreground="DeepPink" exampleText="(ref int a, params int[] b)"/>
-	<Color name="Modifiers" foreground="Brown" exampleText="static readonly int a;"/>
+	<Color name="Modifiers" foreground="Tan" exampleText="static readonly int a;"/>
 	<Color name="Visibility" fontWeight="bold" foreground="Blue" exampleText="public override void ToString();"/>
 	<Color name="NamespaceKeywords" fontWeight="bold" foreground="Green" exampleText="namespace A.B { using System; }"/>
 	<Color name="GetSetAddRemove" foreground="SaddleBrown" exampleText="int Prop { get; set; }"/>

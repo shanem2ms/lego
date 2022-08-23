@@ -140,22 +140,17 @@ namespace partmake
     public class PartInst
     {
         public CacheItem item;
-        public Vector3 position;
-        public Quaternion rotation;
+        //public Vector3 position;
+        //public Quaternion rotation;
+        public Matrix4x4 mat;
         public int paletteIdx;
 
-        public PartInst(string name, Vector3 position, Quaternion rotation, int paletteIdx)
+       
+        public PartInst(CacheItem item, Matrix4x4 mat, int paletteIdx)
         {
-            this.item = LDrawFolders.GetCacheItem(name);
-            this.position = position;
-            this.rotation = rotation;
-            this.paletteIdx = paletteIdx;
-        }
-
-        public PartInst(string name, Matrix4x4 mat, int paletteIdx)
-        {
-            Matrix4x4.Decompose(mat, out _, out this.rotation, out this.position);
-            this.item = LDrawFolders.GetCacheItem(name);
+            this.mat = mat;
+            //Matrix4x4.Decompose(mat, out _, out this.rotation, out this.position);
+            this.item = item;
             this.paletteIdx = paletteIdx;
         }
 

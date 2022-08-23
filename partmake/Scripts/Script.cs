@@ -19,7 +19,7 @@ namespace partmake.script
 	        	for (int j = -10; j < 10; j++)
 	        	{
 					Matrix4x4 mat = Matrix4x4.CreateTranslation(new Vector3(j*80-10, 0, i*80-10));        		        	
-	        		outparts.Add(new PartInst("3031", 					
+	        		outparts.Add(new PartInst(LDrawFolders.GetCacheItem("3031"),
 						mat, colors[r.Next(0,4)] ));
 				}
 			}
@@ -31,6 +31,11 @@ namespace partmake.script
 				Matrix4x4 mat = Matrix4x4.CreateTranslation(new Vector3(x*20, 8, y*20));
 				u.MakeFlower(outparts, mat);
 			}
+			
+    		outparts.Add(new PartInst(LDrawFolders.GetCacheItem("4599"),
+    			Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, MathF.PI * 2.25f) *
+				Matrix4x4.CreateTranslation(new Vector3(80,8,40)), 1));
+			
         }
     }
 }

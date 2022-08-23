@@ -137,7 +137,17 @@ namespace partmake
             {
                 if (!m44.HasValue)
                 {
-                    m44 = Mat.ToM44();
+                    //m44 = Mat.ToM44();
+                    Vector3 pos;
+                    Quaternion q;
+                    Vector3 scl;
+                    Matrix4x4.Decompose(Mat, out scl, out q, out pos);
+                    //if (scl.X < 0 || scl.Y < 0 || scl.Z < 0)
+                    //    System.Diagnostics.Debugger.Break();
+                    Matrix4x4 m = 
+                        Matrix4x4.CreateFromQuaternion(q) *
+                        Matrix4x4.CreateTranslation(pos);
+                    m44 = m.ToM44();
                 }
                 return m44.Value;
             }

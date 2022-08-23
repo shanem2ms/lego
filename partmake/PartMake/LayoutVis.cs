@@ -308,8 +308,7 @@ namespace partmake
                 _cl.SetVertexBuffer(0, part.item.ldrLoaderVertexBuffer);
                 _cl.SetIndexBuffer(part.item.ldrLoaderIndexBuffer, IndexFormat.UInt32);
                 Matrix4x4 cm =
-                    Matrix4x4.CreateFromQuaternion(part.rotation) *
-                    Matrix4x4.CreateTranslation(part.position) *
+                    part.mat *
                     Matrix4x4.CreateScale(0.0025f);
                 _cl.UpdateBuffer(_worldBuffer, 0, ref cm);               
                 _cl.UpdateBuffer(_materialBuffer, 0, ref Palette.AllItems[part.paletteIdx].RGBA);
@@ -320,8 +319,7 @@ namespace partmake
             {
                 var part = PartList[pickIdx];
                 Matrix4x4 cm =
-                            Matrix4x4.CreateFromQuaternion(part.rotation) *
-                            Matrix4x4.CreateTranslation(part.position) *
+                            part.mat *
                             Matrix4x4.CreateScale(0.0025f);
                 foreach (var connector in part.item.Connectors)
                 {
@@ -368,8 +366,7 @@ namespace partmake
                     _cl.SetVertexBuffer(0, part.item.ldrLoaderVertexBuffer);
                     _cl.SetIndexBuffer(part.item.ldrLoaderIndexBuffer, IndexFormat.UInt32);
                     Matrix4x4 cm =
-                        Matrix4x4.CreateFromQuaternion(part.rotation) *
-                        Matrix4x4.CreateTranslation(part.position) *
+                        part.mat *
                         Matrix4x4.CreateScale(0.0025f);
                     _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
                     int r = partIdx & 0xFF;
