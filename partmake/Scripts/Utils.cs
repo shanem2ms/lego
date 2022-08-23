@@ -38,16 +38,13 @@ namespace partmake.script
 			var hip = LDrawFolders.GetCacheItem("3815");
 			var leftleg = LDrawFolders.GetCacheItem("3817");
 
-			var rltohiprconnector = rightleg.Connectors[1];
-			
-			var hiprconnector = hip.Connectors[0];
-			
+			var rltohiprconnector = rightleg.Connectors[1];			
+			var hiprconnector = hip.Connectors[0];			
 			var hiplconnector = hip.Connectors[1];
 			var lltohiprconnector = leftleg.Connectors[1];
-			outparts.Add(new PartInst(rightleg, mat, 0));
-			mat = hiprconnector.IM44 * rltohiprconnector.M44 * mat;
-			outparts.Add(new PartInst(hip, mat, 0));
-			outparts.Add(new PartInst(leftleg, lltohiprconnector.IM44 * hiplconnector.M44 * mat, 1));
+			
+			outparts.Add(new PartInst(hip, mat, 1));
+
 			ScriptEngine.WriteLine("");
 			foreach (var connector in hip.Connectors)
 			{			

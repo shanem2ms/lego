@@ -66,6 +66,7 @@ namespace partmake
             scriptFolder = System.IO.Path.Combine(LDrawFolders.Root, "Partmake\\Scripts");
             FilteredItems = LDrawFolders.CacheItems.ToList();
             _LayoutControl.Vis.OnPartPicked += Vis_OnPartPicked;
+            _LayoutControl.Vis.OnConnectorPicked += Vis_OnConnectorPicked;
             RefrehScriptsFolder();
             foreach (var file in ScriptFiles)
             {
@@ -91,6 +92,11 @@ namespace partmake
         private void Vis_OnPartPicked(object sender, int e)
         {
             WriteLine($"Part picked {e}");
+        }
+
+        private void Vis_OnConnectorPicked(object sender, int e)
+        {
+            WriteLine($"Connector picked {e}");
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

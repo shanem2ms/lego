@@ -13,8 +13,13 @@ namespace partmake.script
     		{
 	    		Matrix4x4 mat = Matrix4x4.CreateTranslation(new Vector3(0, 8, 0));        		        	
 	    		u.Minifig(outparts, mat);
-    		}
-        	for (int i = -10; i < 10; i++)
+    		}    		        				
+        }
+        
+        void Terrain(List<PartInst> outparts)
+        {
+        	Utils u = new Utils();
+			for (int i = -10; i < 10; i++)
         	{
 	        	for (int j = -10; j < 10; j++)
 	        	{
@@ -34,8 +39,6 @@ namespace partmake.script
 			
     		outparts.Add(new PartInst(LDrawFolders.GetCacheItem("4599"),
     			Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, MathF.PI * 2.25f) *
-				Matrix4x4.CreateTranslation(new Vector3(80,8,40)), 1));
-			
-        }
+				Matrix4x4.CreateTranslation(new Vector3(80,8,40)), 1));        }
     }
 }

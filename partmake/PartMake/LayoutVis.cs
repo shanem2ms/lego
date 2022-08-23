@@ -25,13 +25,18 @@ namespace partmake
         private DeviceBuffer _cubeIndexBuffer;
         private DeviceBuffer _planeVertexBuffer;
         private DeviceBuffer _planeIndexBuffer;
+        private DeviceBuffer _isoVertexBuffer;
+        private DeviceBuffer _isoIndexBuffer;
 
 
         uint _cubeIndexCount;
         uint _planeIndexCount;
+        uint _isoIndexCount;
         private CommandList _cl;
         private Pipeline _pipeline;
+        private Pipeline _pipelineConnectors;
         private Pipeline _pipelinePick;
+        private Pipeline _pipelinePickConnectors;
         private ResourceSet _projViewSet;
         private ResourceSet _worldTextureSet;
         private Texture _primStgTexture;
@@ -54,9 +59,12 @@ namespace partmake
         int pickX, pickY;
         int pickReady = -1;
         int pickIdx = -1;
+        int selectedPart = -1;
+        int selectedConnectorIdx = -1;
         int meshSelectedOffset = -1;
 
         public event EventHandler<int> OnPartPicked;
+        public event EventHandler<int> OnConnectorPicked;
         public event EventHandler<Topology.BSPNode> OnBSPNodeSelected;
         public event EventHandler<string> OnLogUpdated;
         public List<PartInst> PartList { get; set; } = new List<PartInst>();
@@ -142,6 +150,19 @@ namespace partmake
                 _planeIndexCount = (uint)planeIndices.Length;
                 GraphicsDevice.UpdateBuffer(_planeIndexBuffer, 0, planeIndices);
             }
+            {
+                var vectors = new List<Vector3>();
+                var indices = new List<int>();
+                GeometryProvider.Icosahedron(vectors, indices);
+                var isoVertices = vectors.Select(v => new Vtx(v, Vector3.Normalize(v), new Vector2(v.X, v.Y))).ToArray();
+                _isoVertexBuffer = factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * isoVertices.Length), BufferUsage.VertexBuffer));
+                GraphicsDevice.UpdateBuffer(_isoVertexBuffer, 0, isoVertices);
+
+                var isoIndices = indices.ToArray();
+                _isoIndexBuffer = factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)isoIndices.Length, BufferUsage.IndexBuffer));
+                _isoIndexCount = (uint)isoIndices.Length;
+                GraphicsDevice.UpdateBuffer(_isoIndexBuffer, 0, isoIndices);
+            }
 
             var assembly = Assembly.GetExecutingAssembly();
 
@@ -171,7 +192,7 @@ namespace partmake
                 worldTextureLayout,
                 _worldBuffer,
                 _materialBuffer));
-          
+
 
             {
                 var vsfile = "partmake.vs.glsl";
@@ -214,7 +235,15 @@ namespace partmake
                     new[] { projViewLayout, worldTextureLayout },
                     MainSwapchain.Framebuffer.OutputDescription));
 
-            }            
+                _pipelineConnectors = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
+                    BlendStateDescription.SingleAlphaBlend,
+                    DepthStencilStateDescription.Disabled,
+                    new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
+                    PrimitiveTopology.TriangleList,
+                    shaderSet,
+                    new[] { projViewLayout, worldTextureLayout },
+                    MainSwapchain.Framebuffer.OutputDescription));
+            }
 
             {
                 var vsfile = "partmake.vs.glsl";
@@ -271,13 +300,22 @@ namespace partmake
                     new[] { projViewLayout, worldTextureLayout },
                     _pickFB.OutputDescription));
 
+                _pipelinePickConnectors = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
+                    BlendStateDescription.SingleOverrideBlend,
+                    DepthStencilStateDescription.Disabled,
+                    new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
+                    PrimitiveTopology.TriangleList,
+                    shaderSet,
+                    new[] { projViewLayout, worldTextureLayout },
+                    _pickFB.OutputDescription));                
             }
-            
+
+
             _cl = factory.CreateCommandList();
         }
 
         protected override void Draw(float deltaSeconds)
-        {            
+        {
             _cl.Begin();
 
             Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(
@@ -310,26 +348,49 @@ namespace partmake
                 Matrix4x4 cm =
                     part.mat *
                     Matrix4x4.CreateScale(0.0025f);
-                _cl.UpdateBuffer(_worldBuffer, 0, ref cm);               
+                _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
                 _cl.UpdateBuffer(_materialBuffer, 0, ref Palette.AllItems[part.paletteIdx].RGBA);
                 _cl.DrawIndexed((uint)part.item.ldrLoaderIndexCount);
             }
-            
-            if (pickIdx >= 0  && pickIdx < PartList.Count)
+
+            if (selectedPart >= 0 && selectedPart < PartList.Count)
             {
-                var part = PartList[pickIdx];
+                _cl.SetPipeline(_pipelineConnectors);
+                var part = PartList[selectedPart];
                 Matrix4x4 cm =
                             part.mat *
                             Matrix4x4.CreateScale(0.0025f);
                 foreach (var connector in part.item.Connectors)
                 {
+                    Vector3 pos, scl;
+                    Quaternion q;
+                    Matrix4x4.Decompose(connector.Mat.ToM44(), out scl, out q, out pos);
+                    Matrix4x4 m = connector.Mat.ToM44();
                     Matrix4x4 cmat = connector.Mat.ToM44() * cm;
-                    _cl.UpdateBuffer(_worldBuffer, 0, ref cmat);
-                    Vector4 color = new Vector4(1, 1, 0, 1);
-                    _cl.UpdateBuffer(_materialBuffer, 0, ref color);
+                    Matrix4x4 cmat2 =
+                        Matrix4x4.CreateTranslation(new Vector3(0, -0.5f, 0)) *
+                        Matrix4x4.CreateScale(new Vector3(2, 8, 2)) *
+                        Matrix4x4.CreateFromQuaternion(q) *
+                        Matrix4x4.CreateTranslation(pos) * cm;
+
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cmat2);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref Connector.ColorsForType[(int)connector.Type]);
                     _cl.SetVertexBuffer(0, _cubeVertexBuffer);
                     _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
                     _cl.DrawIndexed(_cubeIndexCount);
+
+                    Matrix4x4 cmat3 =
+                        Matrix4x4.CreateTranslation(new Vector3(0, -2, 0)) *
+                        Matrix4x4.CreateScale(new Vector3(3, 3, 3)) *
+                        Matrix4x4.CreateFromQuaternion(q) *
+                        Matrix4x4.CreateTranslation(pos) * cm;
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cmat3);
+                    Vector4 col = new Vector4(1, 1, 0, 1);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+                    _cl.SetVertexBuffer(0, _isoVertexBuffer);
+                    _cl.SetIndexBuffer(_isoIndexBuffer, IndexFormat.UInt32);
+                    _cl.DrawIndexed(_isoIndexCount);
+
                 }
             }
             DrawPicking(ref viewmat, ref projMat);
@@ -353,7 +414,7 @@ namespace partmake
                 _cl.SetGraphicsResourceSet(0, _projViewSet);
                 _cl.SetGraphicsResourceSet(1, _worldTextureSet);
 
-                
+
                 for (int partIdx = 0; partIdx < PartList.Count; ++partIdx)
                 {
                     var part = PartList[partIdx];
@@ -369,14 +430,61 @@ namespace partmake
                         part.mat *
                         Matrix4x4.CreateScale(0.0025f);
                     _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
-                    int r = partIdx & 0xFF;
-                    int g = (partIdx >> 8) & 0xFF;
-                    int b = (partIdx >> 16) & 0xFF;
+                    int pickIdx = partIdx + 1024;
+                    int r = pickIdx & 0xFF;
+                    int g = (pickIdx >> 8) & 0xFF;
+                    int b = (pickIdx >> 16) & 0xFF;
                     Vector4 meshColor = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
                     _cl.UpdateBuffer(_materialBuffer, 0, ref meshColor);
                     _cl.DrawIndexed((uint)part.item.ldrLoaderIndexCount);
                 }
 
+                if (selectedPart >= 0 && selectedPart < PartList.Count)
+                {
+                    _cl.SetPipeline(_pipelinePickConnectors);
+                    var part = PartList[selectedPart];
+                    Matrix4x4 cm =
+                                part.mat *
+                                Matrix4x4.CreateScale(0.0025f);
+                    for (int connectorIdx = 0; connectorIdx < part.item.Connectors.Length; ++connectorIdx)
+                    {
+                        var connector = part.item.Connectors[connectorIdx];
+                        Vector3 pos, scl;
+                        Quaternion q;
+                        Matrix4x4.Decompose(connector.Mat.ToM44(), out scl, out q, out pos);
+                        Matrix4x4 m = connector.Mat.ToM44();
+                        Matrix4x4 cmat = connector.Mat.ToM44() * cm;
+                        Matrix4x4 cmat2 =
+                            Matrix4x4.CreateTranslation(new Vector3(0, -0.5f, 0)) *
+                            Matrix4x4.CreateScale(new Vector3(2, 8, 2)) *
+                            Matrix4x4.CreateFromQuaternion(q) *
+                            Matrix4x4.CreateTranslation(pos) * cm;
+
+                        _cl.UpdateBuffer(_worldBuffer, 0, ref cmat2);
+                        _cl.UpdateBuffer(_materialBuffer, 0, ref Connector.ColorsForType[(int)connector.Type]);
+                        _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+                        _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+                        _cl.DrawIndexed(_cubeIndexCount);
+
+                        Matrix4x4 cmat3 =
+                            Matrix4x4.CreateTranslation(new Vector3(0, -2, 0)) *
+                            Matrix4x4.CreateScale(new Vector3(3, 3, 3)) *
+                            Matrix4x4.CreateFromQuaternion(q) *
+                            Matrix4x4.CreateTranslation(pos) * cm;
+                        _cl.UpdateBuffer(_worldBuffer, 0, ref cmat3);
+
+                        int pickIdx = connectorIdx + 128;
+                        int r = pickIdx & 0xFF;
+                        int g = (pickIdx >> 8) & 0xFF;
+                        int b = (pickIdx >> 16) & 0xFF;
+                        Vector4 meshColor = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
+                        _cl.UpdateBuffer(_materialBuffer, 0, ref meshColor);
+                        _cl.SetVertexBuffer(0, _isoVertexBuffer);
+                        _cl.SetIndexBuffer(_isoIndexBuffer, IndexFormat.UInt32);
+                        _cl.DrawIndexed(_isoIndexCount);
+
+                    }
+                }
                 _cl.CopyTexture(this._pickTexture, this._pickStgTexture);
                 pickReady = 1;
             }
@@ -398,7 +506,21 @@ namespace partmake
                 MappedResourceView<Rgba> rView = GraphicsDevice.Map<Rgba>(_pickStgTexture, MapMode.Read);
                 Rgba r = rView[pickX, pickY];
                 pickIdx = r.r + (r.g << 8) + (r.b << 16);
-                OnPartPicked?.Invoke(this, pickIdx);
+                selectedConnectorIdx = -1;
+                if (pickIdx >= 1024)
+                {
+                    selectedPart = pickIdx - 1024;
+                    OnPartPicked?.Invoke(this, selectedPart);
+                }
+                else if (pickIdx >= 128)
+                {
+                    selectedConnectorIdx = pickIdx - 128;
+                    OnConnectorPicked?.Invoke(this, selectedConnectorIdx);
+                }
+                else
+                {
+                    selectedPart = -1;
+                }
                 GraphicsDevice.Unmap(_pickStgTexture);
                 pickReady = -1;
             }
@@ -409,35 +531,35 @@ namespace partmake
             Vtx[] vertices = new Vtx[]
             {
                 // Top
-                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector2(0, 0)),
-                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector2(1, 0)),
-                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f), new Vector2(1, 1)),
-                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector2(0, 1)),
+                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector3(0,-1,0), new Vector2(0, 0)),
+                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector3(0,-1,0), new Vector2(1, 0)),
+                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f), new Vector3(0,-1,0), new Vector2(1, 1)),
+                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector3(0,-1,0), new Vector2(0, 1)),
                 // Bottom                                                             
-                new Vtx(new Vector3(-0.5f,-0.5f, +0.5f),  new Vector2(0, 0)),
-                new Vtx(new Vector3(+0.5f,-0.5f, +0.5f),  new Vector2(1, 0)),
-                new Vtx(new Vector3(+0.5f,-0.5f, -0.5f),  new Vector2(1, 1)),
-                new Vtx(new Vector3(-0.5f,-0.5f, -0.5f),  new Vector2(0, 1)),
+                new Vtx(new Vector3(-0.5f,-0.5f, +0.5f),  new Vector3(0, 1,0), new Vector2(0, 0)),
+                new Vtx(new Vector3(+0.5f,-0.5f, +0.5f),  new Vector3(0, 1,0), new Vector2(1, 0)),
+                new Vtx(new Vector3(+0.5f,-0.5f, -0.5f),  new Vector3(0, 1,0), new Vector2(1, 1)),
+                new Vtx(new Vector3(-0.5f,-0.5f, -0.5f),  new Vector3(0, 1,0), new Vector2(0, 1)),
                 // Left                                                               
-                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector2(0, 0)),
-                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector2(1, 0)),
-                new Vtx(new Vector3(-0.5f, -0.5f, +0.5f), new Vector2(1, 1)),
-                new Vtx(new Vector3(-0.5f, -0.5f, -0.5f), new Vector2(0, 1)),
+                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector3(-1,0,0), new Vector2(0, 0)),
+                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector3(-1,0,0),new Vector2(1, 0)),
+                new Vtx(new Vector3(-0.5f, -0.5f, +0.5f), new Vector3(-1,0,0),new Vector2(1, 1)),
+                new Vtx(new Vector3(-0.5f, -0.5f, -0.5f), new Vector3(-1,0,0),new Vector2(0, 1)),
                 // Right                                                              
-                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f), new Vector2(0, 0)),
-                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector2(1, 0)),
-                new Vtx(new Vector3(+0.5f, -0.5f, -0.5f), new Vector2(1, 1)),
-                new Vtx(new Vector3(+0.5f, -0.5f, +0.5f), new Vector2(0, 1)),
+                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f),new Vector3(1,0,0), new Vector2(0, 0)),
+                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector3(1,0,0),new Vector2(1, 0)),
+                new Vtx(new Vector3(+0.5f, -0.5f, -0.5f),new Vector3(1,0,0), new Vector2(1, 1)),
+                new Vtx(new Vector3(+0.5f, -0.5f, +0.5f),new Vector3(1,0,0), new Vector2(0, 1)),
                 // Back                                                               
-                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector2(0, 0)),
-                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector2(1, 0)),
-                new Vtx(new Vector3(-0.5f, -0.5f, -0.5f), new Vector2(1, 1)),
-                new Vtx(new Vector3(+0.5f, -0.5f, -0.5f), new Vector2(0, 1)),
+                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector3(0,0,-1), new Vector2(0, 0)),
+                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector3(0,0,-1),new Vector2(1, 0)),
+                new Vtx(new Vector3(-0.5f, -0.5f, -0.5f), new Vector3(0,0,-1),new Vector2(1, 1)),
+                new Vtx(new Vector3(+0.5f, -0.5f, -0.5f), new Vector3(0,0,-1),new Vector2(0, 1)),
                 // Front                                                              
-                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector2(0, 0)),
-                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f), new Vector2(1, 0)),
-                new Vtx(new Vector3(+0.5f, -0.5f, +0.5f), new Vector2(1, 1)),
-                new Vtx(new Vector3(-0.5f, -0.5f, +0.5f), new Vector2(0, 1)),
+                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector3(0,0,1),new Vector2(0, 0)),
+                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f), new Vector3(0,0,1),new Vector2(1, 0)),
+                new Vtx(new Vector3(+0.5f, -0.5f, +0.5f), new Vector3(0,0,1),new Vector2(1, 1)),
+                new Vtx(new Vector3(-0.5f, -0.5f, +0.5f), new Vector3(0,0,1),new Vector2(0, 1)),
             };
 
             return vertices;
@@ -486,6 +608,142 @@ namespace partmake
 
     }
 
+    public static class GeometryProvider
+    {
+        private static int GetMidpointIndex(Dictionary<string, int> midpointIndices, List<Vector3> vertices, int i0, int i1)
+        {
 
+            var edgeKey = string.Format("{0}_{1}", Math.Min(i0, i1), Math.Max(i0, i1));
+
+            var midpointIndex = -1;
+
+            if (!midpointIndices.TryGetValue(edgeKey, out midpointIndex))
+            {
+                var v0 = vertices[i0];
+                var v1 = vertices[i1];
+
+                var midpoint = (v0 + v1) / 2f;
+
+                if (vertices.Contains(midpoint))
+                    midpointIndex = vertices.IndexOf(midpoint);
+                else
+                {
+                    midpointIndex = vertices.Count;
+                    vertices.Add(midpoint);
+                    midpointIndices.Add(edgeKey, midpointIndex);
+                }
+            }
+
+
+            return midpointIndex;
+
+        }
+
+
+        public static void Subdivide(List<Vector3> vectors, List<int> indices, bool removeSourceTriangles)
+        {
+            var midpointIndices = new Dictionary<string, int>();
+
+            var newIndices = new List<int>(indices.Count * 4);
+
+            if (!removeSourceTriangles)
+                newIndices.AddRange(indices);
+
+            for (var i = 0; i < indices.Count - 2; i += 3)
+            {
+                var i0 = indices[i];
+                var i1 = indices[i + 1];
+                var i2 = indices[i + 2];
+
+                var m01 = GetMidpointIndex(midpointIndices, vectors, i0, i1);
+                var m12 = GetMidpointIndex(midpointIndices, vectors, i1, i2);
+                var m02 = GetMidpointIndex(midpointIndices, vectors, i2, i0);
+
+                newIndices.AddRange(
+                    new[] {
+                    i0,m01,m02
+                    ,
+                    i1,m12,m01
+                    ,
+                    i2,m02,m12
+                    ,
+                    m02,m01,m12
+                    }
+                    );
+
+            }
+
+            indices.Clear();
+            indices.AddRange(newIndices);
+        }
+
+        /// <summary>
+        /// create a regular icosahedron (20-sided polyhedron)
+        /// </summary>
+        /// <param name="primitiveType"></param>
+        /// <param name="size"></param>
+        /// <param name="vertices"></param>
+        /// <param name="indices"></param>
+        /// <remarks>
+        /// You can create this programmatically instead of using the given vertex 
+        /// and index list, but it's kind of a pain and rather pointless beyond a 
+        /// learning exercise.
+        /// </remarks>
+
+        /// note: icosahedron definition may have come from the OpenGL red book. I don't recall where I found it. 
+        public static void Icosahedron(List<Vector3> vertices, List<int> indices)
+        {
+
+            indices.AddRange(
+                new int[]
+                {
+                0,4,1,
+                0,9,4,
+                9,5,4,
+                4,5,8,
+                4,8,1,
+                8,10,1,
+                8,3,10,
+                5,3,8,
+                5,2,3,
+                2,7,3,
+                7,10,3,
+                7,6,10,
+                7,11,6,
+                11,0,6,
+                0,1,6,
+                6,1,10,
+                9,0,11,
+                9,11,2,
+                9,2,5,
+                7,2,11
+                }
+                .Select(i => i + vertices.Count)
+            );
+
+            var X = 0.525731112119133606f;
+            var Z = 0.850650808352039932f;
+
+            vertices.AddRange(
+                new[]
+                {
+                new Vector3(-X, 0f, Z),
+                new Vector3(X, 0f, Z),
+                new Vector3(-X, 0f, -Z),
+                new Vector3(X, 0f, -Z),
+                new Vector3(0f, Z, X),
+                new Vector3(0f, Z, -X),
+                new Vector3(0f, -Z, X),
+                new Vector3(0f, -Z, -X),
+                new Vector3(Z, X, 0f),
+                new Vector3(-Z, X, 0f),
+                new Vector3(Z, -X, 0f),
+                new Vector3(-Z, -X, 0f)
+                }
+            );
+
+
+        }
+    }
 
 }

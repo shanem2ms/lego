@@ -29,7 +29,7 @@ namespace partmake
         Stem = 16,
         StemHole = 17
     }
-
+    
     public static class Vector3Parse
     {
         public static string Str(this Vector3 v)
@@ -119,6 +119,21 @@ namespace partmake
 
         System.Numerics.Matrix4x4? im44;
         System.Numerics.Matrix4x4? m44;
+
+        public static System.Numerics.Vector4[] ColorsForType;
+
+        static Connector()
+        {
+            List<System.Numerics.Vector4> colors = new List<System.Numerics.Vector4>();
+            Random r = new Random(100);
+            for (int i = 0; i < 18; ++i)
+            {
+                colors.Add(new System.Numerics.Vector4(r.NextSingle(),
+                    r.NextSingle(),
+                    r.NextSingle(), 1));
+            }
+            ColorsForType = colors.ToArray();
+        }
         public System.Numerics.Matrix4x4 IM44
         {
             get
