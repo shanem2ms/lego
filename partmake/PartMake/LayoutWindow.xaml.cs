@@ -72,6 +72,7 @@ namespace partmake
             {
                 OpenFile(file);
             }
+            //RunScript();
         }
 
         private void Vis_OnConnectorPicked(object sender, LayoutVis.PartPickEvent e)
@@ -184,6 +185,11 @@ namespace partmake
             {
                 editor.Save();
             }
+            RunScript();
+        }
+
+        void RunScript()
+        {
             List<string> allFiles = this.ScriptFiles.Select(fname => File.ReadAllText(Path.Combine(scriptFolder, fname))).ToList();
             scriptEngine.Run(allFiles, _LayoutControl.Vis);
         }

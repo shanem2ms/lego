@@ -7,17 +7,21 @@ namespace partmake.script
     {
         Random r = new Random();
     	int []colors = new int[4] { 288, 2, 74, 6 };
-        public void Run(List<PartInst> outparts, ScriptEngine engine)
+        public void Run(List<PartInst> outparts, List<Vector4> locators)
         {            
     		Utils u = new Utils();
     		{
     			var stud1side = LDrawFolders.GetCacheItem("87087");
-	    		Matrix4x4 mat = Matrix4x4.CreateTranslation(new Vector3(0, 8, 0));        		        	
-	    		//u.Minifig(outparts, mat);
-        		outparts.Add(new PartInst(stud1side,mat, 1));
-        		//stud1side.
-	    		
-    		}    		        				
+	    		Matrix4x4 mat = 
+	    			Matrix4x4.CreateTranslation(new Vector3(0, 0, 0));        		        	
+        		outparts.Add(new PartInst(stud1side,mat, 326));        		
+        		Matrix4x4 m2 = stud1side.Connectors[4].IM44 * stud1side.Connectors[0].M44 * mat;
+        		outparts.Add(new PartInst(stud1side,m2, 29));
+        		Vector3 p = stud1side.Connectors[4].PosY;
+        		Vector3 d = stud1side.Connectors[4].DirY * 0;
+	    		locators.Add(new Vector4(p.X + d.X,p.Y + d.Y,p.Z + d.Z,1f));
+    		}    		 
+    		
         }
         
         void Terrain(List<PartInst> outparts)

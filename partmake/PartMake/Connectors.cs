@@ -146,23 +146,62 @@ namespace partmake
                 return im44.Value;
             }
         }
+
+        public System.Numerics.Vector3 Pos
+        {
+            get
+            {
+                Vector3 pos = Vector3.Transform(Vector3.Zero, Mat);
+                return new System.Numerics.Vector3((float)pos.X, (float)pos.Y, (float)pos.Z);
+            }
+        }
+        public System.Numerics.Vector3 PosY
+        {
+            get
+            {
+                Vector3 pos = Vector3.Transform(Vector3.UnitY, Mat);
+                return new System.Numerics.Vector3((float)pos.X, (float)pos.Y, (float)pos.Z);
+            }
+        }
+        public System.Numerics.Vector3 DirY
+        {
+            get
+            {
+                Vector3 pos = Vector3.Transform(Vector3.Zero, Mat);
+                Vector3 posY = Vector3.Transform(Vector3.UnitY, Mat);
+                Vector3 dir = Vector3.Normalize(posY - pos);
+                return new System.Numerics.Vector3((float)dir.X, (float)dir.Y, (float)dir.Z);
+            }
+        }
+        public System.Numerics.Vector3 DirX
+        {
+            get
+            {
+                Vector3 pos = Vector3.Transform(Vector3.Zero, Mat);
+                Vector3 posY = Vector3.Transform(Vector3.UnitX, Mat);
+                Vector3 dir = Vector3.Normalize(posY - pos);
+                return new System.Numerics.Vector3((float)dir.X, (float)dir.Y, (float)dir.Z);
+            }
+        }
+        public System.Numerics.Vector3 DirZ
+        {
+            get
+            {
+                Vector3 pos = Vector3.Transform(Vector3.Zero, Mat);
+                Vector3 posY = Vector3.Transform(Vector3.UnitZ, Mat);
+                Vector3 dir = Vector3.Normalize(posY - pos);
+                return new System.Numerics.Vector3((float)dir.X, (float)dir.Y, (float)dir.Z);
+            }
+        }
         public System.Numerics.Matrix4x4 M44
         {
             get
             {
                 if (!m44.HasValue)
                 {
-                    //m44 = Mat.ToM44();
-                    Vector3 pos;
-                    Quaternion q;
-                    Vector3 scl;
-                    Matrix4x4.Decompose(Mat, out scl, out q, out pos);
-                    //if (scl.X < 0 || scl.Y < 0 || scl.Z < 0)
-                    //    System.Diagnostics.Debugger.Break();
-                    Matrix4x4 m = 
-                        Matrix4x4.CreateFromQuaternion(q) *
-                        Matrix4x4.CreateTranslation(pos);
-                    m44 = m.ToM44();
+
+                    Vector3 pos = Vector3.Transform(Vector3.Zero, Mat);
+                    m44 = Matrix4x4.CreateTranslation(pos).ToM44();
                 }
                 return m44.Value;
             }

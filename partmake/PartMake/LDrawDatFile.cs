@@ -245,7 +245,7 @@ namespace partmake
                 IsInitialized = true;
             }
         }
-
+        public bool OrientToMbx = false;
         void RefreshPartMatrix()
         {
             LoadMbx();
@@ -253,7 +253,7 @@ namespace partmake
             {
                 List<Vtx> vertices = new List<Vtx>();
                 GetVertices(vertices, false, false);
-                if (vertices.Count < 10000)
+                if (OrientToMbx && vertices.Count < 10000)
                 {
                     var pts = vertices.Select(v => new Vector3(v.pos.X, v.pos.Y, v.pos.Z));
                     MbxOrient mbxOrient = new MbxOrient();

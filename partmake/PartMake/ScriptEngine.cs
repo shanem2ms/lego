@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Windows;
 
 namespace partmake
 {
@@ -21,7 +22,7 @@ namespace partmake
         MetadataReference[] references;
 
         CSharpCompilation Compile(List<string> sources)
-        {
+        {            
             List<SyntaxTree> syntaxTrees = new List<SyntaxTree>();
             foreach (string src in sources)
             {
@@ -82,11 +83,14 @@ namespace partmake
                     var instance = assembly.CreateInstance("partmake.script.Script");
                     var meth = type.GetMember("Run").First() as MethodInfo;
                     List<PartInst> outparts = new List<PartInst>();
-                    meth.Invoke(instance, new object[] { outparts, this });
+                    List<System.Numerics.Vector4> locators = new List<System.Numerics.Vector4>();
+                    meth.Invoke(instance, new object[] { outparts, locators });
                     lock (vis.PartList)
                     {
                         vis.PartList.Clear();
                         vis.PartList.AddRange(outparts);
+                        vis.DebugLocators.Clear();
+                        vis.DebugLocators.AddRange(locators);
                     }
                 }
             }
@@ -140,6 +144,7 @@ namespace partmake
                     {
                         var hashset = info.Type.GetMembers().Select(m => m.Name).ToHashSet();
                         hashset.Remove(".ctor");
+                        hashset.RemoveWhere((str) => { return str.StartsWith("get_") || str.StartsWith("set_"); });
                         return hashset.ToList();
                     }
                 }

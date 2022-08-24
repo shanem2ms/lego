@@ -74,6 +74,7 @@ namespace partmake
         public event EventHandler<Topology.BSPNode> OnBSPNodeSelected;
         public event EventHandler<string> OnLogUpdated;
         public List<PartInst> PartList { get; set; } = new List<PartInst>();
+        public List<Vector4> DebugLocators { get; set; } = new List<Vector4>();
 
         public bool IsActive { get; set; }
         public LayoutVis(ApplicationWindow window) : base(window)
@@ -399,6 +400,25 @@ namespace partmake
 
                 }
             }
+            if (DebugLocators.Count > 0)
+            {
+                _cl.SetPipeline(_pipelineConnectors);
+                foreach (Vector4 loc in DebugLocators)
+                {
+                    Matrix4x4 mat =
+                        Matrix4x4.CreateScale(loc.W) *
+                        Matrix4x4.CreateTranslation(new Vector3(loc.X, loc.Y, loc.Z)) *
+                        Matrix4x4.CreateScale(0.0025f);
+
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
+                    Vector4 color = new Vector4(1, 0.5f, 0.5f, 1);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref color);
+                    _cl.SetVertexBuffer(0, _isoVertexBuffer);
+                    _cl.SetIndexBuffer(_isoIndexBuffer, IndexFormat.UInt32);
+                    _cl.DrawIndexed(_isoIndexCount);
+                }
+            }
+
             DrawPicking(ref viewmat, ref projMat);
             _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
@@ -454,6 +474,12 @@ namespace partmake
                                 Matrix4x4.CreateScale(0.0025f);
                     for (int connectorIdx = 0; connectorIdx < part.item.Connectors.Length; ++connectorIdx)
                     {
+                        int pickIdx = connectorIdx + 128;
+                        int r = pickIdx & 0xFF;
+                        int g = (pickIdx >> 8) & 0xFF;
+                        int b = (pickIdx >> 16) & 0xFF;
+                        Vector4 meshColor = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
+
                         var connector = part.item.Connectors[connectorIdx];
                         Vector3 pos, scl;
                         Quaternion q;
@@ -467,7 +493,7 @@ namespace partmake
                             Matrix4x4.CreateTranslation(pos) * cm;
 
                         _cl.UpdateBuffer(_worldBuffer, 0, ref cmat2);
-                        _cl.UpdateBuffer(_materialBuffer, 0, ref Connector.ColorsForType[(int)connector.Type]);
+                        _cl.UpdateBuffer(_materialBuffer, 0, ref meshColor);
                         _cl.SetVertexBuffer(0, _cubeVertexBuffer);
                         _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
                         _cl.DrawIndexed(_cubeIndexCount);
@@ -479,11 +505,6 @@ namespace partmake
                             Matrix4x4.CreateTranslation(pos) * cm;
                         _cl.UpdateBuffer(_worldBuffer, 0, ref cmat3);
 
-                        int pickIdx = connectorIdx + 128;
-                        int r = pickIdx & 0xFF;
-                        int g = (pickIdx >> 8) & 0xFF;
-                        int b = (pickIdx >> 16) & 0xFF;
-                        Vector4 meshColor = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
                         _cl.UpdateBuffer(_materialBuffer, 0, ref meshColor);
                         _cl.SetVertexBuffer(0, _isoVertexBuffer);
                         _cl.SetIndexBuffer(_isoIndexBuffer, IndexFormat.UInt32);
@@ -491,6 +512,7 @@ namespace partmake
 
                     }
                 }
+
                 _cl.CopyTexture(this._pickTexture, this._pickStgTexture);
                 pickReady = 1;
             }

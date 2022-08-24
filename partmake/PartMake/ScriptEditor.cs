@@ -66,9 +66,10 @@ namespace partmake
 
         private void TextArea_TextEntered(object sender, System.Windows.Input.TextCompositionEventArgs e)
         {
+            char[] symbolTermChars = new char[] { ' ', '\t', '{', '(' };
             if (e.Text == ".")
             {
-                int spaceOffset = this.Text.LastIndexOfAny(new char[] { ' ', '\t' }, this.CaretOffset);
+                int spaceOffset = this.Text.LastIndexOfAny(symbolTermChars, this.CaretOffset);
                 int len = this.CaretOffset - spaceOffset - 2;
                 if (len <= 0)
                     return;
@@ -91,7 +92,7 @@ namespace partmake
             }
             else if (e.Text == "(")
             {
-                int spaceOffset = this.Text.LastIndexOfAny(new char[] { ' ', '\t' }, this.CaretOffset);
+                int spaceOffset = this.Text.LastIndexOfAny(symbolTermChars, this.CaretOffset);
                 int len = this.CaretOffset - spaceOffset - 2;
                 if (len <= 0)
                     return;
