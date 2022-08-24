@@ -63,8 +63,14 @@ namespace partmake
         int selectedConnectorIdx = -1;
         int meshSelectedOffset = -1;
 
-        public event EventHandler<int> OnPartPicked;
-        public event EventHandler<int> OnConnectorPicked;
+        public class PartPickEvent
+        {
+            public PartInst part;
+            public int connectorIdx;
+        }
+
+        public event EventHandler<PartPickEvent> OnPartPicked;
+        public event EventHandler<PartPickEvent> OnConnectorPicked;
         public event EventHandler<Topology.BSPNode> OnBSPNodeSelected;
         public event EventHandler<string> OnLogUpdated;
         public List<PartInst> PartList { get; set; } = new List<PartInst>();
@@ -510,12 +516,12 @@ namespace partmake
                 if (pickIdx >= 1024)
                 {
                     selectedPart = pickIdx - 1024;
-                    OnPartPicked?.Invoke(this, selectedPart);
+                    OnPartPicked?.Invoke(this, new PartPickEvent() { part = PartList[selectedPart], connectorIdx = -1 });
                 }
                 else if (pickIdx >= 128)
                 {
                     selectedConnectorIdx = pickIdx - 128;
-                    OnConnectorPicked?.Invoke(this, selectedConnectorIdx);
+                    OnConnectorPicked?.Invoke(this, new PartPickEvent() { part = PartList[selectedPart], connectorIdx = selectedConnectorIdx });
                 }
                 else
                 {

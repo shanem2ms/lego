@@ -74,6 +74,16 @@ namespace partmake
             }
         }
 
+        private void Vis_OnConnectorPicked(object sender, LayoutVis.PartPickEvent e)
+        {
+            WriteLine($"Connector {e.connectorIdx}");
+            WriteLine(e.part.item.Connectors[e.connectorIdx].ToString());
+        }
+
+        private void Vis_OnPartPicked(object sender, LayoutVis.PartPickEvent e)
+        {
+        }
+
         void OpenFile(string name)
         {
             string filepath = 
@@ -88,15 +98,6 @@ namespace partmake
             this.ScriptFiles = 
                 di.GetFiles("*.cs").Select(fi => fi.Name).ToList();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("ScriptFiles"));
-        }
-        private void Vis_OnPartPicked(object sender, int e)
-        {
-            WriteLine($"Part picked {e}");
-        }
-
-        private void Vis_OnConnectorPicked(object sender, int e)
-        {
-            WriteLine($"Connector picked {e}");
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

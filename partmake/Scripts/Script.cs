@@ -11,8 +11,12 @@ namespace partmake.script
         {            
     		Utils u = new Utils();
     		{
+    			var stud1side = LDrawFolders.GetCacheItem("87087");
 	    		Matrix4x4 mat = Matrix4x4.CreateTranslation(new Vector3(0, 8, 0));        		        	
-	    		u.Minifig(outparts, mat);
+	    		//u.Minifig(outparts, mat);
+        		outparts.Add(new PartInst(stud1side,mat, 1));
+        		//stud1side.
+	    		
     		}    		        				
         }
         

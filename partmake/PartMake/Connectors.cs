@@ -211,7 +211,7 @@ namespace partmake
         public static string[] ConnectorTypes => Enum.GetNames(typeof(ConnectorType));
         public override string ToString()
         {
-            return $"{Type} {Mat.Translation}";
+            return $"{Type} {Mat.Translation} {Rotation}";
         }
         public int CompareTo(Connector other)
         {
