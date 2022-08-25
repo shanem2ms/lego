@@ -369,21 +369,46 @@ namespace partmake
                             Matrix4x4.CreateScale(0.0025f);
                 foreach (var connector in part.item.Connectors)
                 {
+                    if (connector.Type == ConnectorType.StudJ || connector.Type == ConnectorType.Clip)
+                        continue;
                     Vector3 pos = connector.Pos;
                     Quaternion q = connector.Dir;
+                    _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+                    _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
 
                     Matrix4x4 cmat2 =
                         Matrix4x4.CreateTranslation(new Vector3(0, 0.5f, 0)) *
-                        Matrix4x4.CreateScale(new Vector3(2, 8, 2)) *
+                        Matrix4x4.CreateScale(new Vector3(1, 8, 1)) *
                         Matrix4x4.CreateFromQuaternion(q) *
                         Matrix4x4.CreateTranslation(pos) * cm;
 
                     _cl.UpdateBuffer(_worldBuffer, 0, ref cmat2);
                     _cl.UpdateBuffer(_materialBuffer, 0, ref Connector.ColorsForType[(int)connector.Type]);
-                    _cl.SetVertexBuffer(0, _cubeVertexBuffer);
-                    _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
                     _cl.DrawIndexed(_cubeIndexCount);
 
+                    Matrix4x4 cmatX =
+                        Matrix4x4.CreateTranslation(new Vector3(0.5f, 0, 0)) *
+                        Matrix4x4.CreateScale(new Vector3(8, 1, 1)) *
+                        Matrix4x4.CreateFromQuaternion(q) *
+                        Matrix4x4.CreateTranslation(pos) * cm;
+
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cmatX);
+                    Vector4 col = new Vector4(1, 0, 0, 1);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+                    _cl.DrawIndexed(_cubeIndexCount);
+
+                    Matrix4x4 cmatZ =
+                        Matrix4x4.CreateTranslation(new Vector3(0, 0, 0.5f)) *
+                        Matrix4x4.CreateScale(new Vector3(1, 1, 8)) *
+                        Matrix4x4.CreateFromQuaternion(q) *
+                        Matrix4x4.CreateTranslation(pos) * cm;
+
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cmatZ);
+                    col = new Vector4(0, 0, 1, 1);
+                    _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+                    _cl.DrawIndexed(_cubeIndexCount);
+
+                    /*
                     Matrix4x4 cmat3 =
                         Matrix4x4.CreateTranslation(new Vector3(0, 2.0f, 0)) *
                         Matrix4x4.CreateScale(new Vector3(3, 3, 3)) *
@@ -394,7 +419,7 @@ namespace partmake
                     _cl.UpdateBuffer(_materialBuffer, 0, ref col);
                     _cl.SetVertexBuffer(0, _isoVertexBuffer);
                     _cl.SetIndexBuffer(_isoIndexBuffer, IndexFormat.UInt32);
-                    _cl.DrawIndexed(_isoIndexCount);
+                    _cl.DrawIndexed(_isoIndexCount);*/
 
                 }
             }
@@ -479,6 +504,9 @@ namespace partmake
                         Vector4 meshColor = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
 
                         var connector = part.item.Connectors[connectorIdx];
+                        if (connector.Type == ConnectorType.StudJ || connector.Type == ConnectorType.Clip)
+                            continue;
+
                         Vector3 pos, scl;
                         Quaternion q;
                         Matrix4x4.Decompose(connector.Mat.ToM44(), out scl, out q, out pos);

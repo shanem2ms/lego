@@ -159,10 +159,10 @@ namespace partmake
             return outParts;
         }
 
-        public static CacheItem[] CacheItems;
+        public static Part[] CacheItems;
         static Dictionary<string, int> cacheItemLookup = new Dictionary<string, int>();
 
-        public static CacheItem GetCacheItem(string name)
+        public static Part GetCacheItem(string name)
         {
             int idx;
             if (cacheItemLookup.TryGetValue(name, out idx))
@@ -174,7 +174,7 @@ namespace partmake
             Directory.CreateDirectory(folder);
             DirectoryInfo di = new DirectoryInfo(folder);
 
-            List < CacheItem > cacheItems = new List<CacheItem>();
+            List < Part > cacheItems = new List<Part>();
             foreach (FileInfo fi in di.GetFiles("*.json"))
             {
                 string name = Path.GetFileNameWithoutExtension(fi.Name);
@@ -183,7 +183,7 @@ namespace partmake
                 LDrawDatFile.Descriptor d =
                     JsonConvert.DeserializeObject<LDrawDatFile.Descriptor>(text);
 
-                cacheItems.Add(new CacheItem(name,
+                cacheItems.Add(new Part(name,
                     Path.Combine(di.FullName, name + ".hr_mesh"),
                     Path.Combine(di.FullName, 
                     name + ".png"), d));

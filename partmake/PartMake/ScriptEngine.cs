@@ -13,12 +13,25 @@ using System.Windows;
 
 namespace partmake
 {
+    namespace script
+    {
+        public class Api
+        {
+            public delegate void WriteDel(string text);
+            public static WriteDel WriteLine;
+            public static Part GetPart(string name)
+            {
+                return LDrawFolders.GetCacheItem(name);
+            }
+
+            public static List<PartInst> Parts;
+            public static List<System.Numerics.Vector4> Locators;
+        }
+    }
     public class ScriptEngine
     {
         static Action<string> Write = (string? message) => { System.Diagnostics.Debug.WriteLine(message); };
 
-        public delegate void WriteDel(string text);
-        public static WriteDel WriteLine;
         MetadataReference[] references;
 
         CSharpCompilation Compile(List<string> sources)
@@ -64,14 +77,14 @@ namespace partmake
 
                 if (!result.Success)
                 {
-                    WriteLine("Compilation failed!");
+                    script.Api.WriteLine("Compilation failed!");
                     IEnumerable<Diagnostic> failures = result.Diagnostics.Where(diagnostic =>
                         diagnostic.IsWarningAsError ||
                         diagnostic.Severity == DiagnosticSeverity.Error);
 
                     foreach (Diagnostic diagnostic in failures)
                     {
-                        WriteLine($"\t{diagnostic.Id}: [{diagnostic.Location.GetMappedLineSpan()}] {diagnostic.GetMessage()}");
+                        script.Api.WriteLine($"\t{diagnostic.Id}: [{diagnostic.Location.GetMappedLineSpan()}] {diagnostic.GetMessage()}");
                     }
                 }
                 else
@@ -82,15 +95,15 @@ namespace partmake
                     var type = assembly.GetType("partmake.script.Script");
                     var instance = assembly.CreateInstance("partmake.script.Script");
                     var meth = type.GetMember("Run").First() as MethodInfo;
-                    List<PartInst> outparts = new List<PartInst>();
-                    List<System.Numerics.Vector4> locators = new List<System.Numerics.Vector4>();
-                    meth.Invoke(instance, new object[] { outparts, locators });
+                    script.Api.Parts = new List<PartInst>(); ;
+                    script.Api.Locators = new List<System.Numerics.Vector4>();
+                    meth.Invoke(instance, new object[] {});
                     lock (vis.PartList)
                     {
                         vis.PartList.Clear();
-                        vis.PartList.AddRange(outparts);
+                        vis.PartList.AddRange(script.Api.Parts);
                         vis.DebugLocators.Clear();
-                        vis.DebugLocators.AddRange(locators);
+                        vis.DebugLocators.AddRange(script.Api.Locators);
                     }
                 }
             }

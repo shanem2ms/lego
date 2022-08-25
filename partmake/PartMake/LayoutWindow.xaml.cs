@@ -34,7 +34,7 @@ namespace partmake
 
         string scriptFolder;
 
-        public List<CacheItem> FilteredItems { get; set; }
+        public List<Part> FilteredItems { get; set; }
 
         public ObservableCollection<ScriptTextEditor> OpenEditors { get; } = new ObservableCollection<ScriptTextEditor>();
         public string SelectedType
@@ -61,7 +61,7 @@ namespace partmake
 
             MCStructure mcs = new MCStructure(@"C:\Users\shane\Documents\manvillage.mcstructure");
             scriptEngine = new ScriptEngine();
-            ScriptEngine.WriteLine = WriteLine;
+            script.Api.WriteLine = WriteLine;
 
             scriptFolder = System.IO.Path.Combine(LDrawFolders.Root, "Partmake\\Scripts");
             FilteredItems = LDrawFolders.CacheItems.ToList();
@@ -72,7 +72,7 @@ namespace partmake
             {
                 OpenFile(file);
             }
-            //RunScript();
+            RunScript();
         }
 
         private void Vis_OnConnectorPicked(object sender, LayoutVis.PartPickEvent e)
@@ -134,13 +134,13 @@ namespace partmake
             }
             else
             {
-                List<CacheItem> curItems = LDrawFolders.CacheItems.ToList();
+                List<Part> curItems = LDrawFolders.CacheItems.ToList();
                 MatchCollection mc = dimsRegex.Matches(text);
                 foreach (Match m in mc)
                 {
                     if (m.Groups[2].Length > 0)
                     {
-                        List<CacheItem> nextItems = new List<CacheItem>();
+                        List<Part> nextItems = new List<Part>();
                         float[] d = new float[] {
                             float.Parse(m.Groups[2].Value),
                             float.Parse(m.Groups[3].Value),
@@ -174,7 +174,7 @@ namespace partmake
 
         private void ItemsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            foreach (CacheItem cai in e.AddedItems)
+            foreach (Part cai in e.AddedItems)
             {
             }
         }

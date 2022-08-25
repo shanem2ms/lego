@@ -6,6 +6,7 @@ using System.DoubleNumerics;
 using Newtonsoft.Json;
 using System.IO;
 using Newtonsoft.Json.Linq;
+using FL = System.Numerics;
 
 namespace partmake
 {
@@ -72,11 +73,12 @@ namespace partmake
         {
             try
             {
-                string[] vals = str.Split('[');
-                if (vals.Length == 3)
+                string[] vals = str.Split('<');
+                if (vals.Length == 4)
                 {
-                    Vector3 ydir = Parse(vals[1].Trim(new char[] { ' ', ']' }));
-                    Vector3 xdir = Parse(vals[2].Trim(new char[] { ' ', ']' }));
+                    Vector3 xdir = Parse(vals[1].Trim(new char[] { ' ', '>' }));
+                    Vector3 ydir = Parse(vals[2].Trim(new char[] { ' ', '>' }));
+                    Vector3 zdir = Parse(vals[3].Trim(new char[] { ' ', '>' }));
                     return FromVecs(xdir, ydir);
                 }
             }
@@ -117,109 +119,110 @@ namespace partmake
         [JsonProperty]
         public Matrix4x4 Mat { get; set; }
 
-        System.Numerics.Matrix4x4? im44;
-        System.Numerics.Matrix4x4? m44;
+        FL.Matrix4x4? im44;
+        FL.Matrix4x4? m44;
 
-        public static System.Numerics.Vector4[] ColorsForType;
+        public static FL.Vector4[] ColorsForType;
 
         static Connector()
         {
-            List<System.Numerics.Vector4> colors = new List<System.Numerics.Vector4>();
+            List<FL.Vector4> colors = new List<FL.Vector4>();
             Random r = new Random(100);
             for (int i = 0; i < 18; ++i)
             {
-                colors.Add(new System.Numerics.Vector4(r.NextSingle(),
+                colors.Add(new FL.Vector4(r.NextSingle(),
                     r.NextSingle(),
                     r.NextSingle(), 1));
             }
             ColorsForType = colors.ToArray();
         }
-        public System.Numerics.Matrix4x4 IM44
+        public FL.Matrix4x4 IM44
         {
             get
             {
                 if (!im44.HasValue)
                 {
-                    System.Numerics.Matrix4x4 outmat;
-                    System.Numerics.Matrix4x4.Invert(M44, out outmat); im44 = outmat;
+                    FL.Matrix4x4 outmat;
+                    FL.Matrix4x4.Invert(M44, out outmat); im44 = outmat;
                 }
                 return im44.Value;
             }
         }
 
-        public System.Numerics.Vector3 Pos
+        public FL.Vector3 Pos
         {
             get
             {
                 Vector3 pos = Vector3.Transform(Vector3.Zero, Mat);
-                return new System.Numerics.Vector3((float)pos.X, (float)pos.Y, (float)pos.Z);
+                return new FL.Vector3((float)pos.X, (float)pos.Y, (float)pos.Z);
             }
         }
-        public System.Numerics.Vector3 PosY
+        public FL.Vector3 PosY
         {
             get
             {
                 Vector3 pos = Vector3.Transform(Vector3.UnitY, Mat);
-                return new System.Numerics.Vector3((float)pos.X, (float)pos.Y, (float)pos.Z);
+                return new FL.Vector3((float)pos.X, (float)pos.Y, (float)pos.Z);
             }
         }
-        public System.Numerics.Quaternion Dir
+        public FL.Quaternion Dir
         {
             get
             {
                 var dy = -DirY;
-                var dxa = DirX;
-                var dz = System.Numerics.Vector3.Normalize(System.Numerics.Vector3.Cross(dy, dxa));
-                var dx = System.Numerics.Vector3.Normalize(System.Numerics.Vector3.Cross(dy, dz));
-                System.Numerics.Matrix4x4 mat = new System.Numerics.Matrix4x4(dx.X, dx.Y, dx.Z, 0,
+                var dxa = MathF.Abs(dy.X) > MathF.Abs(dy.Z) ? FL.Vector3.UnitZ : FL.Vector3.UnitX;
+                var dz = FL.Vector3.Normalize(FL.Vector3.Cross(dy, dxa));
+                if (FL.Vector3.Dot(dz, FL.Vector3.One) < 0) dz = -dz;
+                var dx = FL.Vector3.Normalize(FL.Vector3.Cross(dy, dz));
+                FL.Matrix4x4 mat = new FL.Matrix4x4(dx.X, dx.Y, dx.Z, 0,
                     dy.X, dy.Y, dy.Z, 0,
                     dz.X, dz.Y, dz.Z, 0,
                     0, 0, 0, 1);
                 return
-                    System.Numerics.Quaternion.CreateFromRotationMatrix(mat);
+                    FL.Quaternion.CreateFromRotationMatrix(mat);
 
             }
 
         }
        
-        public System.Numerics.Vector3 DirY
+        public FL.Vector3 DirY
         {
             get
             {
                 Vector3 pos = Vector3.Transform(Vector3.Zero, Mat);
                 Vector3 posY = Vector3.Transform(Vector3.UnitY, Mat);
                 Vector3 dir = Vector3.Normalize(posY - pos);
-                return new System.Numerics.Vector3((float)dir.X, (float)dir.Y, (float)dir.Z);
+                return new FL.Vector3((float)dir.X, (float)dir.Y, (float)dir.Z);
             }
         }
-        public System.Numerics.Vector3 DirX
+        public FL.Vector3 DirX
         {
             get
             {
                 Vector3 pos = Vector3.Transform(Vector3.Zero, Mat);
                 Vector3 posY = Vector3.Transform(Vector3.UnitX, Mat);
                 Vector3 dir = Vector3.Normalize(posY - pos);
-                return new System.Numerics.Vector3((float)dir.X, (float)dir.Y, (float)dir.Z);
+                return new FL.Vector3((float)dir.X, (float)dir.Y, (float)dir.Z);
             }
         }
-        public System.Numerics.Vector3 DirZ
+        public FL.Vector3 DirZ
         {
             get
             {
                 Vector3 pos = Vector3.Transform(Vector3.Zero, Mat);
                 Vector3 posY = Vector3.Transform(Vector3.UnitZ, Mat);
                 Vector3 dir = Vector3.Normalize(posY - pos);
-                return new System.Numerics.Vector3((float)dir.X, (float)dir.Y, (float)dir.Z);
+                return new FL.Vector3((float)dir.X, (float)dir.Y, (float)dir.Z);
             }
         }
-        public System.Numerics.Matrix4x4 M44
+        public FL.Matrix4x4 M44
         {
             get
             {
                 if (!m44.HasValue)
                 {
-                    m44 = System.Numerics.Matrix4x4.CreateFromQuaternion(Dir) *
-                            System.Numerics.Matrix4x4.CreateTranslation(Pos);
+                    m44 = FL.Matrix4x4.CreateFromQuaternion(Dir) *
+                            FL.Matrix4x4.CreateTranslation(Pos);
                 }
                 return m44.Value;
             }
@@ -243,13 +246,7 @@ namespace partmake
         {
             get
             {
-                Vector4 v = Vector4.Transform(new Vector4(0, 1, 0, 0), Mat);
-                Matrix4x4 m = Mat;
-                Matrix4x4.Invert(m, out m);
-                m = Matrix4x4.Transpose(m);
-                Vector3 vb = Vector3.Normalize(Vector3.TransformNormal(new Vector3(0,1,0), m));
-                Vector3 v3 = Vector3.Normalize(new Vector3(v.X, v.Y, v.Z));
-                return Quaternion.CreateFromRotationMatrix(Mat).Str();
+                return $"{DirX} {DirY} {DirZ}";
             }
             set
             {

@@ -17,9 +17,9 @@ using System.Windows.Forms;
 namespace partmake
 {
 
-    public class CacheItem : IComparable<CacheItem>
+    public class Part : IComparable<Part>
     {
-        public CacheItem(string name, string mp, string thumb, LDrawDatFile.Descriptor d)
+        public Part(string name, string mp, string thumb, LDrawDatFile.Descriptor d)
         {
             Name = name;
             thumbnailPath = thumb;
@@ -66,7 +66,10 @@ namespace partmake
         public string Dims => descriptor.dims != null ? String.Join('x', descriptor.dims) : null;
         public Connector []Connectors => descriptor.Connectors;
 
-        public int CompareTo(CacheItem other)
+        public IEnumerable<Connector> ConnectorsWithType(ConnectorType connectorType)
+        { return descriptor.Connectors.Where(c => c.Type == connectorType); }
+
+        public int CompareTo(Part other)
         {
             int c = MainType.CompareTo(other.MainType);
             if (c != 0)
@@ -139,14 +142,14 @@ namespace partmake
 
     public class PartInst
     {
-        public CacheItem item;
+        public Part item;
         //public Vector3 position;
         //public Quaternion rotation;
         public Matrix4x4 mat;
         public int paletteIdx;
 
        
-        public PartInst(CacheItem item, Matrix4x4 mat, int paletteIdx)
+        public PartInst(Part item, Matrix4x4 mat, int paletteIdx)
         {
             this.mat = mat;
             //Matrix4x4.Decompose(mat, out _, out this.rotation, out this.position);
