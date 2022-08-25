@@ -15,11 +15,11 @@ namespace partmake.script
 	    		Matrix4x4 mat = 
 	    			Matrix4x4.CreateTranslation(new Vector3(0, 0, 0));        		        	
         		outparts.Add(new PartInst(stud1side,mat, 326));        		
-        		Matrix4x4 m2 = stud1side.Connectors[4].IM44 * stud1side.Connectors[0].M44 * mat;
+        		        		
+        		Matrix4x4 m2 = stud1side.Connectors[4].IM44 * 
+        		Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, MathF.PI * 0) *
+        			stud1side.Connectors[0].M44 * mat;
         		outparts.Add(new PartInst(stud1side,m2, 29));
-        		Vector3 p = stud1side.Connectors[4].PosY;
-        		Vector3 d = stud1side.Connectors[4].DirY * 0;
-	    		locators.Add(new Vector4(p.X + d.X,p.Y + d.Y,p.Z + d.Z,1f));
     		}    		 
     		
         }

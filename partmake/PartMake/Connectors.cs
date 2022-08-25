@@ -163,6 +163,25 @@ namespace partmake
                 return new System.Numerics.Vector3((float)pos.X, (float)pos.Y, (float)pos.Z);
             }
         }
+        public System.Numerics.Quaternion Dir
+        {
+            get
+            {
+                var dy = -DirY;
+                var dxa = DirX;
+                var dz = System.Numerics.Vector3.Normalize(System.Numerics.Vector3.Cross(dy, dxa));
+                var dx = System.Numerics.Vector3.Normalize(System.Numerics.Vector3.Cross(dy, dz));
+                System.Numerics.Matrix4x4 mat = new System.Numerics.Matrix4x4(dx.X, dx.Y, dx.Z, 0,
+                    dy.X, dy.Y, dy.Z, 0,
+                    dz.X, dz.Y, dz.Z, 0,
+                    0, 0, 0, 1);
+                return
+                    System.Numerics.Quaternion.CreateFromRotationMatrix(mat);
+
+            }
+
+        }
+       
         public System.Numerics.Vector3 DirY
         {
             get
@@ -199,9 +218,8 @@ namespace partmake
             {
                 if (!m44.HasValue)
                 {
-
-                    Vector3 pos = Vector3.Transform(Vector3.Zero, Mat);
-                    m44 = Matrix4x4.CreateTranslation(pos).ToM44();
+                    m44 = System.Numerics.Matrix4x4.CreateFromQuaternion(Dir) *
+                            System.Numerics.Matrix4x4.CreateTranslation(Pos);
                 }
                 return m44.Value;
             }

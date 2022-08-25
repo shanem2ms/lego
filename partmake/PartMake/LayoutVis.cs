@@ -369,13 +369,11 @@ namespace partmake
                             Matrix4x4.CreateScale(0.0025f);
                 foreach (var connector in part.item.Connectors)
                 {
-                    Vector3 pos, scl;
-                    Quaternion q;
-                    Matrix4x4.Decompose(connector.Mat.ToM44(), out scl, out q, out pos);
-                    Matrix4x4 m = connector.Mat.ToM44();
-                    Matrix4x4 cmat = connector.Mat.ToM44() * cm;
+                    Vector3 pos = connector.Pos;
+                    Quaternion q = connector.Dir;
+
                     Matrix4x4 cmat2 =
-                        Matrix4x4.CreateTranslation(new Vector3(0, -0.5f, 0)) *
+                        Matrix4x4.CreateTranslation(new Vector3(0, 0.5f, 0)) *
                         Matrix4x4.CreateScale(new Vector3(2, 8, 2)) *
                         Matrix4x4.CreateFromQuaternion(q) *
                         Matrix4x4.CreateTranslation(pos) * cm;
@@ -387,7 +385,7 @@ namespace partmake
                     _cl.DrawIndexed(_cubeIndexCount);
 
                     Matrix4x4 cmat3 =
-                        Matrix4x4.CreateTranslation(new Vector3(0, -2, 0)) *
+                        Matrix4x4.CreateTranslation(new Vector3(0, 2.0f, 0)) *
                         Matrix4x4.CreateScale(new Vector3(3, 3, 3)) *
                         Matrix4x4.CreateFromQuaternion(q) *
                         Matrix4x4.CreateTranslation(pos) * cm;
