@@ -44,14 +44,20 @@ namespace partmake
     }
     class RigidBody
     {
-        ConvexTriangleMeshShape shape;
+        CompoundShape shape;
         BulletSharp.RigidBody body;
         Matrix4x4 worldMatrix;
 
-        public RigidBody(string name, Matrix4x4 initialPos, float mass, TriangleMesh tm)
+        public RigidBody(string name, Matrix4x4 initialPos, float mass, float [][]pts)
         {
             worldMatrix = initialPos;
-            shape = new ConvexTriangleMeshShape(tm);
+            shape = new CompoundShape();
+
+            for (int idx = 0; idx < pts.Length; idx++)
+            {
+                ConvexHullShape cvx = new ConvexHullShape(pts[idx]);
+                shape.AddChildShape(BM.Matrix.Identity, cvx);
+            }
             BulletSharp.Math.Vector3 inertia;
             shape.CalculateLocalInertia(mass, out inertia);
             RigidBodyConstructionInfo constructInfo =
@@ -169,9 +175,8 @@ namespace partmake
         List<RigidBody> bodies = new List<RigidBody>();
         List<Constraint> constraints = new List<Constraint>();
 
-        public delegate void DebugDrawLineDel(ref Matrix4x4 viewProj, Vector3 from, Vector3 to, Vector3 color);
+        public delegate void DebugDrawLineDel(Vector3 from, Vector3 to, Vector3 color);
         public DebugDrawLineDel DebugDrawLine = null;
-        Matrix4x4 viewProjDbg;
 
         public BulletSimulation()
         {
@@ -185,7 +190,7 @@ namespace partmake
         public void DrawLine(ref BM.Vector3 from, ref BM.Vector3 to, ref BM.Vector3 color)
         {
             if (DebugDrawLine != null)
-                DebugDrawLine(ref viewProjDbg, Utils.FromBVector3(from), Utils.FromBVector3(to), Utils.FromBVector3(color));
+                DebugDrawLine(Utils.FromBVector3(from), Utils.FromBVector3(to), Utils.FromBVector3(color));
         }
 
         public void Init()
@@ -206,9 +211,8 @@ namespace partmake
         }
 
 
-        public void DrawDebug(Matrix4x4 viewProj)
+        public void DrawDebug()
         {
-            viewProjDbg = viewProj;
             colWorld.DebugDrawWorld();
         }
         public void Step()

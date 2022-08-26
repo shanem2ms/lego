@@ -11,6 +11,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Windows.Forms;
+using BulletSharp.SoftBody;
 
 namespace partmake
 {
@@ -47,14 +48,14 @@ namespace partmake
         private TextureView _pickTextureView;
         private Framebuffer _pickFB;
         private Sampler _primSampler;
-        Vector2 lookDir;
+        Vector2 lookDir = new Vector2(0, 0.4f);
         int mouseDown = 0;
         Vector2 lMouseDownPt;
         Vector2 rMouseDownPt;
         Vector2 mouseDownLookDir;
         Vector3 cameraPos = new Vector3(0, 0, -8.5f);
         Vector3 mouseDownCameraPos;
-        float zoom = 2.3f;
+        float zoom = 3.5f;
         float mouseDownZoom = 0;
         int pickX, pickY;
         int pickReady = -1;
@@ -79,6 +80,7 @@ namespace partmake
         public bool IsActive { get; set; }
         public LayoutVis(ApplicationWindow window) : base(window)
         {
+            bulletSimulation.DebugDrawLine = BulletDebugDrawLine;
         }
 
         bool mouseMoved = false;
@@ -321,6 +323,7 @@ namespace partmake
             _cl = factory.CreateCommandList();
         }
 
+        float worldScale = 0.0025f;
         protected override void Draw(float deltaSeconds)
         {
             bulletSimulation.Step();
@@ -343,6 +346,32 @@ namespace partmake
             _cl.SetFramebuffer(MainSwapchain.Framebuffer);
             _cl.ClearColorTarget(0, RgbaFloat.Black);
             _cl.ClearDepthStencil(1f);
+            _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+            _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+
+            float gridSize = 100;
+            for (int z = -100; z < 100; ++z)
+            {
+                _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+                _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+                _cl.UpdateBuffer(_materialBuffer, 0, new Vector4(1, 1, 1, 0.5f));
+
+                Matrix4x4 cmz =
+                    Matrix4x4.CreateScale(100 * gridSize, 1, 1) *
+                    Matrix4x4.CreateTranslation(0, 0, z * gridSize) *
+                    Matrix4x4.CreateScale(worldScale);
+
+                _cl.UpdateBuffer(_worldBuffer, 0, ref cmz);
+                _cl.DrawIndexed(_cubeIndexCount);
+
+                Matrix4x4 cmx =
+                    Matrix4x4.CreateScale(1, 1, 100 * gridSize) *
+                    Matrix4x4.CreateTranslation(z * gridSize, 0, 0) *
+                    Matrix4x4.CreateScale(worldScale);
+
+                _cl.UpdateBuffer(_worldBuffer, 0, ref cmx);
+                _cl.DrawIndexed(_cubeIndexCount);
+            }
             foreach (var part in PartList)
             {
                 if (part.item == null)
@@ -355,7 +384,7 @@ namespace partmake
                 _cl.SetIndexBuffer(part.item.ldrLoaderIndexBuffer, IndexFormat.UInt32);
                 Matrix4x4 cm =
                     part.mat *
-                    Matrix4x4.CreateScale(0.0025f);
+                    Matrix4x4.CreateScale(worldScale);
                 _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
                 _cl.UpdateBuffer(_materialBuffer, 0, ref Palette.AllItems[part.paletteIdx].RGBA);
                 _cl.DrawIndexed((uint)part.item.ldrLoaderIndexCount);
@@ -367,7 +396,7 @@ namespace partmake
                 var part = PartList[selectedPart];
                 Matrix4x4 cm =
                             part.mat *
-                            Matrix4x4.CreateScale(0.0025f);
+                            Matrix4x4.CreateScale(worldScale);
                 foreach (var connector in part.item.Connectors)
                 {
                     if (connector.Type == ConnectorType.StudJ || connector.Type == ConnectorType.Clip)
@@ -432,7 +461,7 @@ namespace partmake
                     Matrix4x4 mat =
                         Matrix4x4.CreateScale(loc.W) *
                         Matrix4x4.CreateTranslation(new Vector3(loc.X, loc.Y, loc.Z)) *
-                        Matrix4x4.CreateScale(0.0025f);
+                        Matrix4x4.CreateScale(worldScale);
 
                     _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
                     Vector4 color = new Vector4(1, 0.5f, 0.5f, 1);
@@ -443,12 +472,18 @@ namespace partmake
                 }
             }
 
+            bulletSimulation.DrawDebug();
             DrawPicking(ref viewmat, ref projMat);
             _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
             GraphicsDevice.SwapBuffers(MainSwapchain);
             GraphicsDevice.WaitForIdle();
             HandlePick();
+        }
+
+        void BulletDebugDrawLine(Vector3 from, Vector3 to, Vector3 color)
+        {
+
         }
 
         void DrawPicking(ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
@@ -478,7 +513,7 @@ namespace partmake
                     _cl.SetIndexBuffer(part.item.ldrLoaderIndexBuffer, IndexFormat.UInt32);
                     Matrix4x4 cm =
                         part.mat *
-                        Matrix4x4.CreateScale(0.0025f);
+                        Matrix4x4.CreateScale(worldScale);
                     _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
                     int pickIdx = partIdx + 1024;
                     int r = pickIdx & 0xFF;
@@ -495,7 +530,7 @@ namespace partmake
                     var part = PartList[selectedPart];
                     Matrix4x4 cm =
                                 part.mat *
-                                Matrix4x4.CreateScale(0.0025f);
+                                Matrix4x4.CreateScale(worldScale);
                     for (int connectorIdx = 0; connectorIdx < part.item.Connectors.Length; ++connectorIdx)
                     {
                         int pickIdx = connectorIdx + 128;
@@ -551,6 +586,15 @@ namespace partmake
             public byte g;
             public byte b;
             public byte a;
+        }
+
+        public void RebuildScene(List<PartInst> newPartList, List<Vector4> newLocators)
+        {
+            PartList.Clear();
+            PartList.AddRange(newPartList);
+            DebugLocators.Clear();
+            DebugLocators.AddRange(newLocators);
+            
         }
 
         void HandlePick()

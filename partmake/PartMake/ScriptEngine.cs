@@ -100,10 +100,7 @@ namespace partmake
                     meth.Invoke(instance, new object[] {});
                     lock (vis.PartList)
                     {
-                        vis.PartList.Clear();
-                        vis.PartList.AddRange(script.Api.Parts);
-                        vis.DebugLocators.Clear();
-                        vis.DebugLocators.AddRange(script.Api.Locators);
+                        vis.RebuildScene(script.Api.Parts, script.Api.Locators);
                     }
                 }
             }

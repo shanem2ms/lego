@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <fstream>
 using namespace VHACD;
 struct Vector3
 {
@@ -84,4 +85,31 @@ extern "C" __declspec(dllexport) int ConvexDecomp(double* pointListDbls, int num
     }
     interfaceVHACD->Release();
     return -1;
+}
+
+struct Vec3d
+{
+    double x;
+    double y;
+    double z;
+};
+
+static std::vector<std::vector<Vec3d>> meshes;
+
+extern "C" __declspec(dllexport) void LoadCollisionMesh(const char *filename)
+{
+    std::ifstream stream(filename, std::ios::binary);
+    uint32_t nummeshes = 0;
+    stream.read((char*)&nummeshes, sizeof(nummeshes));
+    std::vector<uint32_t> triCount(nummeshes);
+    stream.read((char*)triCount.data(), sizeof(triCount[0]) * triCount.size());
+    size_t tricntPrev = 0;
+    for (int idx = 0; idx < nummeshes; ++idx)
+    {
+        meshes.push_back(std::vector<Vec3d>());
+        std::vector<Vec3d>& pts = meshes.back();
+        pts.resize(triCount[idx] - tricntPrev);
+        stream.read((char*)pts.data(), sizeof(pts[0]) * pts.size());
+        tricntPrev = triCount[idx];
+    }
 }

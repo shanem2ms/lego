@@ -10,7 +10,7 @@ namespace partmake.script
         public void Run()
         {            
     		Utils u = new Utils();
-    		u.Minifig(Matrix4x4.Identity);
+    		u.Minifig(Matrix4x4.CreateTranslation(new Vector3(0, 20, 0)));
     		
         }
         
