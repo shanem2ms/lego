@@ -12,7 +12,7 @@ using Veldrid.SPIRV;
 using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Windows.Forms;
-
+using partmake.Topology;
 
 namespace partmake
 {
@@ -36,10 +36,15 @@ namespace partmake
             }
         }
         float[] dimsf = null;
-
         public string Name { get; }
         string thumbnailPath;
         string meshPath;
+        float[][] collisionPts; 
+
+        public float[][]CollisionPts
+        {
+            get { if (collisionPts == null) LoadCollision(); return collisionPts; }
+        }
 
         System.Windows.Media.ImageSource thumb = null;
         public System.Windows.Media.ImageSource Thumb
@@ -137,7 +142,17 @@ namespace partmake
                 GraphicsDevice.UpdateBuffer(ldrLoaderIndexBuffer, 0, vlindices);
                 ldrLoaderIndexCount = vlindices.Length;
             }
+            LoadCollision();
         }       
+
+        void LoadCollision()
+        {
+            string colfile = 
+                Path.Combine(
+                Path.GetDirectoryName(meshPath),
+                Path.GetFileNameWithoutExtension(meshPath) + ".col");
+            collisionPts = Convex.LoadCollision(colfile);
+        }
     }
 
     public class PartInst
@@ -147,14 +162,20 @@ namespace partmake
         //public Quaternion rotation;
         public Matrix4x4 mat;
         public int paletteIdx;
+        public bool dynamic;
 
-       
-        public PartInst(Part item, Matrix4x4 mat, int paletteIdx)
+        public PartInst(Part item, Matrix4x4 mat, int paletteIdx) : 
+            this(item, mat, paletteIdx, false)
+        {
+
+        }
+
+        public PartInst(Part item, Matrix4x4 mat, int paletteIdx, bool isdynamic)
         {
             this.mat = mat;
-            //Matrix4x4.Decompose(mat, out _, out this.rotation, out this.position);
             this.item = item;
             this.paletteIdx = paletteIdx;
+            this.dynamic = isdynamic;
         }
 
     }

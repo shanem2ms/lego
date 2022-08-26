@@ -472,7 +472,7 @@ namespace partmake
                 }
             }
 
-            bulletSimulation.DrawDebug();
+            //bulletSimulation.DrawDebug();
             DrawPicking(ref viewmat, ref projMat);
             _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
@@ -594,7 +594,12 @@ namespace partmake
             PartList.AddRange(newPartList);
             DebugLocators.Clear();
             DebugLocators.AddRange(newLocators);
-            
+            bulletSimulation.Clear();
+            foreach (PartInst part in PartList)
+            {
+                RigidBody rb = new RigidBody(part.mat, part);
+                bulletSimulation.AddObj(rb);
+            }
         }
 
         void HandlePick()

@@ -47,18 +47,21 @@ namespace partmake
         CompoundShape shape;
         BulletSharp.RigidBody body;
         Matrix4x4 worldMatrix;
+        PartInst partInst;
 
-        public RigidBody(string name, Matrix4x4 initialPos, float mass, float [][]pts)
+        public RigidBody(Matrix4x4 initialPos, PartInst pi)
         {
             worldMatrix = initialPos;
             shape = new CompoundShape();
-
+            partInst = pi;
+            var pts = pi.item.CollisionPts;
             for (int idx = 0; idx < pts.Length; idx++)
             {
                 ConvexHullShape cvx = new ConvexHullShape(pts[idx]);
                 shape.AddChildShape(BM.Matrix.Identity, cvx);
             }
             BulletSharp.Math.Vector3 inertia;
+            float mass = pi.dynamic ? 100 : 0;
             shape.CalculateLocalInertia(mass, out inertia);
             RigidBodyConstructionInfo constructInfo =
                 new RigidBodyConstructionInfo(mass, new DefaultMotionState(
@@ -81,6 +84,7 @@ namespace partmake
         public void Refresh()
         {
             worldMatrix = Utils.FromMat(body.WorldTransform);
+            partInst.mat = worldMatrix;
         }
 
         public void SetTransform(Matrix4x4 t)
@@ -184,6 +188,7 @@ namespace partmake
             broadphase = new DbvtBroadphase();
             solver = new NncgConstraintSolver();
             colWorld = new DiscreteDynamicsWorld(colDispatcher, broadphase, solver, colConfiguration);
+            colWorld.Gravity = new BM.Vector3(0, -100, 0);
             colWorld.DebugDrawer = new DbgRenderer(this);
         }
 
@@ -200,10 +205,18 @@ namespace partmake
         public void AddObj(RigidBody obj)
         {
             bodies.Add(obj);
-            //colWorld.AddCollisionObject(obj.Body);
+            colWorld.AddCollisionObject(obj.Body);
             //obj.AfterWorldAdd();
         }
 
+        public void Clear()
+        {
+            foreach (var body in bodies)
+            {
+                colWorld.RemoveCollisionObject(body.Body);
+            }
+            bodies.Clear();
+        }
         public void AddConst(Constraint constraint)
         {
             constraints.Add(constraint);
@@ -217,8 +230,8 @@ namespace partmake
         }
         public void Step()
         {
-            var simulationTimestep = 1f / 60f;
-            colWorld.StepSimulation(simulationTimestep, 10);
+            var simulationTimestep = 1f / 30f;
+            colWorld.StepSimulation(simulationTimestep, 3);
             foreach (var body in bodies)
             {
                 body.Refresh();

@@ -96,8 +96,25 @@ struct Vec3d
 
 static std::vector<std::vector<Vec3d>> meshes;
 
-extern "C" __declspec(dllexport) void LoadCollisionMesh(const char *filename)
+extern "C" __declspec(dllexport) int GetCollisionPartVtxCount(int idx)
 {
+    return meshes[idx].size();
+}
+
+extern "C" __declspec(dllexport) void GetCollisionPartVertices(int idx, float* outPtr)
+{
+    const std::vector<Vec3d>& vecs = meshes[idx];
+    for (const Vec3d& v : vecs)
+    {
+        *outPtr++ = (float)v.x;
+        *outPtr++ = (float)v.y;
+        *outPtr++ = (float)v.z;
+    }
+}
+
+extern "C" __declspec(dllexport) int LoadCollisionMesh(const char *filename)
+{
+    meshes.clear();
     std::ifstream stream(filename, std::ios::binary);
     uint32_t nummeshes = 0;
     stream.read((char*)&nummeshes, sizeof(nummeshes));
@@ -112,4 +129,5 @@ extern "C" __declspec(dllexport) void LoadCollisionMesh(const char *filename)
         stream.read((char*)pts.data(), sizeof(pts[0]) * pts.size());
         tricntPrev = triCount[idx];
     }
+    return (int)meshes.size();
 }

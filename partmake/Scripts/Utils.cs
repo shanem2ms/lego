@@ -25,18 +25,18 @@ namespace partmake.script
 			var hiplconnector = hip.Connectors[0];
 			var lltohiprconnector = leftleg.Connectors[1];
 			
-			Api.Parts.Add(new PartInst(hip, mat, 1));
+			Api.Parts.Add(new PartInst(hip, mat, 1, true));
 			//Api.Locators.Add(new Vector4(-10, 30, 0, 2));
 			
 			Matrix4x4 m2 =     
     			lltohiprconnector.IM44 *
     			hiplconnector.M44 * mat;
-			Api.Parts.Add(new PartInst(leftleg, m2, 1));    			
+			Api.Parts.Add(new PartInst(leftleg, m2, 1, true));    			
     						
 			Matrix4x4 m3 =     
     			rltohiprconnector.IM44 *
     			hiprconnector.M44 * mat;
-			Api.Parts.Add(new PartInst(rightleg, m3, 1));    			
+			Api.Parts.Add(new PartInst(rightleg, m3, 1, true));    			
 			Vector3 pt =
 				Vector3.Transform(Vector3.Zero, hiprconnector.M44 * mat);
 				
@@ -52,21 +52,21 @@ namespace partmake.script
 			Matrix4x4 mleftarm =
 				leftarmtorsoconnector.IM44 * 
     			torsoleftarmconnector.M44 * mtorso;
-			Api.Parts.Add(new PartInst(leftarm, mleftarm, 4));    
+			Api.Parts.Add(new PartInst(leftarm, mleftarm, 4, true));    
 			
 			var leftarmwristconnector = leftarm.Connectors[1];
 			var handwristconnector = hand.Connectors[0];
 			Matrix4x4 mlefthand =
 				handwristconnector.IM44 *
 				leftarmwristconnector.M44 * mleftarm;			
-			Api.Parts.Add(new PartInst(hand, mlefthand, 14));    
+			Api.Parts.Add(new PartInst(hand, mlefthand, 14, true));    
 			
 			var torsorightarmconnector = torso.Connectors[1];
 			var rightarmtorsoconnector = rightarm.Connectors[0];
 			Matrix4x4 mrightarm =
 				rightarmtorsoconnector.IM44 * 
     			torsorightarmconnector.M44 * mtorso;
-			Api.Parts.Add(new PartInst(rightarm, mrightarm, 4));  
+			Api.Parts.Add(new PartInst(rightarm, mrightarm, 4, true));  
 			
 			var torsoheadconnector = torso.Connectors[0];
 			var headtorsoconnector = head.Connectors[0];
@@ -74,7 +74,7 @@ namespace partmake.script
 			headtorsoconnector.IM44 * 
 			torsoheadconnector.M44 * mtorso;
 
-			Api.Parts.Add(new PartInst(head, mhead, 14));  
+			Api.Parts.Add(new PartInst(head, mhead, 14, true));  
 		}
 		
 		void ConnectorTest()

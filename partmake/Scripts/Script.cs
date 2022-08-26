@@ -10,10 +10,23 @@ namespace partmake.script
         public void Run()
         {            
     		Utils u = new Utils();
-    		u.Minifig(Matrix4x4.CreateTranslation(new Vector3(0, 20, 0)));
-    		
+    		u.Minifig(Matrix4x4.CreateTranslation(new Vector3(0, 28, 0)));
+    		Terrain();    		 
         }
         
+        void Rain()
+        {
+			var flower = Api.GetPart("24866");
+    		float range = 500;
+    		for (int i = 0; i < 55; ++i)
+    		{
+    			Api.Parts.Add(new PartInst(flower, 
+    				Matrix4x4.CreateFromAxisAngle(Vector3.UnitX, r.NextSingle() * MathF.PI) * 
+    				Matrix4x4.CreateTranslation(new Vector3((r.NextSingle() - 0.5f) * range, 
+    					r.NextSingle() * 350, 
+    				(r.NextSingle() - 0.5f) * range)), 22, true));
+    		}
+    	}
         void Terrain()
         {
         	Utils u = new Utils();

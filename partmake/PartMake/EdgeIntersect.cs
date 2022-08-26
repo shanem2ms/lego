@@ -327,6 +327,30 @@ namespace partmake
             [DllImport("kernel32.dll")]
             private static extern bool WriteFile(IntPtr hFile, IntPtr lpBuffer, int NumberOfBytesToWrite, out int lpNumberOfBytesWritten, IntPtr lpOverlapped);
 
+            [DllImport("EdgeIntersect.dll")]
+            static extern int LoadCollisionMesh(string name);
+
+            [DllImport("EdgeIntersect.dll")]
+            static extern int GetCollisionPartVtxCount(int partidx);
+
+            [DllImport("EdgeIntersect.dll")]
+            static extern void GetCollisionPartVertices(int partidx, IntPtr ptr);
+            public static float[][] LoadCollision(string name)
+            {
+                int parts = LoadCollisionMesh(name);
+                float[][] result = new float[parts][];
+                for (int partIdx = 0; partIdx < parts; ++partIdx)
+                {
+                    int partVtxCount = GetCollisionPartVtxCount(partIdx);
+                    IntPtr ptr = Marshal.AllocHGlobal(partVtxCount * sizeof(float) * 3);
+                    GetCollisionPartVertices(partIdx, ptr);
+                    float[] vals = new float[partVtxCount * 3];
+                    Marshal.Copy(ptr, vals, 0, partVtxCount * 3);
+                    result[partIdx] = vals;
+                }
+                return result;
+            }
+            
             public string writeToFile;
 
             public List<ConvexMesh> Decomp(List<Vector3> points)
