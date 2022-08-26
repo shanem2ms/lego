@@ -13,9 +13,6 @@
     <Page Update="PolyLog.xaml">
       <SubType>Designer</SubType>
     </Page>
-    <Page Update="LayoutRenderControl.xaml">
-      <SubType>Designer</SubType>
-    </Page>
     <Page Update="RenderControl.xaml">
       <SubType>Designer</SubType>
     </Page>
