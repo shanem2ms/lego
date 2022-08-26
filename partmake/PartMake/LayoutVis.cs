@@ -27,7 +27,7 @@ namespace partmake
         private DeviceBuffer _planeIndexBuffer;
         private DeviceBuffer _isoVertexBuffer;
         private DeviceBuffer _isoIndexBuffer;
-
+        BulletSimulation bulletSimulation = new BulletSimulation();
 
         uint _cubeIndexCount;
         uint _planeIndexCount;
@@ -323,6 +323,7 @@ namespace partmake
 
         protected override void Draw(float deltaSeconds)
         {
+            bulletSimulation.Step();
             _cl.Begin();
 
             Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(

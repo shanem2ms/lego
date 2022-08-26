@@ -447,16 +447,7 @@ namespace partmake
             }
             else if (file.Name == "3-4cyli")
             {
-                Vector3 scale = transform.GetScale();
-                if (Eps.Eq2(scale.X, 6) &&
-                    Eps.Eq2(scale.Z, 6))
-                {
-                    connectors.Add(CreateBaseConnector(file,
-                        Matrix4x4.CreateFromAxisAngle(Vector3.UnitX, Math.PI) *
-                        Matrix4x4.CreateTranslation(0, 0.5, 0) *
-                        transform,
-                        ConnectorType.MFigTorsoNeck));
-                }
+                Vector3 scale = transform.GetScale();                
             }
             else if ((file.Name == "4-4cyli" ||
                 file.Name == "4-4cylo"))
@@ -502,6 +493,15 @@ namespace partmake
                     {
                         connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, 0.0, 0) * transform,
                             ConnectorType.Stem));
+                    }
+                    if (Eps.Eq2(scale.X, 6) &&
+                    Eps.Eq2(scale.Z, 6))
+                    {
+                        connectors.Add(CreateBaseConnector(file,
+                            Matrix4x4.CreateFromAxisAngle(Vector3.UnitX, Math.PI) *
+                            Matrix4x4.CreateTranslation(0, 0.5, 0) *
+                            transform,
+                            ConnectorType.MFigTorsoNeck));
                     }
                 }
             }

@@ -32,7 +32,6 @@ namespace partmake.script
 				int x = r.Next(-40,40);
 				int y = r.Next(-40,40);
 				Matrix4x4 mat = Matrix4x4.CreateTranslation(new Vector3(x*20, 8, y*20));
-				u.MakeFlower(mat);
 			}
 			
     		Api.Parts.Add(new PartInst(Api.GetPart("4599"),
