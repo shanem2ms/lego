@@ -14,6 +14,7 @@ using System.Reflection;
 using System.Xml;
 using System.IO.Packaging;
 using System.ComponentModel;
+using ICSharpCode.AvalonEdit.Search;
 
 namespace partmake
 {
@@ -50,6 +51,7 @@ namespace partmake
             ScriptName = Path.GetFileName(path);
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("ScriptName"));
             Load(this.filepath);
+            SearchPanel.Install(this);
         }
 
         public void SaveAs(string path)

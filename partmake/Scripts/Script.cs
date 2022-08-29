@@ -10,7 +10,7 @@ namespace partmake.script
         public void Run()
         {            
     		Utils u = new Utils();
-    		u.Minifig(Matrix4x4.CreateTranslation(new Vector3(0, 28, 0)));
+    		u.Minifig(Matrix4x4.CreateTranslation(new Vector3(8, 28, 0)));
     		Terrain();    		 
         }
         
@@ -20,7 +20,7 @@ namespace partmake.script
     		float range = 500;
     		for (int i = 0; i < 55; ++i)
     		{
-    			Api.Parts.Add(new PartInst(flower, 
+    			Api.AddUnconnected(new PartInst(flower, 
     				Matrix4x4.CreateFromAxisAngle(Vector3.UnitX, r.NextSingle() * MathF.PI) * 
     				Matrix4x4.CreateTranslation(new Vector3((r.NextSingle() - 0.5f) * range, 
     					r.NextSingle() * 350, 
@@ -35,8 +35,8 @@ namespace partmake.script
 	        	for (int j = -10; j < 10; j++)
 	        	{
 					Matrix4x4 mat = Matrix4x4.CreateTranslation(new Vector3(j*80-10, 0, i*80-10));        		        	
-	        		Api.Parts.Add(new PartInst(Api.GetPart("3031"),
-						mat, colors[r.Next(0,4)] ));
+	        		Api.AddUnconnected(new PartInst(Api.GetPart("3031"),
+						mat, colors[r.Next(0,4)], true ));
 				}
 			}
 			
@@ -47,8 +47,6 @@ namespace partmake.script
 				Matrix4x4 mat = Matrix4x4.CreateTranslation(new Vector3(x*20, 8, y*20));
 			}
 			
-    		Api.Parts.Add(new PartInst(Api.GetPart("4599"),
-    			Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, MathF.PI * 2.25f) *
-				Matrix4x4.CreateTranslation(new Vector3(80,8,40)), 1));        }
+        }
     }
 }

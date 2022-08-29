@@ -162,7 +162,16 @@ namespace partmake
         //public Quaternion rotation;
         public Matrix4x4 mat;
         public int paletteIdx;
-        public bool dynamic;
+        public bool anchored;
+        public ConnectionInst[] connections;
+        public int grpId;
+
+        public PartInst(Part item, int paletteIdx) :
+            this(item, Matrix4x4.Identity, paletteIdx, false)
+        { }
+        public PartInst(Part item, int paletteIdx, bool isanchored) :
+            this(item, Matrix4x4.Identity, paletteIdx, isanchored)
+        { }
 
         public PartInst(Part item, Matrix4x4 mat, int paletteIdx) : 
             this(item, mat, paletteIdx, false)
@@ -170,15 +179,22 @@ namespace partmake
 
         }
 
-        public PartInst(Part item, Matrix4x4 mat, int paletteIdx, bool isdynamic)
+        public PartInst(Part item, Matrix4x4 mat, int paletteIdx, bool isanchored)
         {
             this.mat = mat;
             this.item = item;
             this.paletteIdx = paletteIdx;
-            this.dynamic = isdynamic;
+            this.anchored = isanchored;
+            this.connections = new ConnectionInst[item.Connectors.Length];
         }
 
     }
 
-
+    public class ConnectionInst
+    {
+        public PartInst p0;
+        public int c0;
+        public PartInst p1;
+        public int c1;
+    }
 }

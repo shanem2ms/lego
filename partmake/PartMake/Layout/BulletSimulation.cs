@@ -42,7 +42,7 @@ namespace partmake
         }
 
     }
-    class RigidBody
+    public class RigidBody
     {
         CompoundShape shape;
         BulletSharp.RigidBody body;
@@ -61,7 +61,7 @@ namespace partmake
                 shape.AddChildShape(BM.Matrix.Identity, cvx);
             }
             BulletSharp.Math.Vector3 inertia;
-            float mass = pi.dynamic ? 100 : 0;
+            float mass = pi.anchored ? 0 : 100;
             shape.CalculateLocalInertia(mass, out inertia);
             RigidBodyConstructionInfo constructInfo =
                 new RigidBodyConstructionInfo(mass, new DefaultMotionState(
@@ -106,7 +106,7 @@ namespace partmake
         }
     }
 
-    class Constraint
+    public class Constraint
     {
         virtual public TypedConstraint C => null;
 
@@ -158,7 +158,7 @@ namespace partmake
 
     }
 
-    class BulletSimulation
+    public class BulletSimulation
     {
         DefaultCollisionConfiguration colConfiguration = new DefaultCollisionConfiguration();
         CollisionDispatcher colDispatcher;

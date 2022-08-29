@@ -12,6 +12,7 @@ using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Windows.Forms;
 using BulletSharp.SoftBody;
+using BulletSharp;
 
 namespace partmake
 {
@@ -28,7 +29,6 @@ namespace partmake
         private DeviceBuffer _planeIndexBuffer;
         private DeviceBuffer _isoVertexBuffer;
         private DeviceBuffer _isoIndexBuffer;
-        BulletSimulation bulletSimulation = new BulletSimulation();
 
         uint _cubeIndexCount;
         uint _planeIndexCount;
@@ -74,13 +74,11 @@ namespace partmake
         public event EventHandler<PartPickEvent> OnConnectorPicked;
         public event EventHandler<Topology.BSPNode> OnBSPNodeSelected;
         public event EventHandler<string> OnLogUpdated;
-        public List<PartInst> PartList { get; set; } = new List<PartInst>();
-        public List<Vector4> DebugLocators { get; set; } = new List<Vector4>();
 
+        public Scene scene;
         public bool IsActive { get; set; }
         public LayoutVis(ApplicationWindow window) : base(window)
         {
-            bulletSimulation.DebugDrawLine = BulletDebugDrawLine;
         }
 
         bool mouseMoved = false;
@@ -326,7 +324,7 @@ namespace partmake
         float worldScale = 0.0025f;
         protected override void Draw(float deltaSeconds)
         {
-            bulletSimulation.Step();
+            scene.StepSimulation();
             _cl.Begin();
 
             Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(
@@ -372,7 +370,7 @@ namespace partmake
                 _cl.UpdateBuffer(_worldBuffer, 0, ref cmx);
                 _cl.DrawIndexed(_cubeIndexCount);
             }
-            foreach (var part in PartList)
+            foreach (var part in scene.PartList)
             {
                 if (part.item == null)
                     continue;
@@ -390,10 +388,10 @@ namespace partmake
                 _cl.DrawIndexed((uint)part.item.ldrLoaderIndexCount);
             }
 
-            if (selectedPart >= 0 && selectedPart < PartList.Count)
+            if (selectedPart >= 0 && selectedPart < scene.PartList.Count)
             {
                 _cl.SetPipeline(_pipelineConnectors);
-                var part = PartList[selectedPart];
+                var part = scene.PartList[selectedPart];
                 Matrix4x4 cm =
                             part.mat *
                             Matrix4x4.CreateScale(worldScale);
@@ -453,10 +451,10 @@ namespace partmake
 
                 }
             }
-            if (DebugLocators.Count > 0)
+            if (scene.DebugLocators.Count > 0)
             {
                 _cl.SetPipeline(_pipelineConnectors);
-                foreach (Vector4 loc in DebugLocators)
+                foreach (Vector4 loc in scene.DebugLocators)
                 {
                     Matrix4x4 mat =
                         Matrix4x4.CreateScale(loc.W) *
@@ -483,7 +481,28 @@ namespace partmake
 
         void BulletDebugDrawLine(Vector3 from, Vector3 to, Vector3 color)
         {
+            float len = (from - to).Length();
+            Vector3 dx = Vector3.Normalize(to - from);
+            Vector3 dir2 = MathF.Abs(dx.X) > MathF.Abs(dx.Y) ? Vector3.UnitY : Vector3.UnitX;
+            Vector3 dy = Vector3.Cross(dx, dir2);
+            Vector3 dz = Vector3.Cross(dy, dx);
 
+            Matrix4x4 rotmat = new Matrix4x4(dx.X, dx.Y, dx.Z, 0,
+                dy.X, dy.Y, dy.Z, 0,
+                dz.X, dz.Y, dz.Z, 0,
+                0, 0, 0, 1);
+
+            Matrix4x4 mat =
+                    Matrix4x4.CreateScale(len, 1, 1) *
+                    rotmat *
+                    Matrix4x4.CreateTranslation((from + to) * 0.5f) *
+                    Matrix4x4.CreateScale(worldScale);
+            _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
+            Vector4 col = new Vector4(color.X, color.Y, color.Z, 1);
+            _cl.UpdateBuffer(_materialBuffer, 0, ref col);
+            _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+            _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+            _cl.DrawIndexed(_cubeIndexCount);
         }
 
         void DrawPicking(ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
@@ -500,9 +519,9 @@ namespace partmake
                 _cl.SetGraphicsResourceSet(1, _worldTextureSet);
 
 
-                for (int partIdx = 0; partIdx < PartList.Count; ++partIdx)
+                for (int partIdx = 0; partIdx < scene.PartList.Count; ++partIdx)
                 {
-                    var part = PartList[partIdx];
+                    var part = scene.PartList[partIdx];
                     if (part.item == null)
                         continue;
                     if (part.item.ldrLoaderVertexBuffer == null)
@@ -524,10 +543,10 @@ namespace partmake
                     _cl.DrawIndexed((uint)part.item.ldrLoaderIndexCount);
                 }
 
-                if (selectedPart >= 0 && selectedPart < PartList.Count)
+                if (selectedPart >= 0 && selectedPart < scene.PartList.Count)
                 {
                     _cl.SetPipeline(_pipelinePickConnectors);
-                    var part = PartList[selectedPart];
+                    var part = scene.PartList[selectedPart];
                     Matrix4x4 cm =
                                 part.mat *
                                 Matrix4x4.CreateScale(worldScale);
@@ -588,19 +607,7 @@ namespace partmake
             public byte a;
         }
 
-        public void RebuildScene(List<PartInst> newPartList, List<Vector4> newLocators)
-        {
-            PartList.Clear();
-            PartList.AddRange(newPartList);
-            DebugLocators.Clear();
-            DebugLocators.AddRange(newLocators);
-            bulletSimulation.Clear();
-            foreach (PartInst part in PartList)
-            {
-                RigidBody rb = new RigidBody(part.mat, part);
-                bulletSimulation.AddObj(rb);
-            }
-        }
+        
 
         void HandlePick()
         {
@@ -614,12 +621,12 @@ namespace partmake
                 if (pickIdx >= 1024)
                 {
                     selectedPart = pickIdx - 1024;
-                    OnPartPicked?.Invoke(this, new PartPickEvent() { part = PartList[selectedPart], connectorIdx = -1 });
+                    OnPartPicked?.Invoke(this, new PartPickEvent() { part = scene.PartList[selectedPart], connectorIdx = -1 });
                 }
                 else if (pickIdx >= 128)
                 {
                     selectedConnectorIdx = pickIdx - 128;
-                    OnConnectorPicked?.Invoke(this, new PartPickEvent() { part = PartList[selectedPart], connectorIdx = selectedConnectorIdx });
+                    OnConnectorPicked?.Invoke(this, new PartPickEvent() { part = scene.PartList[selectedPart], connectorIdx = selectedConnectorIdx });
                 }
                 else
                 {

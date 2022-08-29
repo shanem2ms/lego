@@ -24,8 +24,33 @@ namespace partmake
                 return LDrawFolders.GetCacheItem(name);
             }
 
-            public static List<PartInst> Parts;
+            public static List<PartInst> Parts = null;
             public static List<System.Numerics.Vector4> Locators;
+
+            public static void AddUnconnected(PartInst pi)
+            {
+                Parts.Add(pi);
+            }
+            public static void Connect(PartInst pi1, int connectorIdx1, PartInst pi0,
+                int connectorIdx0)
+            {
+                var ci0 = pi0.item.Connectors[connectorIdx0];
+                var ci1 = pi1.item.Connectors[connectorIdx1];
+
+                System.Numerics.Matrix4x4 m2 =
+                    ci1.IM44 * ci0.M44 * pi0.mat;
+                pi1.mat = m2;
+                ConnectionInst cinst = new ConnectionInst()
+                {
+                    p0 = pi0,
+                    c0 = connectorIdx0,
+                    p1 = pi1,
+                    c1 = connectorIdx1
+                };
+                pi0.connections[connectorIdx0] = cinst;
+                pi1.connections[connectorIdx1] = cinst;
+                Api.Parts.Add(pi1);
+            }
         }
     }
     public class ScriptEngine
@@ -68,7 +93,7 @@ namespace partmake
             return compilation;
         }
 
-        public void Run(List<string> codeToCompile, LayoutVis vis)
+        public void Run(List<string> codeToCompile, Scene scene, LayoutVis vis)
         {
             using (var ms = new MemoryStream())
             {
@@ -98,9 +123,9 @@ namespace partmake
                     script.Api.Parts = new List<PartInst>(); ;
                     script.Api.Locators = new List<System.Numerics.Vector4>();
                     meth.Invoke(instance, new object[] {});
-                    lock (vis.PartList)
+                    lock (scene)
                     {
-                        vis.RebuildScene(script.Api.Parts, script.Api.Locators);
+                        scene.Rebuild(script.Api.Parts, script.Api.Locators);
                     }
                 }
             }

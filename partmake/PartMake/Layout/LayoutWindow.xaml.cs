@@ -37,6 +37,8 @@ namespace partmake
         public List<Part> FilteredItems { get; set; }
 
         public ObservableCollection<ScriptTextEditor> OpenEditors { get; } = new ObservableCollection<ScriptTextEditor>();
+
+        Scene scene = new Scene();
         public string SelectedType
         {
             get => LDrawFolders.SelectedType;
@@ -65,6 +67,7 @@ namespace partmake
 
             scriptFolder = System.IO.Path.Combine(LDrawFolders.Root, "Partmake\\Scripts");
             FilteredItems = LDrawFolders.CacheItems.ToList();
+            _LayoutControl.Vis.scene = scene;
             _LayoutControl.Vis.OnPartPicked += Vis_OnPartPicked;
             _LayoutControl.Vis.OnConnectorPicked += Vis_OnConnectorPicked;
             RefrehScriptsFolder();
@@ -193,7 +196,7 @@ namespace partmake
             try
             {
                 List<string> allFiles = this.ScriptFiles.Select(fname => File.ReadAllText(Path.Combine(scriptFolder, fname))).ToList();
-                scriptEngine.Run(allFiles, _LayoutControl.Vis);
+                scriptEngine.Run(allFiles, scene, _LayoutControl.Vis);
             }
             catch(Exception e)
             {
