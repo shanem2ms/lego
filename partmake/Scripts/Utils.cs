@@ -77,6 +77,18 @@ namespace partmake.script
 			Api.Parts.Add(new PartInst(head, mhead, 14, true));  
 		}
 		
+		static void Connect(PartInst pi2, int connectorIdx2, PartInst pi1, 
+			int connectorIdx1) 
+		{
+			var ci1 = pi1.item.Connectors[connectorIdx1];
+			var ci2 = pi2.item.Connectors[connectorIdx2];
+			
+			Matrix4x4 m2 =     
+    			ci2.IM44 *
+    			ci1.M44 * pi1.mat;
+    	    pi2.mat = m2;
+		}
+		
 		void ConnectorTest()
 		{
 			var stud1side = Api.GetPart("87087");
