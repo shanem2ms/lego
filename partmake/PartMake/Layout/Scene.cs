@@ -35,9 +35,11 @@ namespace partmake
             DebugLocators.Clear();
             DebugLocators.AddRange(newLocators);
             bulletSimulation.Clear();
-            foreach (PartInst part in PartList)
+            PartList.Sort((p1, p2) => p1.grpId.CompareTo(p2.grpId));
+            var groups = PartList.GroupBy(p => p.grpId);
+            foreach (var partGroup in groups)
             {
-                RigidBody rb = new RigidBody(part.mat, part);
+                RigidBody rb = new RigidBody(partGroup);
                 bulletSimulation.AddObj(rb);
             }
         }

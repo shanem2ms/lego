@@ -47,13 +47,48 @@ namespace partmake
         CompoundShape shape;
         BulletSharp.RigidBody body;
         Matrix4x4 worldMatrix;
-        PartInst partInst;
+        List<Tuple<PartInst, Matrix4x4>> parts;
+        bool anchored;
 
+        public RigidBody(IEnumerable<PartInst> pilist)
+        {
+            Vector3 midpt = Vector3.Zero;
+            shape = new CompoundShape();
+            foreach (var part in pilist)
+            {
+                midpt += Vector3.Transform(Vector3.Zero, part.mat);
+            }
+            midpt /= (float)pilist.Count();
+            worldMatrix = Matrix4x4.CreateTranslation(midpt);
+            Matrix4x4 submat = Matrix4x4.CreateTranslation(-midpt);
+            parts = new List<Tuple<PartInst, Matrix4x4>>();
+            anchored = false;
+            foreach (var part in pilist)
+            {
+                anchored |= part.anchored;
+                Matrix4x4 pmat = part.mat * submat;
+                parts.Add(new Tuple<PartInst, Matrix4x4>(part, pmat));
+                var pts = part.item.CollisionPts;
+                for (int idx = 0; idx < pts.Length; idx++)
+                {
+                    ConvexHullShape cvx = new ConvexHullShape(pts[idx]);
+                    shape.AddChildShape(Utils.FromMat4(pmat), cvx);
+                }
+            }
+            BulletSharp.Math.Vector3 inertia;
+            float mass = anchored ? 0 : 100;
+            shape.CalculateLocalInertia(mass, out inertia);
+            RigidBodyConstructionInfo constructInfo =
+                new RigidBodyConstructionInfo(mass, new DefaultMotionState(
+                    Utils.FromMat4(worldMatrix)), shape, inertia);
+            body = new BulletSharp.RigidBody(constructInfo);
+            body.SetDamping(0.3f, 0.3f);
+        }
         public RigidBody(Matrix4x4 initialPos, PartInst pi)
         {
             worldMatrix = initialPos;
             shape = new CompoundShape();
-            partInst = pi;
+            //pilist = new List<PartInst>() { pi };
             var pts = pi.item.CollisionPts;
             for (int idx = 0; idx < pts.Length; idx++)
             {
@@ -83,8 +118,14 @@ namespace partmake
 
         public void Refresh()
         {
-            worldMatrix = Utils.FromMat(body.WorldTransform);
-            partInst.mat = worldMatrix;
+            if (!anchored)
+            {
+                worldMatrix = Utils.FromMat(body.WorldTransform);
+                foreach (var tuple in parts)
+                {
+                    tuple.Item1.mat = tuple.Item2 * worldMatrix;
+                }
+            }
         }
 
         public void SetTransform(Matrix4x4 t)
