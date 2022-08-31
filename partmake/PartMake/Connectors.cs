@@ -31,6 +31,86 @@ namespace partmake
         StemHole = 17
     }
     
+
+    public class ConnectionInfo
+    {
+        public int rotateAxisDOF;
+        public int moveAxisDOF;
+        public enum DynamicJoint
+        {
+            Weld,
+            Ballsocket,
+            Hinge
+        }
+        public DynamicJoint dynamicJoint;
+        public static ConnectionInfo FromTypes(ConnectorType type1, ConnectorType type2)
+        {
+            if (type1 > type2)
+            {
+                var tmp = type2;
+                type2 = type1;
+                type1 = tmp;
+            }
+
+            if (type1 == ConnectorType.Stud && type2 == ConnectorType.RStud)
+            {
+                return new ConnectionInfo()
+                {
+                    rotateAxisDOF = 1,
+                    moveAxisDOF = 0,
+                    dynamicJoint = DynamicJoint.Weld
+                };
+            }
+            else if (type1 == ConnectorType.MFigHipLeg && type2 == ConnectorType.MFigRHipLeg)
+            {
+                return new ConnectionInfo()
+                {
+                    rotateAxisDOF = 1,
+                    moveAxisDOF = 0,
+                    dynamicJoint = DynamicJoint.Hinge
+                };
+            }
+            else if (type1 == ConnectorType.RStud && type2 == ConnectorType.MFigHipStud)
+            {
+                return new ConnectionInfo()
+                {
+                    rotateAxisDOF = 1,
+                    moveAxisDOF = 0,
+                    dynamicJoint = DynamicJoint.Weld
+                };
+            }
+            else if (type1 == ConnectorType.MFigTorsoNeck && type2 == ConnectorType.MFigHeadRNeck)
+            {
+                return new ConnectionInfo()
+                {
+                    rotateAxisDOF = 1,
+                    moveAxisDOF = 0,
+                    dynamicJoint = DynamicJoint.Hinge
+                };
+            }
+            else if (type1 == ConnectorType.MFigTorsoRArm && type2 == ConnectorType.MFigArmKnob)
+            {
+                return new ConnectionInfo()
+                {
+                    rotateAxisDOF = 1,
+                    moveAxisDOF = 0,
+                    dynamicJoint = DynamicJoint.Hinge
+                };
+            }
+            else if (type1 == ConnectorType.MFigRWrist && type2 == ConnectorType.MFigWrist)
+            {
+                return new ConnectionInfo()
+                {
+                    rotateAxisDOF = 1,
+                    moveAxisDOF = 0,
+                    dynamicJoint = DynamicJoint.Hinge
+                };
+            }
+
+            System.Diagnostics.Debug.WriteLine($"{type1} --> {type2}");
+            return null;
+        }
+    }
     public static class Vector3Parse
     {
         public static string Str(this Vector3 v)

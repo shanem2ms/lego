@@ -81,6 +81,9 @@ namespace partmake
         {
         }
 
+        public delegate void DrawDebugDel();
+        public DrawDebugDel DrawDebug = null;
+
         bool mouseMoved = false;
         public void MouseDown(int btn, int X, int Y, System.Windows.Forms.Keys keys)
         {
@@ -470,7 +473,8 @@ namespace partmake
                 }
             }
 
-            //bulletSimulation.DrawDebug();
+            if (DrawDebug != null)
+                DrawDebug();
             DrawPicking(ref viewmat, ref projMat);
             _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
@@ -479,7 +483,7 @@ namespace partmake
             HandlePick();
         }
 
-        void BulletDebugDrawLine(Vector3 from, Vector3 to, Vector3 color)
+        public void BulletDebugDrawLine(Vector3 from, Vector3 to, Vector3 color)
         {
             float len = (from - to).Length();
             Vector3 dx = Vector3.Normalize(to - from);

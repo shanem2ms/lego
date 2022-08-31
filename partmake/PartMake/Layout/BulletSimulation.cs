@@ -47,7 +47,7 @@ namespace partmake
         CompoundShape shape;
         BulletSharp.RigidBody body;
         Matrix4x4 worldMatrix;
-        List<Tuple<PartInst, Matrix4x4>> parts;
+        List<PartInst> parts;
         bool anchored;
 
         public RigidBody(IEnumerable<PartInst> pilist)
@@ -61,18 +61,19 @@ namespace partmake
             midpt /= (float)pilist.Count();
             worldMatrix = Matrix4x4.CreateTranslation(midpt);
             Matrix4x4 submat = Matrix4x4.CreateTranslation(-midpt);
-            parts = new List<Tuple<PartInst, Matrix4x4>>();
+            parts = new List<PartInst>();
             anchored = false;
             foreach (var part in pilist)
             {
-                anchored |= part.anchored;
-                Matrix4x4 pmat = part.mat * submat;
-                parts.Add(new Tuple<PartInst, Matrix4x4>(part, pmat));
+                part.body = this;
+                anchored |= part.anchored;                
+                part.bodySubMat = part.mat * submat;
+                parts.Add(part);
                 var pts = part.item.CollisionPts;
                 for (int idx = 0; idx < pts.Length; idx++)
                 {
                     ConvexHullShape cvx = new ConvexHullShape(pts[idx]);
-                    shape.AddChildShape(Utils.FromMat4(pmat), cvx);
+                    shape.AddChildShape(Utils.FromMat4(part.bodySubMat), cvx);
                 }
             }
             BulletSharp.Math.Vector3 inertia;
@@ -84,27 +85,6 @@ namespace partmake
             body = new BulletSharp.RigidBody(constructInfo);
             body.SetDamping(0.3f, 0.3f);
         }
-        public RigidBody(Matrix4x4 initialPos, PartInst pi)
-        {
-            worldMatrix = initialPos;
-            shape = new CompoundShape();
-            //pilist = new List<PartInst>() { pi };
-            var pts = pi.item.CollisionPts;
-            for (int idx = 0; idx < pts.Length; idx++)
-            {
-                ConvexHullShape cvx = new ConvexHullShape(pts[idx]);
-                shape.AddChildShape(BM.Matrix.Identity, cvx);
-            }
-            BulletSharp.Math.Vector3 inertia;
-            float mass = pi.anchored ? 0 : 100;
-            shape.CalculateLocalInertia(mass, out inertia);
-            RigidBodyConstructionInfo constructInfo =
-                new RigidBodyConstructionInfo(mass, new DefaultMotionState(
-                    Utils.FromMat4(worldMatrix)), shape, inertia);
-            body = new BulletSharp.RigidBody(constructInfo);
-            body.SetDamping(0.3f, 0.3f);
-        }
-
         public void AfterWorldAdd()
         {
             //System.Diagnostics.Debug.WriteLine($"{body.BroadphaseProxy.CollisionFilterGroup} .. {body.BroadphaseProxy.CollisionFilterMask}");
@@ -121,9 +101,9 @@ namespace partmake
             if (!anchored)
             {
                 worldMatrix = Utils.FromMat(body.WorldTransform);
-                foreach (var tuple in parts)
+                foreach (var part in parts)
                 {
-                    tuple.Item1.mat = tuple.Item2 * worldMatrix;
+                    part.mat = part.bodySubMat * worldMatrix;
                 }
             }
         }
@@ -154,7 +134,7 @@ namespace partmake
         public bool Enabled { get => C.IsEnabled; set { C.IsEnabled = value; } }
     }
 
-    class PointConstraint : Constraint
+    public class PointConstraint : Constraint
     {
         Point2PointConstraint p2p;
 
@@ -169,6 +149,18 @@ namespace partmake
             p2p.Setting.ImpulseClamp = 30.0f;
             p2p.Setting.Tau = 0.001f;
         }
+
+        public PointConstraint(RigidBody mesh1, Vector3 m1pivot,
+            RigidBody mesh2, Vector3 m2pivot)
+        {
+            pinnedBody = mesh1;
+            pinnedBody.Body.ActivationState = ActivationState.DisableDeactivation;
+            p2p = new Point2PointConstraint(mesh1.Body, mesh2.Body, Utils.FromVector3(m1pivot),
+                Utils.FromVector3(m2pivot));
+            p2p.Setting.ImpulseClamp = 30.0f;
+            p2p.Setting.Tau = 0.001f;
+        }
+
 
         public void UpdateWsPos(Vector3 wspos)
         {
@@ -256,7 +248,12 @@ namespace partmake
             {
                 colWorld.RemoveCollisionObject(body.Body);
             }
+            foreach (var con in constraints)
+            {
+                colWorld.RemoveConstraint(con.C);
+            }
             bodies.Clear();
+            constraints.Clear();
         }
         public void AddConst(Constraint constraint)
         {

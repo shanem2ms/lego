@@ -70,12 +70,20 @@ namespace partmake
             _LayoutControl.Vis.scene = scene;
             _LayoutControl.Vis.OnPartPicked += Vis_OnPartPicked;
             _LayoutControl.Vis.OnConnectorPicked += Vis_OnConnectorPicked;
+            _LayoutControl.Vis.DrawDebug = DrawBulletDebug;
+            scene.DebugDrawLine =
+                _LayoutControl.Vis.BulletDebugDrawLine;
             RefrehScriptsFolder();
             foreach (var file in ScriptFiles)
             {
                 OpenFile(file);
             }
             RunScript();
+        }
+
+        void DrawBulletDebug()
+        {
+            scene.DrawBulletDebug();
         }
 
         private void Vis_OnConnectorPicked(object sender, LayoutVis.PartPickEvent e)

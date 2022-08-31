@@ -165,6 +165,8 @@ namespace partmake
         public bool anchored;
         public ConnectionInst[] connections;
         public int grpId;
+        public RigidBody body;
+        public Matrix4x4 bodySubMat;
 
         public PartInst(Part item, int paletteIdx) :
             this(item, Matrix4x4.Identity, paletteIdx, false)
@@ -196,5 +198,10 @@ namespace partmake
         public int c0;
         public PartInst p1;
         public int c1;
+
+        public Connector Connector0 => p0.item.Connectors[c0];
+        public Connector Connector1 => p1.item.Connectors[c1];
+        public ConnectionInfo ConnectInfo =>
+            ConnectionInfo.FromTypes(Connector0.Type, Connector1.Type);
     }
 }

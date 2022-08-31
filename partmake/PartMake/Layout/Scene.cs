@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Numerics;
 using BulletSharp;
+using Amazon.S3.Model;
 
 namespace partmake
 {
@@ -14,7 +15,7 @@ namespace partmake
 
         public Scene()
         {
-            bulletSimulation.DebugDraw = DebugDrawModes.DrawWireframe;
+            bulletSimulation.DebugDraw = DebugDrawModes.DrawConstraints;
         }
         public List<PartInst> PartList { get; set; } = new List<PartInst>();
         public List<Vector4> DebugLocators { get; set; } = new List<Vector4>();
@@ -27,11 +28,16 @@ namespace partmake
             bulletSimulation.Step();
         }
 
+        public void DrawBulletDebug()
+        {
+            bulletSimulation.DrawDebug();
+        }
+
         public void Rebuild(List<PartInst> newPartList, List<Vector4> newLocators)
         {
             PartList.Clear();
             PartList.AddRange(newPartList);
-            ProcessConnections();
+            var dynamicConnections = ProcessConnections();
             DebugLocators.Clear();
             DebugLocators.AddRange(newLocators);
             bulletSimulation.Clear();
@@ -42,28 +48,48 @@ namespace partmake
                 RigidBody rb = new RigidBody(partGroup);
                 bulletSimulation.AddObj(rb);
             }
+
+            foreach (var connection in dynamicConnections)
+            {
+                var c0Pos = Vector3.Transform(
+                    connection.Connector0.Pos, connection.p0.bodySubMat);
+                var c1Pos = Vector3.Transform(
+                    connection.Connector1.Pos, connection.p1.bodySubMat);
+                PointConstraint pc = new PointConstraint(connection.p0.body,
+                    c0Pos, connection.p1.body, c1Pos);
+                bulletSimulation.AddConst(pc);
+            }
         }
 
-        void ProcessConnections()
+        HashSet<ConnectionInst> ProcessConnections()
         {
             foreach (var part in PartList)
             {
                 part.grpId = -1;
             }
 
-            int curGroup = 0;
-
-            while (true)
+            int curGroup = 1;
+            
+            var anchoredGroups = PartList.GroupBy(p => p.anchored);
+            List<ConnectionInst> connections = new List<ConnectionInst>();
+            foreach (var anchoredGroup in anchoredGroups)
             {
-                var nextPart = PartList.FirstOrDefault((p) => p.grpId == -1);
-                if (nextPart == null)
-                    break;
-                MarkPartGroup(nextPart, curGroup);
-                curGroup++;
+                bool anchored = anchoredGroup.First().anchored;
+                while (true)
+                {
+                    var nextPart = anchoredGroup.FirstOrDefault((p) => p.grpId == -1);
+                    if (nextPart == null)
+                        break;
+                    MarkPartGroup(nextPart, anchored ? 0 : curGroup, connections);
+                    if (!anchored)
+                        curGroup++;
+                }
             }
+
+            return connections.ToHashSet();
         }
 
-        void MarkPartGroup(PartInst p, int grpId)
+        void MarkPartGroup(PartInst p, int grpId, List<ConnectionInst> connections)
         {
             if (p.grpId != -1)
                 return;
@@ -72,8 +98,14 @@ namespace partmake
             {
                 if (c != null)
                 {
-                    PartInst other = c.p1 == p ? c.p0 : c.p1;
-                    MarkPartGroup(other, grpId);
+                    var connectInfo = c.ConnectInfo;
+                    if (connectInfo.dynamicJoint == ConnectionInfo.DynamicJoint.Weld)
+                    {
+                        PartInst other = c.p1 == p ? c.p0 : c.p1;
+                        MarkPartGroup(other, grpId, connections);
+                    }
+                    else
+                        connections.Add(c);
                 }
             }
         }
