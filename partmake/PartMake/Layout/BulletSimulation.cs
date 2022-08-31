@@ -169,6 +169,34 @@ namespace partmake
         }
     }
 
+    public class Hinge : Constraint
+    {
+        HingeConstraint hinge;
+
+        RigidBody pinnedBody;
+        override public TypedConstraint C => hinge;
+
+
+        public Hinge(RigidBody mesh1, Vector3 m1pivot,
+            Vector3 m1axis,
+            RigidBody mesh2, Vector3 m2pivot,
+            Vector3 m2axis)
+        {
+            pinnedBody = mesh1;
+            pinnedBody.Body.ActivationState = ActivationState.DisableDeactivation;
+            hinge = new HingeConstraint(mesh1.Body, mesh2.Body, Utils.FromVector3(m1pivot),
+                Utils.FromVector3(m2pivot),
+                Utils.FromVector3(m1axis),
+                Utils.FromVector3(m2axis));
+        }
+
+
+        public void UpdateWsPos(Vector3 wspos)
+        {
+            //OpenTK.Vector3 lPos = OpenTK.Vector3.TransformPosition(wspos, pinnedBody.WorldMatrix.Inverted());
+            //p2p.PivotInB = Utils.FromVector3(wspos);
+        }
+    }
     class G6DOFConstraint : Constraint
     {
         Generic6DofConstraint dof;

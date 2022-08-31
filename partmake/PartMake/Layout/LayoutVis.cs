@@ -107,8 +107,6 @@ namespace partmake
         public void MouseMove(int X, int Y, System.Windows.Forms.Keys keys)
         {
             mouseMoved = true;
-            if ((mouseDown & 1) != 0)
-                lookDir = mouseDownLookDir + (new Vector2(X, Y) - lMouseDownPt) * 0.01f;
             if ((mouseDown & 2) != 0)
             {
                 if ((keys & System.Windows.Forms.Keys.Shift) != 0)
@@ -117,9 +115,13 @@ namespace partmake
                 }
                 else
                 {
-                    float tscale = 0.01f;
-                    cameraPos = mouseDownCameraPos - new Vector3(-X + lMouseDownPt.X, Y - lMouseDownPt.Y, 0) * tscale;
+                    lookDir = mouseDownLookDir + (new Vector2(X, Y) - lMouseDownPt) * 0.01f;
                 }
+            }
+            else if ((mouseDown & 1) != 0)
+            {
+                float tscale = 0.01f;
+                cameraPos = mouseDownCameraPos - new Vector3(-X + lMouseDownPt.X, Y - lMouseDownPt.Y, 0) * tscale;
             }
         }
 

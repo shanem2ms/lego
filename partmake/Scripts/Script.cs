@@ -29,24 +29,24 @@ namespace partmake.script
     	}
         void Terrain()
         {
+    		var plate4x4 = Api.GetPart("3031");
+    		var brick2x2 = Api.GetPart("3003");
         	Utils u = new Utils();
 			for (int i = -10; i < 10; i++)
-        	{
+        	{   
 	        	for (int j = -10; j < 10; j++)
 	        	{
-					Matrix4x4 mat = Matrix4x4.CreateTranslation(new Vector3(j*80-10, 0, i*80-10));        		        	
-	        		Api.AddUnconnected(new PartInst(Api.GetPart("3031"),
-						mat, colors[r.Next(0,4)], true ));
+					Matrix4x4 mat = Matrix4x4.CreateTranslation(new Vector3(j*80-10, 0, i*80-10));      
+					var plate4x4part = new PartInst(plate4x4,
+						mat, colors[r.Next(0,4)], true );
+	        		Api.AddUnconnected(plate4x4part);
+					var brick2x2part = new PartInst(brick2x2,
+						colors[r.Next(0,4)], false );
+	        		Api.Connect(brick2x2part, 5, plate4x4part, r.Next(0, 16));
+	        		
 				}
 			}
-			
-			for (int i = 0; i < 100; ++i)
-			{
-				int x = r.Next(-40,40);
-				int y = r.Next(-40,40);
-				Matrix4x4 mat = Matrix4x4.CreateTranslation(new Vector3(x*20, 8, y*20));
-			}
-			
+								
         }
     }
 }

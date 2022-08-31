@@ -83,7 +83,7 @@ namespace partmake
 
         void DrawBulletDebug()
         {
-            scene.DrawBulletDebug();
+            //scene.DrawBulletDebug();
         }
 
         private void Vis_OnConnectorPicked(object sender, LayoutVis.PartPickEvent e)

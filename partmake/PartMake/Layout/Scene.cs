@@ -53,10 +53,14 @@ namespace partmake
             {
                 var c0Pos = Vector3.Transform(
                     connection.Connector0.Pos, connection.p0.bodySubMat);
+                var c0Dir = Vector3.TransformNormal(
+                    connection.Connector0.DirY, connection.p0.bodySubMat);
                 var c1Pos = Vector3.Transform(
                     connection.Connector1.Pos, connection.p1.bodySubMat);
-                PointConstraint pc = new PointConstraint(connection.p0.body,
-                    c0Pos, connection.p1.body, c1Pos);
+                var c1Dir = Vector3.TransformNormal(
+                    connection.Connector1.DirY, connection.p1.bodySubMat);
+                Hinge pc = new Hinge(connection.p0.body,
+                    c0Pos, c0Dir, connection.p1.body, c1Pos, c1Dir);
                 bulletSimulation.AddConst(pc);
             }
         }
