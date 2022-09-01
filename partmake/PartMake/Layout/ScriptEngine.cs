@@ -34,14 +34,14 @@ namespace partmake
                 script.Api.octTree = new OctTree();
                 script.Api.Locators = new List<System.Numerics.Vector4>();
             }
-
+            
             public static void AddUnconnected(PartInst pi)
             {
                 Parts.Add(pi);
                 octTree.AddPart(pi);
             }
-            public static void Connect(PartInst pi1, int connectorIdx1, PartInst pi0,
-                int connectorIdx0)
+            public static bool Connect(PartInst pi1, int connectorIdx1, PartInst pi0,
+                int connectorIdx0, bool allowCollisions )
             {
                 var ci0 = pi0.item.Connectors[connectorIdx0];
                 var ci1 = pi1.item.Connectors[connectorIdx1];
@@ -58,7 +58,11 @@ namespace partmake
                 };
                 pi0.connections[connectorIdx0] = cinst;
                 pi1.connections[connectorIdx1] = cinst;
+                if (!allowCollisions && octTree.CollisionCheck(pi1))
+                    return false;
                 Api.Parts.Add(pi1);
+                octTree.AddPart(pi1);
+                return true;
             }
         }
     }

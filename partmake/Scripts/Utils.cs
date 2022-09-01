@@ -24,28 +24,28 @@ namespace partmake.script
 			Api.AddUnconnected(hippart);
     		
     		var leftlegpart = new PartInst(leftleg, 1, false);
-    		Api.Connect(leftlegpart, 1, hippart, 0);			
+    		Api.Connect(leftlegpart, 1, hippart, 0, true);			
 
     		var rightlegpart = new PartInst(rightleg, 1, false);
-    		Api.Connect(rightlegpart, 1, hippart, 1);			
+    		Api.Connect(rightlegpart, 1, hippart, 1, true);			
 				
 			var torsopart = new PartInst(torso, 4);
-    		Api.Connect(torsopart, 3, hippart, 3);			
+    		Api.Connect(torsopart, 3, hippart, 3, true);			
     		
     		var leftarmpart = new PartInst(leftarm, 4, false);
-    		Api.Connect(leftarmpart, 0, torsopart, 2);
+    		Api.Connect(leftarmpart, 0, torsopart, 2, true);
 
     		var lefthandpart = new PartInst(hand, 14, false);    		
-    		Api.Connect(lefthandpart, 0, leftarmpart, 1);
+    		Api.Connect(lefthandpart, 0, leftarmpart, 1, true);
     		
 			var rightarmpart = new PartInst(rightarm, 4, false);
-    		Api.Connect(rightarmpart, 0, torsopart, 1);
+    		Api.Connect(rightarmpart, 0, torsopart, 1, true);
     		
     		var righthandpart = new PartInst(hand, 14, false);    		
-    		Api.Connect(righthandpart, 0, rightarmpart, 1);
+    		Api.Connect(righthandpart, 0, rightarmpart, 1, true);
 
     		var headpart = new PartInst(head, 14, false);    		
-    		Api.Connect(headpart, 0, torsopart, 0);
+    		Api.Connect(headpart, 0, torsopart, 0, true);
 		}
 		
 		void ConnectorTest()

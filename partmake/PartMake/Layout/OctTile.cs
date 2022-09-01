@@ -54,10 +54,25 @@ namespace partmake
                     Vector3 maxb = parts[j].MaxBounds;
                     if (Intersects(mina, maxa, minb, maxb))
                     {
-                        parts[j].paletteIdx = 1;
+                        //
                     }
                 }
             }
+        }
+        public bool CheckCollision(PartInst p)
+        {
+            Vector3 mina = p.MinBounds;
+            Vector3 maxa = p.MaxBounds;
+            for (int j = 0; j < parts.Count; j++)
+            {
+                Vector3 minb = parts[j].MinBounds;
+                Vector3 maxb = parts[j].MaxBounds;
+                if (Intersects(mina, maxa, minb, maxb))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -69,6 +84,35 @@ namespace partmake
         HashSet<OctTile> octTiles = new HashSet<OctTile>();
 
 
+        public bool CollisionCheck(PartInst p)
+        {
+            OctTile olookup = new OctTile();
+            int oxmin = (int)(p.MinBounds.X * scale);
+            int oymin = (int)(p.MinBounds.Y * scale);
+            int ozmin = (int)(p.MinBounds.Z * scale);
+            int oxmax = (int)(p.MaxBounds.X * scale);
+            int oymax = (int)(p.MaxBounds.Y * scale);
+            int ozmax = (int)(p.MaxBounds.Z * scale);
+            bool collides = false;
+            for (int ox = oxmin; ox <= oxmax; ++ox)
+            {
+                for (int oy = oymin; oy <= oymax; ++oy)
+                {
+                    for (int oz = ozmin; oz <= ozmax; ++oz)
+                    {
+                        olookup.x = ox;
+                        olookup.y = oy;
+                        olookup.z = oz;
+                        OctTile tile;
+                        if (octTiles.TryGetValue(olookup, out tile))
+                        {
+                            collides |= tile.CheckCollision(p);
+                        }
+                    }
+                }
+            }
+            return collides;
+        }
         public void AddPart(PartInst p)
         {
             OctTile olookup = new OctTile();
@@ -94,6 +138,7 @@ namespace partmake
                             octTiles.Add(tile);
                         }
                         tile.parts.Add(p);
+                        p.octTiles.Add(tile);
                     }
                 }
             }

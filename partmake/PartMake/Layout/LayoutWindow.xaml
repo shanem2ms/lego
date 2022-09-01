@@ -124,11 +124,18 @@
                         <TabControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
-                                    <Label Content="{Binding Path=ScriptName}" />
+                                    <Grid MaxWidth="100" Margin="0,0,10,0">
+                                        <TextBlock HorizontalAlignment="Right" Text="{Binding }" />
+                                    </Grid>
                                     <Button Content="x" />
                                 </StackPanel>
                             </DataTemplate>
                         </TabControl.ItemTemplate>
+                        <TabControl.ContentTemplate>
+                            <DataTemplate>
+                                <local:ScriptTextEditor FilePath="{Binding }"/>
+                            </DataTemplate>
+                        </TabControl.ContentTemplate>
                     </TabControl>
                     <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
                     <TabControl Grid.Column="2">

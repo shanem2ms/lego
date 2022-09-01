@@ -37,7 +37,7 @@ namespace partmake
 
         public List<Part> FilteredItems { get; set; }
 
-        public ObservableCollection<ScriptTextEditor> OpenEditors { get; } = new ObservableCollection<ScriptTextEditor>();
+        public ObservableCollection<string> OpenEditors { get; } = new ObservableCollection<string>();
 
         Scene scene = new Scene();
         public string SelectedType
@@ -55,7 +55,7 @@ namespace partmake
             OutputTB.AppendText(line + "\n");
             OutputTB.ScrollToEnd();
         }
-        ScriptTextEditor ActiveScriptTB;
+        //ScriptTextEditor ActiveScriptTB;
         public LayoutWindow()
         {
             this.DataContext = this;
@@ -99,15 +99,19 @@ namespace partmake
         {
             WriteLine($"Part {e.part.item.Name}");
             WriteLine($"Pos {Vector3.Transform(Vector3.Zero, e.part.mat)}");
+            foreach (var tile in e.part.octTiles)
+            {
+                WriteLine($"Tile {tile.x} {tile.y} {tile.z}");
+            }
         }
 
         void OpenFile(string name)
         {
             string filepath = 
                 System.IO.Path.Combine(scriptFolder, name);
-            ScriptTextEditor ScriptTB = new ScriptTextEditor(filepath);
-            ScriptTB.Engine = scriptEngine;
-            OpenEditors.Add(ScriptTB);
+            //ScriptTextEditor ScriptTB = new ScriptTextEditor(filepath);
+            //ScriptTB.Engine = scriptEngine;
+            OpenEditors.Add(filepath);
         }
         void RefrehScriptsFolder()
         {
@@ -197,10 +201,11 @@ namespace partmake
 
         private void RunButton_Click(object sender, RoutedEventArgs e)
         {
+            /*
             foreach (var editor in OpenEditors)
             {
                 editor.Save();
-            }
+            }*/
             RunScript();
         }
 
@@ -230,7 +235,7 @@ namespace partmake
             sfd.Filter = "CSharp Scripts (.cs)|*.cs"; // Filter files by extension
             if (sfd.ShowDialog() == true)
             {
-                ActiveScriptTB.SaveAs(sfd.FileName);
+                //ActiveScriptTB.SaveAs(sfd.FileName);
             }
         }
         private void LoadButton_Click(object sender, RoutedEventArgs e)

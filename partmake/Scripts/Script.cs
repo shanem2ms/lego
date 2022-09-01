@@ -42,7 +42,7 @@ namespace partmake.script
 	        		Api.AddUnconnected(plate4x4part);
 					var brick2x2part = new PartInst(brick2x2,
 						colors[r.Next(0,4)], false );
-	        		Api.Connect(brick2x2part, 5, plate4x4part, r.Next(0, 16));
+	        		Api.Connect(brick2x2part, 5, plate4x4part, r.Next(0, 16), false);
 	        		
 				}
 			}

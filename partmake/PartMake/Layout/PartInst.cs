@@ -185,6 +185,7 @@ namespace partmake
         public int grpId;
         public RigidBody body;
         public Matrix4x4 bodySubMat;
+        public List<OctTile> octTiles = new List<OctTile>();
 
         public Vector3 MinBounds { get { return Vector3.Transform(item.MinBounds, mat); } }
         public Vector3 MaxBounds { get { return Vector3.Transform(item.MaxBounds, mat); } }

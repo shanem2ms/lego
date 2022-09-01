@@ -27,10 +27,30 @@ namespace partmake
 
         public string ScriptName { get; set; }
 
-        string filepath;
-        public ScriptTextEditor(string path)
+        public string FilePath
         {
-            this.filepath = path;
+            get => (string)GetValue(FilePathProperty);
+            set
+            {
+                SetValue(FilePathProperty, value);
+            }
+        }
+
+        private static void OnFilePathChangedCallBack(
+        DependencyObject sender, DependencyPropertyChangedEventArgs e)
+        {
+            ScriptTextEditor c = sender as ScriptTextEditor;
+            if (c != null)
+            {
+                c.OnFilePathChanged();
+            }
+        }
+
+        public static readonly DependencyProperty FilePathProperty = DependencyProperty.Register(
+            "FilePath", typeof(string), typeof(ScriptTextEditor),
+            new PropertyMetadata(OnFilePathChangedCallBack));
+        public ScriptTextEditor()
+        {                        
             this.FontFamily = new FontFamily("Consolas");
             this.FontSize = 14;
             this.Foreground = new SolidColorBrush(Color.FromArgb(255, 200, 200, 200));
@@ -48,22 +68,30 @@ namespace partmake
             // in the constructor:
             this.TextArea.TextEntering += TextArea_TextEntering;
             this.TextArea.TextEntered += TextArea_TextEntered;
-            ScriptName = Path.GetFileName(path);
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("ScriptName"));
-            Load(this.filepath);
+            //Reload();
             SearchPanel.Install(this);
         }
 
+        protected virtual void OnFilePathChanged()
+        {
+            Reload();
+        }
+        void Reload()
+        {
+            ScriptName = Path.GetFileName(FilePath);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("ScriptName"));
+            Load(this.FilePath);
+        }
         public void SaveAs(string path)
         {
-            this.filepath = path;
+            this.FilePath = path;
             ScriptName = Path.GetFileName(path);
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("ScriptName"));
             Save(path);
         }
         public void Save()
         {
-            Save(this.filepath);
+            Save(this.FilePath);
         }
 
         private void TextArea_TextEntered(object sender, System.Windows.Input.TextCompositionEventArgs e)
@@ -137,7 +165,7 @@ namespace partmake
             public ErrorColorizer()
             {
             }
-            
+
 
             protected override void ColorizeLine(ICSharpCode.AvalonEdit.Document.DocumentLine line)
             {
