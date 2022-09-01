@@ -48,8 +48,14 @@ namespace partmake
             get { if (collisionPts == null) LoadCollision(); return collisionPts; }
         }
 
-        public Vector3 MinBounds => minBounds;
-        public Vector3 MaxBounds => maxBounds;
+        public Vector3 MinBounds
+        {
+            get { if (collisionPts == null) LoadCollision(); return minBounds; }
+        }
+        public Vector3 MaxBounds
+        {
+            get { if (collisionPts == null) LoadCollision(); return maxBounds; }
+        }
 
         System.Windows.Media.ImageSource thumb = null;
         public System.Windows.Media.ImageSource Thumb
@@ -179,6 +185,9 @@ namespace partmake
         public int grpId;
         public RigidBody body;
         public Matrix4x4 bodySubMat;
+
+        public Vector3 MinBounds { get { return Vector3.Transform(item.MinBounds, mat); } }
+        public Vector3 MaxBounds { get { return Vector3.Transform(item.MaxBounds, mat); } }
 
         public PartInst(Part item, int paletteIdx) :
             this(item, Matrix4x4.Identity, paletteIdx, false)

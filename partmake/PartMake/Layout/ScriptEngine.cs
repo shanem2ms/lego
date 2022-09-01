@@ -26,10 +26,19 @@ namespace partmake
 
             public static List<PartInst> Parts = null;
             public static List<System.Numerics.Vector4> Locators;
+            public static OctTree octTree = null;
+
+            public static void Reset()
+            {
+                script.Api.Parts = new List<PartInst>(); ;
+                script.Api.octTree = new OctTree();
+                script.Api.Locators = new List<System.Numerics.Vector4>();
+            }
 
             public static void AddUnconnected(PartInst pi)
             {
                 Parts.Add(pi);
+                octTree.AddPart(pi);
             }
             public static void Connect(PartInst pi1, int connectorIdx1, PartInst pi0,
                 int connectorIdx0)
@@ -120,9 +129,9 @@ namespace partmake
                     var type = assembly.GetType("partmake.script.Script");
                     var instance = assembly.CreateInstance("partmake.script.Script");
                     var meth = type.GetMember("Run").First() as MethodInfo;
-                    script.Api.Parts = new List<PartInst>(); ;
-                    script.Api.Locators = new List<System.Numerics.Vector4>();
+                    script.Api.Reset();
                     meth.Invoke(instance, new object[] {});
+                    script.Api.octTree.CheckCollisions();
                     lock (scene)
                     {
                         scene.Rebuild(script.Api.Parts, script.Api.Locators);

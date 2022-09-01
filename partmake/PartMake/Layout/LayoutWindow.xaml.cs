@@ -17,6 +17,7 @@ using System.Globalization;
 using System.IO;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
+using System.Numerics;
 
 namespace partmake
 {
@@ -96,6 +97,8 @@ namespace partmake
 
         private void Vis_OnPartPicked(object sender, LayoutVis.PartPickEvent e)
         {
+            WriteLine($"Part {e.part.item.Name}");
+            WriteLine($"Pos {Vector3.Transform(Vector3.Zero, e.part.mat)}");
         }
 
         void OpenFile(string name)
