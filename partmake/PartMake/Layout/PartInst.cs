@@ -39,12 +39,17 @@ namespace partmake
         public string Name { get; }
         string thumbnailPath;
         string meshPath;
-        float[][] collisionPts; 
+        Convex.Part[] collisionPts;
+        Vector3 minBounds = Vector3.Zero;
+        Vector3 maxBounds = Vector3.Zero;
 
-        public float[][]CollisionPts
+        public Convex.Part[]CollisionPts
         {
             get { if (collisionPts == null) LoadCollision(); return collisionPts; }
         }
+
+        public Vector3 MinBounds => minBounds;
+        public Vector3 MaxBounds => maxBounds;
 
         System.Windows.Media.ImageSource thumb = null;
         public System.Windows.Media.ImageSource Thumb
@@ -152,6 +157,13 @@ namespace partmake
                 Path.GetDirectoryName(meshPath),
                 Path.GetFileNameWithoutExtension(meshPath) + ".col");
             collisionPts = Convex.LoadCollision(colfile);
+            this.minBounds = collisionPts.First().min;
+            this.maxBounds = collisionPts.First().max;
+            foreach (var part in collisionPts)
+            {
+                this.minBounds = Vector3.Min(part.min, this.minBounds);
+                this.maxBounds = Vector3.Max(part.max, this.maxBounds);
+            }
         }
     }
 

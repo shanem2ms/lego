@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using System.IO;
+using FL = System.Numerics;
 
 namespace partmake
 {
@@ -335,18 +336,36 @@ namespace partmake
 
             [DllImport("EdgeIntersect.dll")]
             static extern void GetCollisionPartVertices(int partidx, IntPtr ptr);
-            public static float[][] LoadCollision(string name)
+            
+            [DllImport("EdgeIntersect.dll")]
+            static extern void GetCollisionPartBounds(int partidx, IntPtr ptr);
+            
+            public class Part
+            {
+                public float[] pts;
+                public FL.Vector3 min;
+                public FL.Vector3 max;
+            }
+            public static Part[] LoadCollision(string name)
             {
                 int parts = LoadCollisionMesh(name);
-                float[][] result = new float[parts][];
+                Part[] result = new Part[parts];
                 for (int partIdx = 0; partIdx < parts; ++partIdx)
                 {
                     int partVtxCount = GetCollisionPartVtxCount(partIdx);
                     IntPtr ptr = Marshal.AllocHGlobal(partVtxCount * sizeof(float) * 3);
                     GetCollisionPartVertices(partIdx, ptr);
-                    float[] vals = new float[partVtxCount * 3];
-                    Marshal.Copy(ptr, vals, 0, partVtxCount * 3);
-                    result[partIdx] = vals;
+                    Part p = new Part();
+                    p.pts = new float[partVtxCount * 3];
+                    Marshal.Copy(ptr, p.pts, 0, partVtxCount * 3);
+                    Marshal.FreeHGlobal(ptr);
+                    ptr = Marshal.AllocHGlobal(partVtxCount * sizeof(float) * 6);
+                    GetCollisionPartBounds(partIdx, ptr);
+                    p.min = Marshal.PtrToStructure<FL.Vector3>(ptr);
+                    ptr = IntPtr.Add(ptr, Marshal.SizeOf<FL.Vector3>());
+                    p.max = Marshal.PtrToStructure<FL.Vector3>(ptr);
+                    Marshal.FreeHGlobal(ptr);
+                    result[partIdx] = p;
                 }
                 return result;
             }

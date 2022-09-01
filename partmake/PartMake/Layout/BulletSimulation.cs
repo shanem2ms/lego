@@ -72,7 +72,7 @@ namespace partmake
                 var pts = part.item.CollisionPts;
                 for (int idx = 0; idx < pts.Length; idx++)
                 {
-                    ConvexHullShape cvx = new ConvexHullShape(pts[idx]);
+                    ConvexHullShape cvx = new ConvexHullShape(pts[idx].pts);
                     shape.AddChildShape(Utils.FromMat4(part.bodySubMat), cvx);
                 }
             }
@@ -233,7 +233,6 @@ namespace partmake
             get => debugDraw; set
             {
                 debugDraw = value;
-
             }
         }
 

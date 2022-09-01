@@ -15,7 +15,7 @@ namespace partmake
 
         public Scene()
         {
-            bulletSimulation.DebugDraw = DebugDrawModes.DrawConstraints;
+            bulletSimulation.DebugDraw = DebugDrawModes.DrawWireframe;
         }
         public List<PartInst> PartList { get; set; } = new List<PartInst>();
         public List<Vector4> DebugLocators { get; set; } = new List<Vector4>();

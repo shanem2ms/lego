@@ -440,20 +440,25 @@ namespace partmake
                     col = new Vector4(0, 0, 1, 1);
                     _cl.UpdateBuffer(_materialBuffer, 0, ref col);
                     _cl.DrawIndexed(_cubeIndexCount);
+                }
 
-                    /*
-                    Matrix4x4 cmat3 =
-                        Matrix4x4.CreateTranslation(new Vector3(0, 2.0f, 0)) *
-                        Matrix4x4.CreateScale(new Vector3(3, 3, 3)) *
-                        Matrix4x4.CreateFromQuaternion(q) *
-                        Matrix4x4.CreateTranslation(pos) * cm;
-                    _cl.UpdateBuffer(_worldBuffer, 0, ref cmat3);
-                    Vector4 col = new Vector4(1, 1, 0, 1);
+                _cl.SetVertexBuffer(0, _cubeVertexBuffer);
+                _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+
+                //for (int idx = 0; idx < part.item.CollisionPts.Length; ++idx)
+                {
+                    //Vector3 vmin = part.item.CollisionPts[idx].min;
+                    //Vector3 vmax = part.item.CollisionPts[idx].max;
+                    Vector3 vmin = part.item.MinBounds;
+                    Vector3 vmax = part.item.MaxBounds;
+                    Vector3 midpt = (vmin + vmax) * 0.5f;
+                    Vector3 scl = (vmax - vmin);
+                    Matrix4x4 cmatBounds = Matrix4x4.CreateScale(scl) *
+                        Matrix4x4.CreateTranslation(midpt) * cm;
+                    _cl.UpdateBuffer(_worldBuffer, 0, ref cmatBounds);
+                    Vector4 col = new Vector4(0, 1, 1, 0.5f);
                     _cl.UpdateBuffer(_materialBuffer, 0, ref col);
-                    _cl.SetVertexBuffer(0, _isoVertexBuffer);
-                    _cl.SetIndexBuffer(_isoIndexBuffer, IndexFormat.UInt32);
-                    _cl.DrawIndexed(_isoIndexCount);*/
-
+                    _cl.DrawIndexed(_cubeIndexCount);
                 }
             }
             if (scene.DebugLocators.Count > 0)
@@ -487,6 +492,7 @@ namespace partmake
 
         public void BulletDebugDrawLine(Vector3 from, Vector3 to, Vector3 color)
         {
+            float lineWidth = 0.5f;
             float len = (from - to).Length();
             Vector3 dx = Vector3.Normalize(to - from);
             Vector3 dir2 = MathF.Abs(dx.X) > MathF.Abs(dx.Y) ? Vector3.UnitY : Vector3.UnitX;
@@ -499,7 +505,7 @@ namespace partmake
                 0, 0, 0, 1);
 
             Matrix4x4 mat =
-                    Matrix4x4.CreateScale(len, 1, 1) *
+                    Matrix4x4.CreateScale(len, lineWidth, lineWidth) *
                     rotmat *
                     Matrix4x4.CreateTranslation((from + to) * 0.5f) *
                     Matrix4x4.CreateScale(worldScale);

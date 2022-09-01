@@ -94,6 +94,24 @@ struct Vec3d
     double z;
 };
 
+inline Vec3d Vec3dMin(const Vec3d& lhs, const Vec3d& rhs)
+{
+    return Vec3d {
+        min(lhs.x, rhs.x),
+        min(lhs.y, rhs.y),
+        min(lhs.z, rhs.z)
+    };
+}
+
+inline Vec3d Vec3dMax(const Vec3d& lhs, const Vec3d& rhs)
+{
+    return Vec3d{
+        max(lhs.x, rhs.x),
+        max(lhs.y, rhs.y),
+        max(lhs.z, rhs.z)
+    };
+}
+
 static std::vector<std::vector<Vec3d>> meshes;
 
 extern "C" __declspec(dllexport) int GetCollisionPartVtxCount(int idx)
@@ -110,6 +128,25 @@ extern "C" __declspec(dllexport) void GetCollisionPartVertices(int idx, float* o
         *outPtr++ = (float)v.y;
         *outPtr++ = (float)v.z;
     }
+}
+
+
+extern "C" __declspec(dllexport) void GetCollisionPartBounds(int idx, float* outPtr)
+{
+    const std::vector<Vec3d>& vecs = meshes[idx];
+    Vec3d vmin = vecs[0],
+        vmax = vecs[0];
+    for (const Vec3d& v : vecs)
+    {
+        vmin = Vec3dMin(vmin, v);
+        vmax = Vec3dMax(vmax, v);
+    }
+    outPtr[0] = (float)vmin.x;
+    outPtr[1] = (float)vmin.y;
+    outPtr[2] = (float)vmin.z;
+    outPtr[3] = (float)vmax.x;
+    outPtr[4] = (float)vmax.y;
+    outPtr[5] = (float)vmax.z;
 }
 
 extern "C" __declspec(dllexport) int LoadCollisionMesh(const char *filename)

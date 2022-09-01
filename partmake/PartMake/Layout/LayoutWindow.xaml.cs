@@ -48,6 +48,7 @@ namespace partmake
             }
         }
 
+        bool bulletDebugDrawEnabled = false;
         void WriteLine(string line)
         {
             OutputTB.AppendText(line + "\n");
@@ -83,7 +84,8 @@ namespace partmake
 
         void DrawBulletDebug()
         {
-            //scene.DrawBulletDebug();
+            if (bulletDebugDrawEnabled)
+                scene.DrawBulletDebug();
         }
 
         private void Vis_OnConnectorPicked(object sender, LayoutVis.PartPickEvent e)
@@ -198,6 +200,12 @@ namespace partmake
             }
             RunScript();
         }
+
+        private void BulletDebug_Click(object sender, RoutedEventArgs e)
+        {
+            bulletDebugDrawEnabled = !bulletDebugDrawEnabled;
+        }
+
 
         void RunScript()
         {

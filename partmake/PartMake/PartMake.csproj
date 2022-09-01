@@ -24,7 +24,6 @@
 
   <ItemGroup>
     <None Remove="CSharp-Mode.xshd" />
-    <None Remove="floorgrid.glsl" />
     <None Remove="fs.glsl" />
     <None Remove="pick.glsl" />
     <None Remove="raycast.glsl" />
@@ -33,7 +32,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="floorgrid.glsl" />
     <EmbeddedResource Include="pick.glsl" />
     <EmbeddedResource Include="raycast.glsl" />
     <EmbeddedResource Include="fs.glsl" />

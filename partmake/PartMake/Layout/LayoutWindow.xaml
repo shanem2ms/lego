@@ -100,7 +100,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Height="48">
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Height="32">
                     <Button Click="RunButton_Click" >
                         <fa:ImageAwesome Icon="Play" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" />
                     </Button>
@@ -109,6 +109,9 @@
                     </Button>
                     <Button Click="LoadButton_Click">
                         <fa:ImageAwesome Icon="File" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" />
+                    </Button>
+                    <Button Click="BulletDebug_Click">
+                        <fa:ImageAwesome Icon="ChainBroken" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" />
                     </Button>
                 </StackPanel>
                 <Grid Grid.Row="1">
