@@ -28,6 +28,8 @@ namespace partmake
     {
         public IEnumerable<string> CacheGroups { get => LDrawFolders.LDrawGroups; }
         ScriptEngine scriptEngine;
+
+        public ScriptEngine Engine => scriptEngine;
         public string FilterText { get; set; }
 
         public IEnumerable<Palette.Item> Colors { get => Palette.SortedItems; }
@@ -38,6 +40,8 @@ namespace partmake
         public List<Part> FilteredItems { get; set; }
 
         public ObservableCollection<string> OpenEditors { get; } = new ObservableCollection<string>();
+
+        public event EventHandler<bool> BeforeScriptRun;
 
         Scene scene = new Scene();
         public string SelectedType
@@ -201,6 +205,7 @@ namespace partmake
 
         private void RunButton_Click(object sender, RoutedEventArgs e)
         {
+            BeforeScriptRun?.Invoke(this, true);
             /*
             foreach (var editor in OpenEditors)
             {
@@ -208,13 +213,16 @@ namespace partmake
             }*/
             RunScript();
         }
-
+        private void CloseTab_Click(object sender, RoutedEventArgs e)
+        {
+            string path = (sender as Button).DataContext as string;
+            this.OpenEditors.Remove(path);
+        }
         private void BulletDebug_Click(object sender, RoutedEventArgs e)
         {
             bulletDebugDrawEnabled = !bulletDebugDrawEnabled;
         }
-
-
+        
         void RunScript()
         {
             try
@@ -245,7 +253,42 @@ namespace partmake
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
+            
+        }
+    }
 
+    public static class ChildWindHelper
+    {
+        public static void GetChildrenOfType<T>(this DependencyObject depObj, List<T> children)
+            where T : DependencyObject
+        {
+            if (depObj == null) return;
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+            {
+                var child = VisualTreeHelper.GetChild(depObj, i);
+
+                if (child is T)
+                    children.Add(child as T);
+                else
+                    GetChildrenOfType<T>(child, children);
+            }
+        }
+
+        public static T FindParent<T>(this DependencyObject child) where T : DependencyObject
+        {
+            //get parent item
+            DependencyObject parentObject = VisualTreeHelper.GetParent(child);
+
+            //we've reached the end of the tree
+            if (parentObject == null) return null;
+
+            //check if the parent matches the type we're looking for
+            T parent = parentObject as T;
+            if (parent != null)
+                return parent;
+            else
+                return FindParent<T>(parentObject);
         }
     }
 

@@ -18,7 +18,7 @@ namespace partmake
             public byte g;
             public byte b;
             public byte a;
-            public int h;
+            public float h;
             public float s;
             public float l;
             public string mat;
@@ -102,13 +102,20 @@ namespace partmake
                 int isbwr = (b.s < 0.1f) ? 1 : 0;
                 int r = isbwr - isbwl;
                 if (r != 0) return r;
-                return b.h - a.h;
+                return (int)((b.h - a.h) * 360.0f);
                     });  
         }
 
     
         public struct RGB
         {
+            public RGB(byte r, byte g, byte b)
+            {
+                R = r;
+                G = g;
+                B = b;
+            }
+
             public byte R;
             public byte G;
             public byte B;
@@ -116,9 +123,29 @@ namespace partmake
 
         public struct HSL
         {
-            public int H;
+            public float H;
             public float S;
             public float L;
+        }
+
+        public static int GetClosestMatch(RGB rgb)
+        {
+            HSL hsl = RGBToHSL(rgb);
+            float mindist = 1e10f;
+            int minitem = -1;
+            foreach (var kv in AllItems)
+            {
+                float dist = (kv.Value.h - hsl.H) * (kv.Value.h - hsl.H) +
+                    (kv.Value.s - hsl.S) * (kv.Value.s - hsl.S) +
+                    (kv.Value.l - hsl.L) * (kv.Value.l - hsl.L);
+                if (dist < mindist)
+                {
+                    mindist = dist;
+                    minitem = kv.Key;
+                }
+            }
+
+            return minitem;
         }
         public static HSL RGBToHSL(RGB rgb)
         {

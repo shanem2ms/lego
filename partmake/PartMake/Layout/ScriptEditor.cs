@@ -21,10 +21,10 @@ namespace partmake
     public class ScriptTextEditor : TextEditor, INotifyPropertyChanged
     {
         CompletionWindow completionWindow;
-        public ScriptEngine Engine;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
+        LayoutWindow parentWnd;
         public string ScriptName { get; set; }
 
         public string FilePath
@@ -33,6 +33,14 @@ namespace partmake
             set
             {
                 SetValue(FilePathProperty, value);
+            }
+        }
+        public ScriptEngine Engine
+        {
+            get => (ScriptEngine)GetValue(EngineProperty);
+            set
+            {
+                SetValue(EngineProperty, value);
             }
         }
 
@@ -46,9 +54,23 @@ namespace partmake
             }
         }
 
+        private static void OnEngineChangedCallBack(
+        DependencyObject sender, DependencyPropertyChangedEventArgs e)
+        {
+            ScriptTextEditor c = sender as ScriptTextEditor;
+            if (c != null)
+            {
+                c.OnEngineChanged();
+            }
+        }
+
         public static readonly DependencyProperty FilePathProperty = DependencyProperty.Register(
             "FilePath", typeof(string), typeof(ScriptTextEditor),
             new PropertyMetadata(OnFilePathChangedCallBack));
+        public static readonly DependencyProperty EngineProperty = DependencyProperty.Register(
+            "Engine", typeof(ScriptEngine), typeof(ScriptTextEditor),
+            new PropertyMetadata(OnEngineChangedCallBack));
+
         public ScriptTextEditor()
         {                        
             this.FontFamily = new FontFamily("Consolas");
@@ -76,6 +98,21 @@ namespace partmake
         {
             Reload();
         }
+        protected virtual void OnEngineChanged()
+        {
+            this.parentWnd = this.FindParent<LayoutWindow>();
+            this.parentWnd.BeforeScriptRun += ParentWnd_BeforeScriptRun;
+            if (Engine != null)
+            {
+                
+            }
+        }
+
+        private void ParentWnd_BeforeScriptRun(object sender, bool e)
+        {
+            this.Save();
+        }
+
         void Reload()
         {
             ScriptName = Path.GetFileName(FilePath);
