@@ -34,6 +34,7 @@ namespace partmake
 
         // 0\s!COLOUR\s(\w+)\s+CODE\s+(\d+)\s+VALUE\s#([\dA-F]+)\s+EDGE\s+#([\dA-F]+)\s+((ALPHA)\s+(\d+))?(\w+)?
         static public List<Item> SortedItems = new List<Item>();
+        static public List<Item> SolidColors = new List<Item>();
         public static void LoadColors(string rootFolder)
         {
             string lDConfigPath = Path.Combine(rootFolder, "LDConfig.ldr");
@@ -103,7 +104,9 @@ namespace partmake
                 int r = isbwr - isbwl;
                 if (r != 0) return r;
                 return (int)((b.h - a.h) * 360.0f);
-                    });  
+                    });
+
+            SolidColors = AllItems.Values.Where(a => a.mat.Length == 0 && a.a == 255).ToList();
         }
 
     
@@ -130,18 +133,23 @@ namespace partmake
 
         public static int GetClosestMatch(RGB rgb)
         {
+            return GetClosestMatch(rgb, Vector3.One);
+        }
+        public static int GetClosestMatch(RGB rgb,
+            Vector3 hslWeights)
+        {
             HSL hsl = RGBToHSL(rgb);
             float mindist = 1e10f;
-            int minitem = -1;
-            foreach (var kv in AllItems)
+            int minitem = -1;            
+            foreach (var c in SolidColors)
             {
-                float dist = (kv.Value.h - hsl.H) * (kv.Value.h - hsl.H) +
-                    (kv.Value.s - hsl.S) * (kv.Value.s - hsl.S) +
-                    (kv.Value.l - hsl.L) * (kv.Value.l - hsl.L);
+                float dist = (c.h - hsl.H) * (c.h - hsl.H) * hslWeights.X +
+                    (c.s - hsl.S) * (c.s - hsl.S) * hslWeights.Y +
+                    (c.l - hsl.L) * (c.l - hsl.L) * hslWeights.Z;
                 if (dist < mindist)
                 {
                     mindist = dist;
-                    minitem = kv.Key;
+                    minitem = c.index;
                 }
             }
 
@@ -190,7 +198,7 @@ namespace partmake
                 if (hue > 1)
                     hue -= 1;
 
-                hsl.H = (int)(hue * 360);
+                hsl.H = hue;
             }
 
             return hsl;

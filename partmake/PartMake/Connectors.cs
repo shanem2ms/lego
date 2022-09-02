@@ -28,7 +28,8 @@ namespace partmake
         MFigRHandGrip = 14,
         MFigRHipStud = 15,
         Stem = 16,
-        StemHole = 17
+        StemHole = 17,
+        Pin = 18
     }
     
 
@@ -583,8 +584,14 @@ namespace partmake
                             transform,
                             ConnectorType.MFigTorsoNeck));
                     }
+                    if (Eps.Eq2(scale.X, 4) &&
+                        Eps.Eq2(scale.Z, 4))
+                    {
+                        connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(0, 0.5, 0) * transform,
+                            ConnectorType.Pin));
+                    }
+                    }
                 }
-            }
             else if (file.Name == "knob1")
             {
                 connectors.Add(CreateBaseConnector(file, Matrix4x4.CreateTranslation(-2, 0, 0) * 

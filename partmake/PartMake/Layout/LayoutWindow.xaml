@@ -126,7 +126,7 @@
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
                                     <Grid MaxWidth="100" Margin="0,0,10,0">
-                                        <TextBlock HorizontalAlignment="Right" Text="{Binding }" />
+                                        <TextBlock HorizontalAlignment="Right" Text="{Binding FilePath}" />
                                     </Grid>
                                     <Button Content="x" Click="CloseTab_Click" />
                                 </StackPanel>
@@ -134,7 +134,7 @@
                         </TabControl.ItemTemplate>
                         <TabControl.ContentTemplate>
                             <DataTemplate>
-                                <local:ScriptTextEditor FilePath="{Binding }" Engine="{Binding ElementName=TopLayoutWnd, Path=Engine}"/>
+                                <ContentControl Content="{Binding Control}" />
                             </DataTemplate>
                         </TabControl.ContentTemplate>
                     </TabControl>

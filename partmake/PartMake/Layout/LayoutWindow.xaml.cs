@@ -18,6 +18,7 @@ using System.IO;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.Numerics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace partmake
 {
@@ -39,9 +40,7 @@ namespace partmake
 
         public List<Part> FilteredItems { get; set; }
 
-        public ObservableCollection<string> OpenEditors { get; } = new ObservableCollection<string>();
-
-        public event EventHandler<bool> BeforeScriptRun;
+        public ObservableCollection<Editor> OpenEditors { get; } = new ObservableCollection<Editor>();
 
         Scene scene = new Scene();
         public string SelectedType
@@ -111,11 +110,12 @@ namespace partmake
 
         void OpenFile(string name)
         {
-            string filepath = 
+            string filepath =
                 System.IO.Path.Combine(scriptFolder, name);
             //ScriptTextEditor ScriptTB = new ScriptTextEditor(filepath);
             //ScriptTB.Engine = scriptEngine;
-            OpenEditors.Add(filepath);
+            OpenEditors.Add(new Editor() { FilePath = filepath,
+                Control = new ScriptTextEditor(filepath, this.Engine)});
         }
         void RefrehScriptsFolder()
         {
@@ -204,19 +204,17 @@ namespace partmake
         }
 
         private void RunButton_Click(object sender, RoutedEventArgs e)
-        {
-            BeforeScriptRun?.Invoke(this, true);
-            /*
+        {          
             foreach (var editor in OpenEditors)
             {
-                editor.Save();
-            }*/
+                editor.Control.Save();
+            }
             RunScript();
         }
         private void CloseTab_Click(object sender, RoutedEventArgs e)
         {
             string path = (sender as Button).DataContext as string;
-            this.OpenEditors.Remove(path);
+            this.OpenEditors.Remove(new Editor() { FilePath = path});
         }
         private void BulletDebug_Click(object sender, RoutedEventArgs e)
         {
@@ -257,6 +255,20 @@ namespace partmake
         }
     }
 
+    public class Editor : IEquatable<Editor>
+    {
+        public string FilePath { get; set; }
+        public ScriptTextEditor Control { get; set; }
+        public bool Equals(Editor other)
+        {
+            return FilePath.Equals(other.FilePath);
+        }
+
+        public int GetHashCode([DisallowNull] Editor obj)
+        {
+            return obj.FilePath.GetHashCode();
+        }
+    }
     public static class ChildWindHelper
     {
         public static void GetChildrenOfType<T>(this DependencyObject depObj, List<T> children)

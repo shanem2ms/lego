@@ -36,12 +36,16 @@ namespace partmake.script
         	{   
 	        	for (int j = -10; j < 10; j++)
 	        	{
+	        		int rd = (i + 10) * 12;
+	        		int grn = (j + 10) * 12;
 					Matrix4x4 mat = Matrix4x4.CreateTranslation(new Vector3(j*80-10, 0, i*80-10));      
+	        		int c =Palette.GetClosestMatch(new Palette.RGB((byte)rd, (byte)grn, 10));
 					var plate4x4part = new PartInst(plate4x4,
-						mat, colors[r.Next(0,4)], true );
+						mat, c, true );
 	        		Api.AddUnconnected(plate4x4part);
+	        		c =Palette.GetClosestMatch(new Palette.RGB((byte)rd, (byte)grn, 50));
 					var brick2x2part = new PartInst(brick2x2,
-						colors[r.Next(0,4)], false );
+						c, false );
 	        		Api.Connect(brick2x2part, 5, plate4x4part, r.Next(0, 16), false);
 	        		
 				}

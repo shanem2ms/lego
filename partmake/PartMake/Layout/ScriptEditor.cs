@@ -24,55 +24,15 @@ namespace partmake
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        LayoutWindow parentWnd;
         public string ScriptName { get; set; }
 
-        public string FilePath
-        {
-            get => (string)GetValue(FilePathProperty);
-            set
-            {
-                SetValue(FilePathProperty, value);
-            }
-        }
-        public ScriptEngine Engine
-        {
-            get => (ScriptEngine)GetValue(EngineProperty);
-            set
-            {
-                SetValue(EngineProperty, value);
-            }
-        }
+        public string FilePath { get; set; }
+        public ScriptEngine Engine { get; set; }
 
-        private static void OnFilePathChangedCallBack(
-        DependencyObject sender, DependencyPropertyChangedEventArgs e)
+        public ScriptTextEditor(string path, ScriptEngine engine)
         {
-            ScriptTextEditor c = sender as ScriptTextEditor;
-            if (c != null)
-            {
-                c.OnFilePathChanged();
-            }
-        }
-
-        private static void OnEngineChangedCallBack(
-        DependencyObject sender, DependencyPropertyChangedEventArgs e)
-        {
-            ScriptTextEditor c = sender as ScriptTextEditor;
-            if (c != null)
-            {
-                c.OnEngineChanged();
-            }
-        }
-
-        public static readonly DependencyProperty FilePathProperty = DependencyProperty.Register(
-            "FilePath", typeof(string), typeof(ScriptTextEditor),
-            new PropertyMetadata(OnFilePathChangedCallBack));
-        public static readonly DependencyProperty EngineProperty = DependencyProperty.Register(
-            "Engine", typeof(ScriptEngine), typeof(ScriptTextEditor),
-            new PropertyMetadata(OnEngineChangedCallBack));
-
-        public ScriptTextEditor()
-        {                        
+            FilePath = path;
+            Engine = engine;
             this.FontFamily = new FontFamily("Consolas");
             this.FontSize = 14;
             this.Foreground = new SolidColorBrush(Color.FromArgb(255, 200, 200, 200));
@@ -92,21 +52,9 @@ namespace partmake
             this.TextArea.TextEntered += TextArea_TextEntered;
             //Reload();
             SearchPanel.Install(this);
-        }
-
-        protected virtual void OnFilePathChanged()
-        {
             Reload();
         }
-        protected virtual void OnEngineChanged()
-        {
-            this.parentWnd = this.FindParent<LayoutWindow>();
-            this.parentWnd.BeforeScriptRun += ParentWnd_BeforeScriptRun;
-            if (Engine != null)
-            {
-                
-            }
-        }
+
 
         private void ParentWnd_BeforeScriptRun(object sender, bool e)
         {
