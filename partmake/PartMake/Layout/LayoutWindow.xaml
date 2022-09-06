@@ -152,7 +152,13 @@
                                 <StackPanel Orientation="Horizontal">
                                     <Button Content="New" />
                                 </StackPanel>
-                                <ListBox Grid.Row="1" ItemsSource="{Binding Path=ScriptFiles}"/>
+                                <ListBox Grid.Row="1" ItemsSource="{Binding Path=ScriptFiles}" >
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding }" />
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
                             </Grid>
                         </TabItem>
                     </TabControl>
