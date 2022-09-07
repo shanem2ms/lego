@@ -121,7 +121,7 @@ namespace partmake
         {
             DirectoryInfo di = new DirectoryInfo(scriptFolder);
             this.ScriptFiles = 
-                di.GetFiles("*.cs").Select(fi => fi.Name).ToList();
+                di.GetFiles("*.*").Select(fi => fi.Name).ToList();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("ScriptFiles"));
         }
 
@@ -133,12 +133,12 @@ namespace partmake
 
         private void _RenderControl_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
-            //partVis.OnKeyDown(e);
+            scene.OnKeyDown(e);
         }
 
         private void _RenderControl_KeyUp(object sender, System.Windows.Input.KeyEventArgs e)
         {
-            //partVis.OnKeyUp(e);
+            scene.OnKeyUp(e);
         }
 
         private void TextBox_LostFocus(object sender, RoutedEventArgs e)
@@ -225,7 +225,13 @@ namespace partmake
         {
             try
             {
-                List<string> allFiles = this.ScriptFiles.Select(fname => File.ReadAllText(Path.Combine(scriptFolder, fname))).ToList();
+                List<Source> allFiles = this.ScriptFiles.Where(f => f.EndsWith(".cs")).
+                    Select(fname =>
+                    new Source()
+                    {
+                        code = File.ReadAllText(Path.Combine(scriptFolder, fname)),
+                        filepath = fname
+                    }).ToList();
                 scriptEngine.Run(allFiles, scene, _LayoutControl.Vis);
             }
             catch(Exception e)

@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 using System.Numerics;
 using BulletSharp;
 using Amazon.S3.Model;
+using BulletSharp.SoftBody;
+using partmake.Topology;
+using static partmake.Topology.Convex;
 
 namespace partmake
 {
@@ -15,17 +18,17 @@ namespace partmake
 
         public Scene()
         {
-            bulletSimulation.DebugDraw = DebugDrawModes.DrawWireframe;
+            bulletSimulation.DebugDraw = DebugDrawModes.DrawConstraints;
         }
         public List<PartInst> PartList { get; set; } = new List<PartInst>();
         public List<Vector4> DebugLocators { get; set; } = new List<Vector4>();
 
-        public BulletSimulation.DebugDrawLineDel DebugDrawLine { get => bulletSimulation.DebugDrawLine;
-            set => bulletSimulation.DebugDrawLine = value; }
+        public PartInst PlayerPart { get; set; } = null;
 
-        public void StepSimulation()
+        public BulletSimulation.DebugDrawLineDel DebugDrawLine
         {
-            bulletSimulation.Step();
+            get => bulletSimulation.DebugDrawLine;
+            set => bulletSimulation.DebugDrawLine = value;
         }
 
         public void DrawBulletDebug()
@@ -33,20 +36,22 @@ namespace partmake
             bulletSimulation.DrawDebug();
         }
 
-        public void Rebuild(List<PartInst> newPartList, List<Vector4> newLocators)
+        public void Rebuild(List<PartInst> newPartList, List<Vector4> newLocators,
+            PartInst playerPart)
         {
-            PartList.Clear();
-            PartList.AddRange(newPartList);
+            this.PartList.Clear();
+            this.PartList.AddRange(newPartList);
+            this.PlayerPart = playerPart;
             var dynamicConnections = ProcessConnections();
-            DebugLocators.Clear();
-            DebugLocators.AddRange(newLocators);
-            bulletSimulation.Clear();
-            PartList.Sort((p1, p2) => p1.grpId.CompareTo(p2.grpId));
+            this.DebugLocators.Clear();
+            this.DebugLocators.AddRange(newLocators);
+            this.bulletSimulation.Clear();
+            this.PartList.Sort((p1, p2) => p1.grpId.CompareTo(p2.grpId));
             var groups = PartList.GroupBy(p => p.grpId);
             foreach (var partGroup in groups)
             {
                 RigidBody rb = new RigidBody(partGroup);
-                bulletSimulation.AddObj(rb);
+                this.bulletSimulation.AddObj(rb);
             }
 
             foreach (var connection in dynamicConnections)
@@ -61,7 +66,7 @@ namespace partmake
                     connection.Connector1.DirY, connection.p1.bodySubMat);
                 Hinge pc = new Hinge(connection.p0.body,
                     c0Pos, c0Dir, connection.p1.body, c1Pos, c1Dir);
-                bulletSimulation.AddConst(pc);
+                this.bulletSimulation.AddConst(pc);
             }
         }
 
@@ -73,7 +78,7 @@ namespace partmake
             }
 
             int curGroup = 1;
-            
+
             var anchoredGroups = PartList.GroupBy(p => p.anchored);
             List<ConnectionInst> connections = new List<ConnectionInst>();
             foreach (var anchoredGroup in anchoredGroups)
@@ -113,5 +118,62 @@ namespace partmake
                 }
             }
         }
+
+        bool fwdPressed = false;
+        bool backPressed = false;
+        bool leftPressed = false;
+        bool rightPressed = false;
+        public void GameLoop()
+        {
+            if (PlayerPart != null)
+            {
+                if (fwdPressed)
+                {
+                    this.PlayerPart.body.Body.Friction = 0;
+                    this.PlayerPart.body.Body.ApplyCentralImpulse(new BulletSharp.Math.Vector3(2000, 2000, 0));
+                    this.PlayerPart.body.Body.Activate();
+                }
+            }
+            bulletSimulation.Step();            
+        }
+
+        public void OnKeyDown(System.Windows.Input.KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case System.Windows.Input.Key.W:
+                    fwdPressed = true;
+                    break;
+                case System.Windows.Input.Key.S:
+                    backPressed = true;
+                    break;
+                case System.Windows.Input.Key.A:
+                    leftPressed = true;
+                    break;
+                case System.Windows.Input.Key.D:
+                    rightPressed = true;
+                    break;
+            }
+        }
+
+        public void OnKeyUp(System.Windows.Input.KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case System.Windows.Input.Key.W:
+                    fwdPressed = false;
+                    break;
+                case System.Windows.Input.Key.S:
+                    backPressed = false;
+                    break;
+                case System.Windows.Input.Key.A:
+                    leftPressed = false;
+                    break;
+                case System.Windows.Input.Key.D:
+                    rightPressed = false;
+                    break;
+            }
+        }
+
     }
 }

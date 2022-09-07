@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Windows;
+using partmake.script;
 
 namespace partmake
 {
@@ -27,12 +28,14 @@ namespace partmake
             public static List<PartInst> Parts = null;
             public static List<System.Numerics.Vector4> Locators;
             public static OctTree octTree = null;
-
+            public static PartInst playerPart = null;
+            public static Veldrid.ResourceFactory ResourceFactory = null;
             public static void Reset()
             {
                 script.Api.Parts = new List<PartInst>(); ;
                 script.Api.octTree = new OctTree();
                 script.Api.Locators = new List<System.Numerics.Vector4>();
+                script.Api.playerPart = null;
             }
             
             public static void AddUnconnected(PartInst pi)
@@ -64,21 +67,31 @@ namespace partmake
                 octTree.AddPart(pi1);
                 return true;
             }
+
+            public static void SetPlayerPart(PartInst piPlayer)
+            {
+                playerPart = piPlayer;
+            }
         }
+    }
+    public class Source
+    {
+        public string filepath;
+        public string code;
     }
     public class ScriptEngine
     {
         static Action<string> Write = (string? message) => { System.Diagnostics.Debug.WriteLine(message); };
 
-        MetadataReference[] references;
-
-        CSharpCompilation Compile(List<string> sources)
+        MetadataReference[] references;        
+        CSharpCompilation Compile(List<Source> sources)
         {            
             List<SyntaxTree> syntaxTrees = new List<SyntaxTree>();
-            foreach (string src in sources)
+            foreach (Source src in sources)
             {
-                syntaxTrees.Add(
-                    CSharpSyntaxTree.ParseText(src));
+                SyntaxTree tree = CSharpSyntaxTree.ParseText(src.code).
+                    WithFilePath(src.filepath);
+                syntaxTrees.Add(tree);
             }
 
 
@@ -106,7 +119,7 @@ namespace partmake
             return compilation;
         }
 
-        public void Run(List<string> codeToCompile, Scene scene, LayoutVis vis)
+        public void Run(List<Source> codeToCompile, Scene scene, LayoutVis vis)
         {
             using (var ms = new MemoryStream())
             {
@@ -138,7 +151,8 @@ namespace partmake
                     script.Api.octTree.CheckCollisions();
                     lock (scene)
                     {
-                        scene.Rebuild(script.Api.Parts, script.Api.Locators);
+                        scene.Rebuild(script.Api.Parts, script.Api.Locators,
+                            Api.playerPart);
                     }
                 }
             }

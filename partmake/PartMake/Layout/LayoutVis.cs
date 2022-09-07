@@ -118,7 +118,7 @@ namespace partmake
                     lookDir = mouseDownLookDir + (new Vector2(X, Y) - lMouseDownPt) * 0.01f;
                 }
             }
-            else if ((mouseDown & 1) != 0)
+            else if ((mouseDown & 4) != 0)
             {
                 float tscale = 0.01f;
                 cameraPos = mouseDownCameraPos - new Vector3(-X + lMouseDownPt.X, Y - lMouseDownPt.Y, 0) * tscale;
@@ -127,6 +127,7 @@ namespace partmake
 
         protected unsafe override void CreateResources(ResourceFactory factory)
         {
+            script.Api.ResourceFactory = factory;
             _factory = factory;
             _projectionBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _viewBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
@@ -329,7 +330,7 @@ namespace partmake
         float worldScale = 0.0025f;
         protected override void Draw(float deltaSeconds)
         {
-            scene.StepSimulation();
+            scene.GameLoop();
             _cl.Begin();
 
             Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(

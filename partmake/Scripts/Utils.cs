@@ -30,7 +30,8 @@ namespace partmake.script
     		Api.Connect(rightlegpart, 1, hippart, 1, true);			
 				
 			var torsopart = new PartInst(torso, 4);
-    		Api.Connect(torsopart, 3, hippart, 3, true);			
+    		Api.Connect(torsopart, 3, hippart, 3, true);		
+    		Api.SetPlayerPart(torsopart);
     		
     		var leftarmpart = new PartInst(leftarm, 4, false);
     		Api.Connect(leftarmpart, 0, torsopart, 2, true);

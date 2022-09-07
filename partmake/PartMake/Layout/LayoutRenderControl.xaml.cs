@@ -19,6 +19,7 @@ namespace partmake
                
 
         public LayoutVis Vis => _veldridControl.LayoutVis;
+        public ResourceFactory ResourceFactory => _veldridControl.ResourceFactory;
 
         public LayoutRenderControl()
         {
@@ -50,6 +51,7 @@ namespace partmake
 
         LayoutVis _layoutVis = null;
         public LayoutVis LayoutVis => _layoutVis;
+        public ResourceFactory ResourceFactory => _device.ResourceFactory;
 
         public LayoutRendererControlChild()
         {
@@ -157,14 +159,14 @@ namespace partmake
 
         protected override void OnMouseDown(MouseEventArgs e)
         {
-            int btn = e.Button == MouseButtons.Left ? 0 : 1;
+            int btn = e.Button == MouseButtons.Left ? 0 : (e.Button == MouseButtons.Middle ? 2 : 1);
             LayoutVis.MouseDown(btn, e.X, e.Y, System.Windows.Forms.Control.ModifierKeys);
             base.OnMouseDown(e);
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
         {
-            int btn = e.Button == MouseButtons.Left ? 0 : 1;
+            int btn = e.Button == MouseButtons.Left ? 0 : (e.Button == MouseButtons.Middle ? 2 : 1);
             LayoutVis.MouseUp(btn, e.X, e.Y);
             base.OnMouseUp(e);
         }
