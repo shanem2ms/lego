@@ -71,6 +71,7 @@ namespace partmake
             script.Api.WriteLine = WriteLine;
 
             scriptFolder = System.IO.Path.Combine(LDrawFolders.Root, "Partmake\\Scripts");
+            script.Api.ScriptFolder = scriptFolder;
             FilteredItems = LDrawFolders.CacheItems.ToList();
             _LayoutControl.Vis.scene = scene;
             _LayoutControl.Vis.OnPartPicked += Vis_OnPartPicked;
@@ -213,8 +214,8 @@ namespace partmake
         }
         private void CloseTab_Click(object sender, RoutedEventArgs e)
         {
-            string path = (sender as Button).DataContext as string;
-            this.OpenEditors.Remove(new Editor() { FilePath = path});
+            Editor editor = (sender as Button).DataContext as Editor;
+            this.OpenEditors.Remove(editor);
         }
         private void BulletDebug_Click(object sender, RoutedEventArgs e)
         {

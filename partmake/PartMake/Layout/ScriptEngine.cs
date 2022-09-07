@@ -25,6 +25,7 @@ namespace partmake
                 return LDrawFolders.GetCacheItem(name);
             }
 
+            public static string ScriptFolder = null;
             public static List<PartInst> Parts = null;
             public static List<System.Numerics.Vector4> Locators;
             public static OctTree octTree = null;
