@@ -35,9 +35,13 @@ namespace partmake
         public string FilterText { get; set; }
 
         public IEnumerable<Palette.Item> Colors { get => Palette.SortedItems; }
-        public List<string> ScriptFiles { get; set; }
 
-        string scriptFolder;
+        ScriptFolder scriptFolder;
+
+        public IEnumerable<ScriptItem> ScriptFiles
+        {
+            get => scriptFolder?.Children;
+        }
 
         public List<Part> FilteredItems { get; set; }
 
@@ -75,8 +79,9 @@ namespace partmake
             scriptEngine = new ScriptEngine();
             script.Api.WriteLine = WriteLine;
 
-            scriptFolder = System.IO.Path.Combine(LDrawFolders.Root, "Partmake\\Scripts");
-            script.Api.ScriptFolder = scriptFolder;
+            scriptFolder = new ScriptFolder(null,
+                System.IO.Path.Combine(LDrawFolders.Root, "Partmake\\Scripts"));
+            script.Api.ScriptFolder = scriptFolder.Name;
             FilteredItems = LDrawFolders.CacheItems.ToList();
             _LayoutControl.Vis.scene = scene;
             _LayoutControl.Vis.OnPartPicked += Vis_OnPartPicked;
@@ -86,10 +91,6 @@ namespace partmake
             scene.DebugDrawLine =
                 _LayoutControl.Vis.BulletDebugDrawLine;
             RefrehScriptsFolder();
-            foreach (var file in ScriptFiles)
-            {
-                OpenFile(file);
-            }
         }
 
         private void Vis_AfterDeviceCreated(object sender, bool e)
@@ -122,17 +123,21 @@ namespace partmake
         void OpenFile(string name)
         {
             string filepath =
-                System.IO.Path.Combine(scriptFolder, name);
-            //ScriptTextEditor ScriptTB = new ScriptTextEditor(filepath);
-            //ScriptTB.Engine = scriptEngine;
-            OpenEditors.Add(new Editor() { FilePath = filepath,
-                Control = new ScriptTextEditor(filepath, this.Engine)});
+                System.IO.Path.Combine(scriptFolder.FullPath, name);
+            if (!OpenEditors.Any(f => f.FilePath == filepath))
+            {
+                OpenEditors.Add(new Editor()
+                {
+                    FilePath = filepath,
+                    Control = new ScriptTextEditor(filepath, this.Engine)
+                });
+            }
         }
         void RefrehScriptsFolder()
         {
-            DirectoryInfo di = new DirectoryInfo(scriptFolder);
-            this.ScriptFiles = 
-                di.GetFiles("*.*").Select(fi => fi.Name).ToList();
+            //DirectoryInfo di = new DirectoryInfo(scriptFolder);
+            //this.ScriptFiles = 
+            //    di.GetFiles("*.*").Select(fi => fi.Name).ToList();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("ScriptFiles"));
         }
 
@@ -225,6 +230,7 @@ namespace partmake
         private void SriptFile_Click(object sender, RoutedEventArgs e)
         {
             string name = (sender as Button).DataContext as string;
+            OpenFile(name);
         }
 
         private void CloseTab_Click(object sender, RoutedEventArgs e)
@@ -241,15 +247,8 @@ namespace partmake
         {
             try
             {
-                Clear();
-                List<Source> allFiles = this.ScriptFiles.Where(f => f.EndsWith(".cs")).
-                    Select(fname =>
-                    new Source()
-                    {
-                        code = File.ReadAllText(Path.Combine(scriptFolder, fname)),
-                        filepath = fname
-                    }).ToList();
-                scriptEngine.Run(allFiles, scene, _LayoutControl.Vis);
+                Clear();                
+                scriptEngine.Run(this.scriptFolder.GetSources(), scene, _LayoutControl.Vis);
             }
             catch(Exception e)
             {

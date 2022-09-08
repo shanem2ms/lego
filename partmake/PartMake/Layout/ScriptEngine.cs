@@ -31,12 +31,16 @@ namespace partmake
             public static OctTree octTree = null;
             public static PartInst playerPart = null;
             public static Veldrid.ResourceFactory ResourceFactory = null;
+            public static Veldrid.GraphicsDevice GraphicsDevice = null;
+            public static Veldrid.Swapchain Swapchain = null;
+            public static LayoutVis.CustomDrawDel CustomDraw = null;
             public static void Reset()
             {
                 script.Api.Parts = new List<PartInst>(); ;
                 script.Api.octTree = new OctTree();
                 script.Api.Locators = new List<System.Numerics.Vector4>();
                 script.Api.playerPart = null;
+                script.Api.CustomDraw = null;
             }
             
             public static void AddUnconnected(PartInst pi)

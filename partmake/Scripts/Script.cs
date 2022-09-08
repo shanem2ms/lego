@@ -10,10 +10,11 @@ namespace partmake.script
         public void Run()
         {            
     		Utils u = new Utils();
-    		//TerrainGen tg = new TerrainGen();
-    		//tg.Gen();
-    		u.Minifig(Matrix4x4.CreateTranslation(new Vector3(8, 68, 0)));
-    		Terrain();  
+    		TerrainGen tg = new TerrainGen();
+    		tg.Gen();
+    		Api.CustomDraw = tg.Draw;
+    		//u.Minifig(Matrix4x4.CreateTranslation(new Vector3(8, 68, 0)));
+    		//Terrain();  
         }
         
         void Rain()

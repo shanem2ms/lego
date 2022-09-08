@@ -84,6 +84,7 @@ namespace partmake
         public delegate void DrawDebugDel();
         public DrawDebugDel DrawDebug = null;
         public event EventHandler<bool> AfterDeviceCreated;
+        public delegate void CustomDrawDel(CommandList cl, ref Matrix4x4 viewMat, ref Matrix4x4 projMat);
 
         bool mouseMoved = false;
         public void MouseDown(int btn, int X, int Y, System.Windows.Forms.Keys keys)
@@ -129,6 +130,8 @@ namespace partmake
         protected unsafe override void CreateResources(ResourceFactory factory)
         {
             script.Api.ResourceFactory = factory;
+            script.Api.Swapchain = MainSwapchain;
+            script.Api.GraphicsDevice = GraphicsDevice;
             _factory = factory;
             _projectionBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _viewBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
@@ -145,21 +148,21 @@ namespace partmake
 
 
             {
-                var cubeVertices = GetCubeVertices();
+                var cubeVertices = primitives.Cube.GetVertices();
                 _cubeVertexBuffer = factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * cubeVertices.Length), BufferUsage.VertexBuffer));
                 GraphicsDevice.UpdateBuffer(_cubeVertexBuffer, 0, cubeVertices);
 
-                var cubeIndices = GetCubeIndices();
+                var cubeIndices = primitives.Cube.GetIndices();
                 _cubeIndexBuffer = factory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)cubeIndices.Length, BufferUsage.IndexBuffer));
                 _cubeIndexCount = (uint)cubeIndices.Length;
                 GraphicsDevice.UpdateBuffer(_cubeIndexBuffer, 0, cubeIndices);
             }
             {
-                var planeVertices = GetPlaneVertices();
+                var planeVertices = primitives.Plane.GetVertices();
                 _planeVertexBuffer = factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * planeVertices.Length), BufferUsage.VertexBuffer));
                 GraphicsDevice.UpdateBuffer(_planeVertexBuffer, 0, planeVertices);
 
-                var planeIndices = GetPlaneIndices();
+                var planeIndices = primitives.Plane.GetIndices();
                 _planeIndexBuffer = factory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)planeIndices.Length, BufferUsage.IndexBuffer));
                 _planeIndexCount = (uint)planeIndices.Length;
                 GraphicsDevice.UpdateBuffer(_planeIndexBuffer, 0, planeIndices);
@@ -483,6 +486,8 @@ namespace partmake
                 }
             }
 
+            if (script.Api.CustomDraw != null)
+                script.Api.CustomDraw(_cl, ref viewmat, ref projMat);
             if (DrawDebug != null)
                 DrawDebug();
             DrawPicking(ref viewmat, ref projMat);
@@ -651,87 +656,6 @@ namespace partmake
                 pickReady = -1;
             }
         }
-
-        private Vtx[] GetCubeVertices()
-        {
-            Vtx[] vertices = new Vtx[]
-            {
-                // Top
-                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector3(0,-1,0), new Vector2(0, 0)),
-                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector3(0,-1,0), new Vector2(1, 0)),
-                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f), new Vector3(0,-1,0), new Vector2(1, 1)),
-                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector3(0,-1,0), new Vector2(0, 1)),
-                // Bottom                                                             
-                new Vtx(new Vector3(-0.5f,-0.5f, +0.5f),  new Vector3(0, 1,0), new Vector2(0, 0)),
-                new Vtx(new Vector3(+0.5f,-0.5f, +0.5f),  new Vector3(0, 1,0), new Vector2(1, 0)),
-                new Vtx(new Vector3(+0.5f,-0.5f, -0.5f),  new Vector3(0, 1,0), new Vector2(1, 1)),
-                new Vtx(new Vector3(-0.5f,-0.5f, -0.5f),  new Vector3(0, 1,0), new Vector2(0, 1)),
-                // Left                                                               
-                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector3(-1,0,0), new Vector2(0, 0)),
-                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector3(-1,0,0),new Vector2(1, 0)),
-                new Vtx(new Vector3(-0.5f, -0.5f, +0.5f), new Vector3(-1,0,0),new Vector2(1, 1)),
-                new Vtx(new Vector3(-0.5f, -0.5f, -0.5f), new Vector3(-1,0,0),new Vector2(0, 1)),
-                // Right                                                              
-                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f),new Vector3(1,0,0), new Vector2(0, 0)),
-                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector3(1,0,0),new Vector2(1, 0)),
-                new Vtx(new Vector3(+0.5f, -0.5f, -0.5f),new Vector3(1,0,0), new Vector2(1, 1)),
-                new Vtx(new Vector3(+0.5f, -0.5f, +0.5f),new Vector3(1,0,0), new Vector2(0, 1)),
-                // Back                                                               
-                new Vtx(new Vector3(+0.5f, +0.5f, -0.5f), new Vector3(0,0,-1), new Vector2(0, 0)),
-                new Vtx(new Vector3(-0.5f, +0.5f, -0.5f), new Vector3(0,0,-1),new Vector2(1, 0)),
-                new Vtx(new Vector3(-0.5f, -0.5f, -0.5f), new Vector3(0,0,-1),new Vector2(1, 1)),
-                new Vtx(new Vector3(+0.5f, -0.5f, -0.5f), new Vector3(0,0,-1),new Vector2(0, 1)),
-                // Front                                                              
-                new Vtx(new Vector3(-0.5f, +0.5f, +0.5f), new Vector3(0,0,1),new Vector2(0, 0)),
-                new Vtx(new Vector3(+0.5f, +0.5f, +0.5f), new Vector3(0,0,1),new Vector2(1, 0)),
-                new Vtx(new Vector3(+0.5f, -0.5f, +0.5f), new Vector3(0,0,1),new Vector2(1, 1)),
-                new Vtx(new Vector3(-0.5f, -0.5f, +0.5f), new Vector3(0,0,1),new Vector2(0, 1)),
-            };
-
-            return vertices;
-        }
-
-        private static ushort[] GetCubeIndices()
-        {
-            ushort[] indices =
-            {
-                0,1,2, 0,2,3,
-                4,5,6, 4,6,7,
-                8,9,10, 8,10,11,
-                12,13,14, 12,14,15,
-                16,17,18, 16,18,19,
-                20,21,22, 20,22,23,
-            };
-
-            return indices;
-        }
-
-        private Vtx[] GetPlaneVertices()
-        {
-            Vtx[] vertices = new Vtx[]
-            {
-                // Back                                                               
-                new Vtx(new Vector3(+1.0f, +1.0f, 0.0f), new Vector2(0, 0)),
-                new Vtx(new Vector3(-1.0f, +1.0f, 0.0f), new Vector2(1, 0)),
-                new Vtx(new Vector3(-1.0f, -1.0f, 0.0f), new Vector2(1, 1)),
-                new Vtx(new Vector3(+1.0f, -1.0f, 0.0f), new Vector2(0, 1)),
-            };
-
-            return vertices;
-        }
-
-        private static ushort[] GetPlaneIndices()
-        {
-            ushort[] indices =
-            {
-                0,1,2, 0,2,3
-            };
-
-            return indices;
-        }
-
-
-
     }
 
     public static class GeometryProvider

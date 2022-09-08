@@ -8,7 +8,10 @@
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800"
              x:Name="TopLayoutWnd">
-    <Grid>
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="BgBrush" Color="#202020" />
+    </UserControl.Resources>
+    <Grid Background="{StaticResource BgBrush}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="200"></ColumnDefinition>
             <ColumnDefinition Width="Auto"></ColumnDefinition>
@@ -121,7 +124,7 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TabControl ItemsSource="{Binding Path=OpenEditors}">
+                    <TabControl Background="{StaticResource BgBrush}" ItemsSource="{Binding Path=OpenEditors}">
                         <TabControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
@@ -139,10 +142,7 @@
                         </TabControl.ContentTemplate>
                     </TabControl>
                     <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
-                    <TabControl Grid.Column="2">
-                        <TabItem Header="Output">
-                            <TextBox x:Name="OutputTB" VerticalScrollBarVisibility="Auto"/>
-                        </TabItem>
+                    <TabControl Background="{StaticResource BgBrush}" Grid.Column="2">
                         <TabItem Header="Script Files" >
                             <Grid >
                                 <Grid.RowDefinitions>
@@ -152,15 +152,19 @@
                                 <StackPanel Orientation="Horizontal">
                                     <Button Content="New" />
                                 </StackPanel>
-                                <ListBox Grid.Row="1" ItemsSource="{Binding Path=ScriptFiles}" >
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <Button Content="{Binding }" Click="SriptFile_Click"/>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
+                                <TreeView Grid.Row="1" ItemsSource="{Binding Path=ScriptFiles}" >
+                                    <TreeView.ItemTemplate>
+                                        <HierarchicalDataTemplate DataType="{x:Type local:ScriptItem}" ItemsSource="{Binding Children}">
+                                            <Button HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Content="{Binding Name}" Click="SriptFile_Click"/>
+                                        </HierarchicalDataTemplate>
+                                    </TreeView.ItemTemplate>
+                                </TreeView>
                             </Grid>
                         </TabItem>
+                        <TabItem Header="Output">
+                            <TextBox x:Name="OutputTB" VerticalScrollBarVisibility="Auto"/>
+                        </TabItem>
+
                     </TabControl>
                 </Grid>
             </Grid>
