@@ -66,15 +66,22 @@ namespace partmake
             }
         }
 
-        public List<Source> GetSources()
+        public void GetSources(List<Source> sources)
         {
-            return this.Children.Where(f => f.Name.EndsWith(".cs")).
+            foreach (ScriptFolder folder in this.Children.Where(f => f is ScriptFolder))
+            {
+                folder.GetSources(sources);
+            }
+
+            sources.AddRange(
+                this.Children.Where(f => f is ScriptFile && f.Name.EndsWith(".cs")).
                     Select(fname =>
                     new Source()
                     {
                         code = File.ReadAllText(fname.FullPath),
-                        filepath = fname.Name
-                    }).ToList();
+                        filepath = fname.FullPath
+                    }));
+
         }
     }
 

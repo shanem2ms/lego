@@ -120,10 +120,8 @@ namespace partmake
             }
         }
 
-        void OpenFile(string name)
+        void OpenFile(string filepath)
         {
-            string filepath =
-                System.IO.Path.Combine(scriptFolder.FullPath, name);
             if (!OpenEditors.Any(f => f.FilePath == filepath))
             {
                 OpenEditors.Add(new Editor()
@@ -229,8 +227,9 @@ namespace partmake
         }
         private void SriptFile_Click(object sender, RoutedEventArgs e)
         {
-            string name = (sender as Button).DataContext as string;
-            OpenFile(name);
+            ScriptFile file = (sender as Button).DataContext as ScriptFile;
+            if (file != null)
+                OpenFile(file.FullPath);
         }
 
         private void CloseTab_Click(object sender, RoutedEventArgs e)
@@ -247,8 +246,10 @@ namespace partmake
         {
             try
             {
-                Clear();                
-                scriptEngine.Run(this.scriptFolder.GetSources(), scene, _LayoutControl.Vis);
+                Clear();
+                List<Source> sources = new List<Source>();
+                this.scriptFolder.GetSources(sources);
+                scriptEngine.Run(sources, scene, _LayoutControl.Vis);
             }
             catch(Exception e)
             {
