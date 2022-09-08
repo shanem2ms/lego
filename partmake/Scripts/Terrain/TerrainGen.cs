@@ -30,7 +30,7 @@ namespace partmake.script
             _terrainTextureView = Api.ResourceFactory.CreateTextureView(_terrainTexture);
     		_terrainTexture.Dispose();
 
-			byte []pixShaderBytes = File.ReadAllBytes(Path.Combine(Api.ScriptFolder, "TerrainGen.glsl"));    		
+			byte []pixShaderBytes = File.ReadAllBytes(Path.Combine(Api.ScriptFolder, "Terrain\\TerrainGen.glsl"));    		
     		byte []vtxShaderBytes = File.ReadAllBytes(Path.Combine(Api.ScriptFolder, "vtxblit.glsl"));    		
     		
             ShaderSetDescription shaderSet = new ShaderSetDescription(
