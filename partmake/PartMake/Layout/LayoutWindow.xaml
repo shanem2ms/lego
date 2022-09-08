@@ -120,9 +120,9 @@
                 </StackPanel>
                 <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="2*"/>
                         <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <TabControl Background="{StaticResource BgBrush}" ItemsSource="{Binding Path=OpenEditors}">
                         <TabControl.ItemTemplate>
