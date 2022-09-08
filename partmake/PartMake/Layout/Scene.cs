@@ -123,14 +123,25 @@ namespace partmake
         bool backPressed = false;
         bool leftPressed = false;
         bool rightPressed = false;
-        public void GameLoop()
+        public void GameLoop(Vector2 lookDir, Vector3 cameraPos)
         {
+            Matrix4x4 viewDir = Matrix4x4.CreateRotationY(lookDir.X) *
+                    Matrix4x4.CreateRotationX(lookDir.Y);
+            Vector3 zDirPrime = Vector3.Normalize(Vector3.TransformNormal(Vector3.UnitZ, viewDir));
+            Vector3 xDir = Vector3.Cross(zDirPrime, Vector3.UnitY);
+            Vector3 zDir = Vector3.Cross(Vector3.UnitY, xDir);
+            Vector3 impulseVel = Vector3.Zero;
+            if (fwdPressed) impulseVel += xDir;
+            if (backPressed) impulseVel -= xDir;
+            if (leftPressed) impulseVel -= zDir;
+            if (rightPressed) impulseVel += zDir;
+            impulseVel *= 2000;
             if (PlayerPart != null)
             {
-                if (fwdPressed)
+                if (impulseVel.LengthSquared() > 10)
                 {
                     this.PlayerPart.body.Body.Friction = 0;
-                    this.PlayerPart.body.Body.ApplyCentralImpulse(new BulletSharp.Math.Vector3(2000, 2000, 0));
+                    this.PlayerPart.body.Body.ApplyCentralImpulse(new BulletSharp.Math.Vector3(impulseVel.X, impulseVel.Y, impulseVel.Z));
                     this.PlayerPart.body.Body.Activate();
                 }
             }

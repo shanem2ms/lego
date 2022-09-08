@@ -10,8 +10,10 @@ namespace partmake.script
         public void Run()
         {            
     		Utils u = new Utils();
+    		//TerrainGen tg = new TerrainGen();
+    		//tg.Gen();
     		u.Minifig(Matrix4x4.CreateTranslation(new Vector3(8, 68, 0)));
-    		Terrain();    		 
+    		Terrain();  
         }
         
         void Rain()
@@ -24,7 +26,7 @@ namespace partmake.script
     				Matrix4x4.CreateFromAxisAngle(Vector3.UnitX, r.NextSingle() * MathF.PI) * 
     				Matrix4x4.CreateTranslation(new Vector3((r.NextSingle() - 0.5f) * range, 
     					r.NextSingle() * 350, 
-    				(r.NextSingle() - 0.5f) * range)), 22, true));
+    				(r.NextSingle() - 0.5f) * range)), 22, false));
     		}
     	}
         void Terrain()

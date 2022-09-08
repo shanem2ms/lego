@@ -19,6 +19,7 @@ using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.Numerics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.ConstrainedExecution;
 
 namespace partmake
 {
@@ -53,6 +54,10 @@ namespace partmake
         }
 
         bool bulletDebugDrawEnabled = false;
+        void Clear()
+        {
+            OutputTB.Text = "";
+        }
         void WriteLine(string line)
         {
             OutputTB.AppendText(line + "\n");
@@ -77,6 +82,7 @@ namespace partmake
             _LayoutControl.Vis.OnPartPicked += Vis_OnPartPicked;
             _LayoutControl.Vis.OnConnectorPicked += Vis_OnConnectorPicked;
             _LayoutControl.Vis.DrawDebug = DrawBulletDebug;
+            _LayoutControl.Vis.AfterDeviceCreated += Vis_AfterDeviceCreated;
             scene.DebugDrawLine =
                 _LayoutControl.Vis.BulletDebugDrawLine;
             RefrehScriptsFolder();
@@ -84,6 +90,10 @@ namespace partmake
             {
                 OpenFile(file);
             }
+        }
+
+        private void Vis_AfterDeviceCreated(object sender, bool e)
+        {
             RunScript();
         }
 
@@ -212,6 +222,11 @@ namespace partmake
             }
             RunScript();
         }
+        private void SriptFile_Click(object sender, RoutedEventArgs e)
+        {
+            string name = (sender as Button).DataContext as string;
+        }
+
         private void CloseTab_Click(object sender, RoutedEventArgs e)
         {
             Editor editor = (sender as Button).DataContext as Editor;
@@ -226,6 +241,7 @@ namespace partmake
         {
             try
             {
+                Clear();
                 List<Source> allFiles = this.ScriptFiles.Where(f => f.EndsWith(".cs")).
                     Select(fname =>
                     new Source()
@@ -251,6 +267,7 @@ namespace partmake
                 //ActiveScriptTB.SaveAs(sfd.FileName);
             }
         }
+
         private void LoadButton_Click(object sender, RoutedEventArgs e)
         {
             //scriptEngine.Run(ActiveScriptTB.Text, _LayoutControl.Vis);

@@ -83,6 +83,7 @@ namespace partmake
 
         public delegate void DrawDebugDel();
         public DrawDebugDel DrawDebug = null;
+        public event EventHandler<bool> AfterDeviceCreated;
 
         bool mouseMoved = false;
         public void MouseDown(int btn, int X, int Y, System.Windows.Forms.Keys keys)
@@ -325,12 +326,13 @@ namespace partmake
 
 
             _cl = factory.CreateCommandList();
+            AfterDeviceCreated?.Invoke(this, true);
         }
 
         float worldScale = 0.0025f;
         protected override void Draw(float deltaSeconds)
         {
-            scene.GameLoop();
+            scene.GameLoop(lookDir, cameraPos);
             _cl.Begin();
 
             Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(

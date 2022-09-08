@@ -155,7 +155,7 @@
                                 <ListBox Grid.Row="1" ItemsSource="{Binding Path=ScriptFiles}" >
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding }" />
+                                            <Button Content="{Binding }" Click="SriptFile_Click"/>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
