@@ -1,20 +1,35 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Veldrid;
+
 namespace partmake.script
 {
     public class Script
     {
         Random r = new Random();
     	int []colors = new int[4] { 288, 2, 74, 6 };
+		VoxelVis vox = new VoxelVis();
+		TerrainGen tg;
+
         public void Run()
         {            
     		Utils u = new Utils();
-    		TerrainGen tg = new TerrainGen();
-    		tg.Gen();
-    		Api.CustomDraw = tg.Draw;
+    		Api.CustomDraw = Draw;
     		//u.Minifig(Matrix4x4.CreateTranslation(new Vector3(8, 68, 0)));
     		//Terrain();  
+        }
+        
+        public void Draw(CommandList cl, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
+        {
+        	if (tg == null)
+        	{
+        		tg = new TerrainGen();
+        		tg.Gen();
+        		tg.Draw(cl, ref viewmat, ref projMat);
+	    		vox.Gen(tg.TerrainTex, tg.TerrainTexView);
+        	}
+        	vox.Draw(cl, ref viewmat, ref projMat);
         }
         
         void Rain()

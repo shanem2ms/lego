@@ -95,15 +95,15 @@ namespace partmake
             rMouseDownPt = lMouseDownPt = new Vector2(X, Y);
             mouseDownCameraPos = cameraPos;
             mouseMoved = false;
+            pickX = (int)((float)X / (float)Window.Width * 1024.0f);
+            pickY = (int)((float)Y / (float)Window.Height * 1024.0f);
+            pickReady = 0;
         }
         public void MouseUp(int btn, int X, int Y)
         {
             mouseDown &= ~(1 << btn);
             if (!mouseMoved)
             {
-                pickX = (int)((float)X / (float)Window.Width * 1024.0f);
-                pickY = (int)((float)Y / (float)Window.Height * 1024.0f);
-                pickReady = 0;
             }
         }
         public void MouseMove(int X, int Y, System.Windows.Forms.Keys keys)
@@ -487,7 +487,16 @@ namespace partmake
             }
 
             if (script.Api.CustomDraw != null)
-                script.Api.CustomDraw(_cl, ref viewmat, ref projMat);
+            {
+                try
+                {
+                    script.Api.CustomDraw(_cl, ref viewmat, ref projMat);
+                }
+                catch
+                {
+                    script.Api.CustomDraw = null;
+                }
+            }
             if (DrawDebug != null)
                 DrawDebug();
             DrawPicking(ref viewmat, ref projMat);

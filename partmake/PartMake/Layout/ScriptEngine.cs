@@ -34,6 +34,7 @@ namespace partmake
             public static Veldrid.GraphicsDevice GraphicsDevice = null;
             public static Veldrid.Swapchain Swapchain = null;
             public static LayoutVis.CustomDrawDel CustomDraw = null;
+
             public static void Reset()
             {
                 script.Api.Parts = new List<PartInst>(); ;

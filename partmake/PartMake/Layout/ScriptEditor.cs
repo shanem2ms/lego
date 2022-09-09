@@ -39,11 +39,18 @@ namespace partmake
             this.ShowLineNumbers = true;
             this.Background = new SolidColorBrush(Color.FromArgb(255, 30, 30, 30));
 
-            using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream("partmake.CSharp-Mode.xshd"))
+            string ext = Path.GetExtension(path).ToLower();
+            string hightlightFile = null;
+            if (ext == ".cs") hightlightFile = "partmake.CSharp-Mode.xshd";
+            else if (ext == ".glsl" || ext == ".gsl") hightlightFile = "partmake.glsl.xshd";
+            if (hightlightFile != null)
             {
-                using (XmlTextReader reader = new XmlTextReader(s))
+                using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream(hightlightFile))
                 {
-                    this.SyntaxHighlighting = HighlightingLoader.Load(reader, HighlightingManager.Instance);
+                    using (XmlTextReader reader = new XmlTextReader(s))
+                    {
+                        this.SyntaxHighlighting = HighlightingLoader.Load(reader, HighlightingManager.Instance);
+                    }
                 }
             }
 

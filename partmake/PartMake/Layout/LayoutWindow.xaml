@@ -131,7 +131,8 @@
                                     <Grid MaxWidth="100" Margin="0,0,10,0">
                                         <TextBlock HorizontalAlignment="Right" Text="{Binding FilePath}" />
                                     </Grid>
-                                    <Button Content="x" Click="CloseTab_Click" />
+                                    <Button Content="x" Click="CloseTab_Click"                                             
+                                            Background="White"/>
                                 </StackPanel>
                             </DataTemplate>
                         </TabControl.ItemTemplate>
@@ -150,12 +151,14 @@
                                     <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="New" />
+                                    <Button Content="New"/>
                                 </StackPanel>
                                 <TreeView Grid.Row="1" ItemsSource="{Binding Path=ScriptFiles}" >
                                     <TreeView.ItemTemplate>
                                         <HierarchicalDataTemplate DataType="{x:Type local:ScriptItem}" ItemsSource="{Binding Children}">
-                                            <Button HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Content="{Binding Name}" Click="SriptFile_Click"/>
+                                            <Button HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Content="{Binding Name}" Click="SriptFile_Click"
+                                                    Background="{Binding Background, RelativeSource={RelativeSource AncestorType=TabItem}}"
+                                                    BorderThickness="0"/>
                                         </HierarchicalDataTemplate>
                                     </TreeView.ItemTemplate>
                                 </TreeView>
