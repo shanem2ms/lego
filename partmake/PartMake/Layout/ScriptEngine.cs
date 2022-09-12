@@ -88,6 +88,7 @@ namespace partmake
     public class ScriptEngine
     {
         static Action<string> Write = (string? message) => { System.Diagnostics.Debug.WriteLine(message); };
+        public event EventHandler<bool> OnCompileErrors;
 
         MetadataReference[] references;        
         CSharpCompilation Compile(List<Source> sources)
@@ -143,6 +144,8 @@ namespace partmake
                     {
                         script.Api.WriteLine($"\t{diagnostic.Id}: [{diagnostic.Location.GetMappedLineSpan()}] {diagnostic.GetMessage()}");
                     }
+
+                    OnCompileErrors?.Invoke(this, true);
                 }
                 else
                 {

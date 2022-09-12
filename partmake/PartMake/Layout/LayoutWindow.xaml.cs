@@ -77,6 +77,7 @@ namespace partmake
 
             //MCStructure mcs = new MCStructure(@"C:\Users\shane\Documents\manvillage.mcstructure");
             scriptEngine = new ScriptEngine();
+            scriptEngine.OnCompileErrors += ScriptEngine_OnCompileErrors;
             script.Api.WriteLine = WriteLine;
 
             scriptFolder = new ScriptFolder(null,
@@ -93,6 +94,18 @@ namespace partmake
             RefrehScriptsFolder();
         }
 
+        private void ScriptEngine_OnCompileErrors(object sender, bool e)
+        {
+            ShowErrorWindow();
+        }
+
+        public void ShowErrorWindow()
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                ScriptTab.SelectedIndex = 1;
+            });
+        }
         private void Vis_AfterDeviceCreated(object sender, bool e)
         {
             RunScript();

@@ -492,8 +492,9 @@ namespace partmake
                 {
                     script.Api.CustomDraw(_cl, ref viewmat, ref projMat);
                 }
-                catch
+                catch (Exception e)
                 {
+                    script.Api.WriteLine(e.ToString());
                     script.Api.CustomDraw = null;
                 }
             }

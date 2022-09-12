@@ -71,10 +71,10 @@ namespace partmake.primitives
             Vtx[] vertices = new Vtx[]
             {
                 // Back                                                               
-                new Vtx(new Vector3(+1.0f, +1.0f, 0.0f), new Vector2(0, 0)),
-                new Vtx(new Vector3(-1.0f, +1.0f, 0.0f), new Vector2(1, 0)),
-                new Vtx(new Vector3(-1.0f, -1.0f, 0.0f), new Vector2(1, 1)),
-                new Vtx(new Vector3(+1.0f, -1.0f, 0.0f), new Vector2(0, 1)),
+                new Vtx(new Vector3(+1.0f, +1.0f, 0.0f), new Vector2(1, 0)),
+                new Vtx(new Vector3(-1.0f, +1.0f, 0.0f), new Vector2(0, 0)),
+                new Vtx(new Vector3(-1.0f, -1.0f, 0.0f), new Vector2(0, 1)),
+                new Vtx(new Vector3(+1.0f, -1.0f, 0.0f), new Vector2(1, 1)),
             };
 
             return vertices;

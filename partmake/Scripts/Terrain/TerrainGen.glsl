@@ -1,22 +1,6 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
-struct Vox_Shaders_Blit_Transform
-{
-    mat4 MWP;
-};
-
-struct Vox_Shaders_Blit_VertexInput
-{
-    vec3 Position;
-    vec3 UVW;
-};
-
-struct Vox_Shaders_Blit_FragmentInput
-{
-    vec4 Position;
-    vec2 fsUV;
-};
 
 layout(set = 0, binding = 0) uniform texture2D Texture;
 layout(set = 0, binding = 1) uniform sampler Sampler;
@@ -102,9 +86,6 @@ float noise_octaves(vec2 p)
 
 void main()
 {
-    Vox_Shaders_Blit_FragmentInput input_;
-    input_.Position = gl_FragCoord;
-    input_.fsUV = fsin_0;
     vec4 output_ = vec4(noise_octaves(fsin_0),0,0,1);
-    _outputColor_ = output_;
+    _outputColor_ = vec4(0,0,0,output_ );
 }

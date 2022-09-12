@@ -6,10 +6,10 @@ layout(location = 0) in vec3 Position;
 layout(location = 1) in vec3 Normal;
 layout(location = 2) in vec2 Texcoord;
 
-layout(location = 0) out vec2 fsin_0;
+layout(location = 0) out vec2 OutTexCoord;
 
 void main()
 {
-    fsin_0 = vec2(Position.xy);
+    OutTexCoord = Texcoord;
     gl_Position = vec4(Position, 1);
 }

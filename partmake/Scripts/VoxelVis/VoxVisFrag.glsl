@@ -19,7 +19,6 @@ void main()
         pow(clamp(dot(normalize(vec3(1, 0, -1)), fsin_normal),0,1), p) +
         pow(clamp(dot(normalize(vec3(0, -1, 1)), fsin_normal),0,1), p);
         
-    float ival = textureLod(sampler2D(VoxTexture, VoxSampler), fsin_texCoords, 0).r;
-    vec3 c = col.rgb * ival * (light * 0.7 + 0.1);
-    fsout_color =  vec4(fsin_texCoords, 0,1) * col.w;
+    vec3 c = vec3(1,1,1) * (light * 0.7 + 0.1);
+    fsout_color =  vec4(fsin_normal, 1);
 }

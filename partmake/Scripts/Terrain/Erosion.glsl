@@ -1,9 +1,11 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_samplerless_texture_functions : enable
 
 layout(set = 0, binding = 0) uniform texture2D Texture;
-layout(set = 0, binding = 1) uniform sampler Sampler;
+layout(location = 0) in vec2 fsin;
+layout(location = 0) out vec4 outColor;
 
 // Terrain Generation & Erosion
 
@@ -15,7 +17,7 @@ const float rain = .04;
 const float drainage = 1.;
 const float maxWater = 100.;
 
-const float sedimentToHeight = .0003; // higher values have a faster but less realistic effect
+const float sedimentToHeight = .003; // higher values have a faster but less realistic effect
 const float sedimentPickUp = .1; // 1.0 => pick up as much sediment as possible at every step when flow is fast, .1 => have to flow 10 pixels to pick up that much
 const float waterAsHeight = 0.;//.1; // this idea didn't really work
 
@@ -87,8 +89,9 @@ void ProcessNeighbour
     }
 }
 
-vec4 mainImage( in ivec2 uv )
+void main()
 {
+	ivec2 uv = ivec2(fsin.x*1024, fsin.y*1024);
     vec4 fragColour = texelFetch(Texture,uv,0);
     
     /* erosion data:
@@ -190,11 +193,5 @@ vec4 mainImage( in ivec2 uv )
     // rain
     fragColour.x += rain;
 
-    return fragColour;
-}
-
-void main()
-{
-    vec4 outpixel = mainImage(gl_GlobalInvocationID.xy);
-	imageStore(s_target, ivec2(gl_GlobalInvocationID.xy), outpixel);
+    outColor = fragColour;
 }

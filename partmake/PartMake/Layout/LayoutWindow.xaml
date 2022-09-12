@@ -143,7 +143,7 @@
                         </TabControl.ContentTemplate>
                     </TabControl>
                     <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
-                    <TabControl Background="{StaticResource BgBrush}" Grid.Column="2">
+                    <TabControl x:Name="ScriptTab" Background="{StaticResource BgBrush}" Grid.Column="2">
                         <TabItem Header="Script Files" >
                             <Grid >
                                 <Grid.RowDefinitions>

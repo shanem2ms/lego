@@ -9,7 +9,6 @@ namespace partmake.script
 {
     public class VoxelVis
     {
-	    private Texture _terrainTexture;
 	    private TextureView _terrainTextureView;
 	    private Sampler _terrainSampler;
 	    private DeviceBuffer _cubeVertexBuffer;
@@ -27,9 +26,8 @@ namespace partmake.script
 	    const uint dimcnt = 1024;
 	    uint _instanceCnt = dimcnt*dimcnt;
 	    
-    	public void Gen(Texture terrainTexture, TextureView terrainTextureView)    
+    	public void Gen(TextureView terrainTextureView)    
     	{
-            _terrainTexture = terrainTexture;
             _terrainTextureView = terrainTextureView;
 
             _terrainSampler = Api.ResourceFactory.CreateSampler(new SamplerDescription(SamplerAddressMode.Clamp, SamplerAddressMode.Clamp, SamplerAddressMode.Clamp, SamplerFilter.MinPoint_MagPoint_MipPoint,
