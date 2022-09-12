@@ -75,7 +75,7 @@ namespace partmake
 
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("CacheGroups"));
 
-            MCStructure mcs = new MCStructure(@"C:\Users\shane\Documents\manvillage.mcstructure");
+            //MCStructure mcs = new MCStructure(@"C:\Users\shane\Documents\manvillage.mcstructure");
             scriptEngine = new ScriptEngine();
             script.Api.WriteLine = WriteLine;
 
@@ -122,14 +122,18 @@ namespace partmake
 
         void OpenFile(string filepath)
         {
-            if (!OpenEditors.Any(f => f.FilePath == filepath))
+            var cureditor = OpenEditors.FirstOrDefault(f => f.FilePath == filepath);
+            if (cureditor == null)
             {
-                OpenEditors.Add(new Editor()
+                cureditor = new Editor()
                 {
                     FilePath = filepath,
                     Control = new ScriptTextEditor(filepath, this.Engine)
-                });
+                };
+                OpenEditors.Add(cureditor);
+
             }
+            EditorTabs.SelectedItem = cureditor;
         }
         void RefrehScriptsFolder()
         {

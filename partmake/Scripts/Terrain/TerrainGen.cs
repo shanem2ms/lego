@@ -35,6 +35,7 @@ namespace partmake.script
 
 			byte []pixShaderBytes = File.ReadAllBytes(Path.Combine(Api.ScriptFolder, "Terrain\\TerrainGen.glsl"));    		
     		byte []vtxShaderBytes = File.ReadAllBytes(Path.Combine(Api.ScriptFolder, "Terrain\\VtxBlit.glsl"));    		
+    		byte []eroShaderBytes = File.ReadAllBytes(Path.Combine(Api.ScriptFolder, "Terrain\\Erosion.glsl"));    		
     		
             ShaderSetDescription shaderSet = new ShaderSetDescription(
                 new[]
@@ -47,6 +48,10 @@ namespace partmake.script
                 Api.ResourceFactory.CreateFromSpirv(
 	                new ShaderDescription(ShaderStages.Vertex, vtxShaderBytes, "main"),
 	                new ShaderDescription(ShaderStages.Fragment, pixShaderBytes, "main")));
+	                
+                var eropgm = Api.ResourceFactory.CreateFromSpirv(
+	                new ShaderDescription(ShaderStages.Vertex, vtxShaderBytes, "main"),
+	                new ShaderDescription(ShaderStages.Fragment, eroShaderBytes, "main"));
     		
             var planeVertices = primitives.Plane.GetVertices();
             _planeVertexBuffer = Api.ResourceFactory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * planeVertices.Length), BufferUsage.VertexBuffer));

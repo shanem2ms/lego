@@ -124,7 +124,7 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TabControl Background="{StaticResource BgBrush}" ItemsSource="{Binding Path=OpenEditors}">
+                    <TabControl x:Name="EditorTabs" Background="{StaticResource BgBrush}" ItemsSource="{Binding Path=OpenEditors}">
                         <TabControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">

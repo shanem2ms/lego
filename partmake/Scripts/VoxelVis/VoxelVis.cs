@@ -18,11 +18,14 @@ namespace partmake.script
         private DeviceBuffer _viewBuffer;
         private DeviceBuffer _worldBuffer;
         private DeviceBuffer _materialBuffer;
+        private DeviceBuffer _instanceVB;
         private Pipeline _pipeline;
         private ResourceSet _projViewSet;
         private ResourceSet _worldTextureSet;
 
 	    private uint _cubeIndexCount = 0;
+	    const uint dimcnt = 1024;
+	    uint _instanceCnt = dimcnt*dimcnt;
 	    
     	public void Gen(Texture terrainTexture, TextureView terrainTextureView)    
     	{
@@ -34,19 +37,28 @@ namespace partmake.script
 
 			byte []pixShaderBytes = File.ReadAllBytes(Path.Combine(Api.ScriptFolder, "VoxelVis\\VoxVisFrag.glsl"));    		
     		byte []vtxShaderBytes = File.ReadAllBytes(Path.Combine(Api.ScriptFolder, "VoxelVis\\VoxVisVtx.glsl"));    		
-    		
+			var vtxlayout = new VertexLayoutDescription(
+                    new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
+                    new VertexElementDescription("Normal", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
+                    new VertexElementDescription("TexCoords", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2));
+			var vertexLayoutPerInstance = new VertexLayoutDescription(
+                new VertexElementDescription("InstanceCoord", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2));
+                vertexLayoutPerInstance.InstanceStepRate = 1;
             ShaderSetDescription shaderSet = new ShaderSetDescription(
                 new[]
                 {
-                new VertexLayoutDescription(
-                    new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
-                    new VertexElementDescription("Normal", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
-                    new VertexElementDescription("TexCoords", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2))
+                	vtxlayout,
+                	vertexLayoutPerInstance
                 },
                 Api.ResourceFactory.CreateFromSpirv(
 	                new ShaderDescription(ShaderStages.Vertex, vtxShaderBytes, "main"),
 	                new ShaderDescription(ShaderStages.Fragment, pixShaderBytes, "main")));
     		
+            vertexLayoutPerInstance.InstanceStepRate = 1;
+            
+            _instanceVB = Api.ResourceFactory.CreateBuffer(new BufferDescription(sizeof(float)*2*_instanceCnt, BufferUsage.VertexBuffer));
+            Api.GraphicsDevice.UpdateBuffer(_instanceVB, 0, GetInstanceBuf());
+            
             var cubeVertices = primitives.Cube.GetVertices();
             _cubeVertexBuffer = Api.ResourceFactory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * cubeVertices.Length), BufferUsage.VertexBuffer));
             Api.GraphicsDevice.UpdateBuffer(_cubeVertexBuffer, 0, cubeVertices);
@@ -71,8 +83,8 @@ namespace partmake.script
                 new ResourceLayoutDescription(
                     new ResourceLayoutElementDescription("WorldBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex),
                     new ResourceLayoutElementDescription("MeshColor", ResourceKind.UniformBuffer, ShaderStages.Fragment),
-                    new ResourceLayoutElementDescription("VoxTexture", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
-                    new ResourceLayoutElementDescription("VoxSampler", ResourceKind.Sampler, ShaderStages.Fragment)));            
+                    new ResourceLayoutElementDescription("VoxTexture", ResourceKind.TextureReadOnly, ShaderStages.Vertex),
+                    new ResourceLayoutElementDescription("VoxSampler", ResourceKind.Sampler, ShaderStages.Vertex)));            
                     
             _projViewSet = Api.ResourceFactory.CreateResourceSet(new ResourceSetDescription(
                 projViewLayout,
@@ -106,7 +118,7 @@ namespace partmake.script
             cl.SetGraphicsResourceSet(1, _worldTextureSet);
     	 	
             Matrix4x4 mat =
-                Matrix4x4.CreateScale(0.1f) *
+                Matrix4x4.CreateScale(0.01f) *
                 Matrix4x4.CreateTranslation(new Vector3(0, 0, 0));
 
             cl.UpdateBuffer(_projectionBuffer, 0, ref projMat);
@@ -115,8 +127,24 @@ namespace partmake.script
             Vector4 color = new Vector4(1, 0.5f, 0.5f, 1);
             cl.UpdateBuffer(_materialBuffer, 0, ref color);
             cl.SetVertexBuffer(0, _cubeVertexBuffer);
+            cl.SetVertexBuffer(1, _instanceVB);
             cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
-            cl.DrawIndexed(_cubeIndexCount);            
+            cl.DrawIndexed(_cubeIndexCount,
+            	_instanceCnt, 0,0,0);            
     	}
-    }
+	    Vector2 []GetInstanceBuf()
+	    {
+	    	Vector2[] vtxs = new Vector2[dimcnt *dimcnt];
+	    	for (int y = 0; y < dimcnt; ++y)
+	    	{
+		    	for (int x = 0; x < dimcnt; ++x)
+		    	{
+		    		vtxs[y * dimcnt + x] = new Vector2(
+			    		(float)x / (dimcnt - 1),
+			    		(float)y / (dimcnt - 1));
+		    	}
+	    	}
+	    	return vtxs;
+	    }
+    }      
 }    

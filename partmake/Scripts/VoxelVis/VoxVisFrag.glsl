@@ -21,5 +21,5 @@ void main()
         
     float ival = textureLod(sampler2D(VoxTexture, VoxSampler), fsin_texCoords, 0).r;
     vec3 c = col.rgb * ival * (light * 0.7 + 0.1);
-    fsout_color =  vec4(c,1) * col.w;
+    fsout_color =  vec4(fsin_texCoords, 0,1) * col.w;
 }
