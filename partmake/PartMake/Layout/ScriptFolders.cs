@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -7,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
+using System.Xml.Linq;
 
 namespace partmake
 {
@@ -21,6 +23,7 @@ namespace partmake
         ScriptFolder parent;
         string name;
 
+        public abstract Visibility IconVisiblity { get; }
         public string Name { get => name; }
         public string FullPath { get => GetFullPath(); }
         protected string GetFullPath()
@@ -28,6 +31,8 @@ namespace partmake
             return parent != null ? Path.Combine(parent.GetFullPath(), name) :
                 name;
         }
+
+        public abstract System.Windows.Media.Brush ColorBrush { get; }
         public abstract IEnumerable<ScriptItem> Children { get; }
     }
 
@@ -38,6 +43,23 @@ namespace partmake
         { }
 
         public override IEnumerable<ScriptItem> Children => null;
+        public override Visibility IconVisiblity => Visibility.Visible;
+
+
+        public override System.Windows.Media.Brush ColorBrush
+        {
+            get
+            {
+                string ext = Path.GetExtension(this.Name).ToLower();
+                if (ext == ".cs")
+                    return System.Windows.Media.Brushes.LightGreen;
+                else if (ext == ".gsl" || ext == ".glsl")
+                    return System.Windows.Media.Brushes.MediumBlue;
+                else
+                    return System.Windows.Media.Brushes.Gray;
+            }
+        }
+            
     }
 
     public class ScriptFolder : ScriptItem
@@ -48,7 +70,8 @@ namespace partmake
         {
 
         }
-
+        public override System.Windows.Media.Brush ColorBrush => System.Windows.Media.Brushes.Gray;
+        public override Visibility IconVisiblity => Visibility.Collapsed;
         public override IEnumerable<ScriptItem> Children
         {
             get

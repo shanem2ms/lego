@@ -16,8 +16,15 @@ namespace partmake.script
         {            
     		Utils u = new Utils();
     		//Api.CustomDraw = Draw;
+    		Api.MouseHandler = MouseHandler;
     		u.Minifig(Matrix4x4.CreateTranslation(new Vector3(8, 68, 0)));
     		Terrain();  
+        }
+        
+        void MouseHandler(LayoutVis.MouseCommand command, int btn, int X, int Y, System.Windows.Forms.Keys keys)
+        {
+        	if (command == LayoutVis.MouseCommand.ButtonDown)
+        		Api.WriteLine("Down");
         }
         
         public void Draw(CommandList cl, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)

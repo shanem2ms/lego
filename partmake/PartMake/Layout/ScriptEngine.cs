@@ -34,6 +34,7 @@ namespace partmake
             public static Veldrid.GraphicsDevice GraphicsDevice = null;
             public static Veldrid.Swapchain Swapchain = null;
             public static LayoutVis.CustomDrawDel CustomDraw = null;
+            public static LayoutVis.MouseDel MouseHandler = null;
 
             public static void Reset()
             {
@@ -42,6 +43,7 @@ namespace partmake
                 script.Api.Locators = new List<System.Numerics.Vector4>();
                 script.Api.playerPart = null;
                 script.Api.CustomDraw = null;
+                script.Api.MouseHandler = null;
             }
             
             public static void AddUnconnected(PartInst pi)

@@ -13,6 +13,7 @@ using System.Reflection;
 using System.Windows.Forms;
 using BulletSharp.SoftBody;
 using BulletSharp;
+using System.Windows.Input;
 
 namespace partmake
 {
@@ -85,9 +86,17 @@ namespace partmake
         public DrawDebugDel DrawDebug = null;
         public event EventHandler<bool> AfterDeviceCreated;
         public delegate void CustomDrawDel(CommandList cl, ref Matrix4x4 viewMat, ref Matrix4x4 projMat);
+        
+        public enum MouseCommand
+        {
+            ButtonDown,
+            ButtonUp,
+            Moved
+        }
+        public delegate void MouseDel(MouseCommand command, int btn, int X, int Y, Keys keys);
 
         bool mouseMoved = false;
-        public void MouseDown(int btn, int X, int Y, System.Windows.Forms.Keys keys)
+        public void MouseDown(int btn, int X, int Y, Keys keys)
         {
             mouseDown |= 1 << btn;
             mouseDownLookDir = lookDir;
@@ -95,9 +104,14 @@ namespace partmake
             rMouseDownPt = lMouseDownPt = new Vector2(X, Y);
             mouseDownCameraPos = cameraPos;
             mouseMoved = false;
-            pickX = (int)((float)X / (float)Window.Width * 1024.0f);
-            pickY = (int)((float)Y / (float)Window.Height * 1024.0f);
-            pickReady = 0;
+            if (btn == 0)
+            {
+                pickX = (int)((float)X / (float)Window.Width * 1024.0f);
+                pickY = (int)((float)Y / (float)Window.Height * 1024.0f);
+                pickReady = 0;
+            }
+            if (script.Api.MouseHandler != null)
+                script.Api.MouseHandler(MouseCommand.ButtonDown, btn, X, Y, keys);
         }
         public void MouseUp(int btn, int X, int Y)
         {
@@ -105,6 +119,8 @@ namespace partmake
             if (!mouseMoved)
             {
             }
+            if (script.Api.MouseHandler != null)
+                script.Api.MouseHandler(MouseCommand.ButtonUp, btn, X, Y, Keys.None);
         }
         public void MouseMove(int X, int Y, System.Windows.Forms.Keys keys)
         {
@@ -125,6 +141,8 @@ namespace partmake
                 float tscale = 0.01f;
                 cameraPos = mouseDownCameraPos - new Vector3(-X + lMouseDownPt.X, Y - lMouseDownPt.Y, 0) * tscale;
             }
+            else if (script.Api.MouseHandler != null)
+                script.Api.MouseHandler(MouseCommand.Moved, -1, X, Y, Keys.None);
         }
 
         protected unsafe override void CreateResources(ResourceFactory factory)
@@ -147,26 +165,13 @@ namespace partmake
                 new TextureDescription(1024, 1024, 1, 1, 1, PixelFormat.R32_G32_B32_A32_Float, TextureUsage.Staging, TextureType.Texture2D, TextureSampleCount.Count1));
 
 
-            {
-                var cubeVertices = primitives.Cube.GetVertices();
-                _cubeVertexBuffer = factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * cubeVertices.Length), BufferUsage.VertexBuffer));
-                GraphicsDevice.UpdateBuffer(_cubeVertexBuffer, 0, cubeVertices);
+            _cubeVertexBuffer = primitives.Cube.VertexBuffer;
+            _cubeIndexBuffer = primitives.Cube.IndexBuffer;
+            _cubeIndexCount = primitives.Cube.IndexLength;
+            _planeVertexBuffer = primitives.Plane.VertexBuffer;
+            _planeIndexBuffer = primitives.Plane.IndexBuffer;
+            _planeIndexCount = primitives.Plane.IndexLength;
 
-                var cubeIndices = primitives.Cube.GetIndices();
-                _cubeIndexBuffer = factory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)cubeIndices.Length, BufferUsage.IndexBuffer));
-                _cubeIndexCount = (uint)cubeIndices.Length;
-                GraphicsDevice.UpdateBuffer(_cubeIndexBuffer, 0, cubeIndices);
-            }
-            {
-                var planeVertices = primitives.Plane.GetVertices();
-                _planeVertexBuffer = factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * planeVertices.Length), BufferUsage.VertexBuffer));
-                GraphicsDevice.UpdateBuffer(_planeVertexBuffer, 0, planeVertices);
-
-                var planeIndices = primitives.Plane.GetIndices();
-                _planeIndexBuffer = factory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)planeIndices.Length, BufferUsage.IndexBuffer));
-                _planeIndexCount = (uint)planeIndices.Length;
-                GraphicsDevice.UpdateBuffer(_planeIndexBuffer, 0, planeIndices);
-            }
             {
                 var vectors = new List<Vector3>();
                 var indices = new List<int>();
@@ -293,13 +298,13 @@ namespace partmake
 
                 _pickTexture = factory.CreateTexture(TextureDescription.Texture2D(
                               1024, 1024, 1, 1,
-                               PixelFormat.R8_G8_B8_A8_UNorm, TextureUsage.RenderTarget | TextureUsage.Sampled));
+                               PixelFormat.R32_G32_B32_A32_UInt, TextureUsage.RenderTarget | TextureUsage.Sampled));
                 _pickStgTexture = factory.CreateTexture(TextureDescription.Texture2D(
                     1024,
                     1024,
                     1,
                     1,
-                    PixelFormat.R8_G8_B8_A8_UNorm,
+                    PixelFormat.R32_G32_B32_A32_UInt,
                     TextureUsage.Staging));
 
                 _pickTextureView = factory.CreateTextureView(_pickTexture);
@@ -631,14 +636,12 @@ namespace partmake
         }
         struct Rgba
         {
-            public byte r;
-            public byte g;
-            public byte b;
-            public byte a;
+            public uint r;
+            public uint g;
+            public uint b;
+            public uint a;
         }
-
         
-
         void HandlePick()
         {
             if (pickReady == 1)
@@ -646,7 +649,7 @@ namespace partmake
                 meshSelectedOffset = -1;
                 MappedResourceView<Rgba> rView = GraphicsDevice.Map<Rgba>(_pickStgTexture, MapMode.Read);
                 Rgba r = rView[pickX, pickY];
-                pickIdx = r.r + (r.g << 8) + (r.b << 16);
+                pickIdx = (int)(r.r + (r.g << 8) + (r.b << 16));
                 selectedConnectorIdx = -1;
                 if (pickIdx >= 1024)
                 {

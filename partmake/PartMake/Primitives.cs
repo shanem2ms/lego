@@ -4,6 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Numerics;
+using Veldrid;
+using partmake.script;
+using partmake.Topology;
 
 namespace partmake.primitives
 {
@@ -62,6 +65,42 @@ namespace partmake.primitives
 
             return indices;
         }
+
+        static DeviceBuffer _vertexBuffer = null;
+        public static DeviceBuffer VertexBuffer
+        {
+            get
+            {
+                if (_vertexBuffer == null)
+                {
+                    var vertices = GetVertices();
+                    _vertexBuffer = Api.ResourceFactory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
+                    Api.GraphicsDevice.UpdateBuffer(_vertexBuffer, 0, vertices);
+                }
+                return _vertexBuffer;
+            }
+        }
+
+        static DeviceBuffer _indexBuffer = null;
+        public static DeviceBuffer IndexBuffer
+        {
+            get
+            {
+                if (_indexBuffer == null)
+                {
+                    var indices = GetIndices();
+                    _indexBuffer = Api.ResourceFactory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)indices.Length, BufferUsage.IndexBuffer));
+                    Api.GraphicsDevice.UpdateBuffer(_indexBuffer, 0, indices);
+                }
+                return _indexBuffer;
+            }
+        }
+
+        static uint _indexLength = 0;
+        public static uint IndexLength
+        {
+            get { if (_indexLength == 0) _indexLength = (uint)GetIndices().Length; return _indexLength; }
+        }
     }
 
     public static class Plane
@@ -89,5 +128,42 @@ namespace partmake.primitives
 
             return indices;
         }
+
+        static DeviceBuffer _vertexBuffer = null;
+        public static DeviceBuffer VertexBuffer
+        {
+            get
+            {
+                if (_vertexBuffer == null)
+                {
+                    var vertices = GetVertices();
+                    _vertexBuffer = Api.ResourceFactory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
+                    Api.GraphicsDevice.UpdateBuffer(_vertexBuffer, 0, vertices);
+                }
+                return _vertexBuffer;
+            }
+        }
+
+        static DeviceBuffer _indexBuffer = null;
+        public static DeviceBuffer IndexBuffer
+        {
+            get
+            {
+                if (_indexBuffer == null)
+                {
+                    var indices = GetIndices();
+                    _indexBuffer = Api.ResourceFactory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)indices.Length, BufferUsage.IndexBuffer));
+                    Api.GraphicsDevice.UpdateBuffer(_indexBuffer, 0, indices);
+                }
+                return _indexBuffer;
+            }
+        }
+
+        static uint _indexLength = 0;
+        public static uint IndexLength
+        {
+            get { if (_indexLength == 0) _indexLength = (uint)GetIndices().Length; return _indexLength; }
+        }
     }
 }
+

@@ -153,12 +153,24 @@
                                 <StackPanel Orientation="Horizontal">
                                     <Button Content="New"/>
                                 </StackPanel>
-                                <TreeView Grid.Row="1" ItemsSource="{Binding Path=ScriptFiles}" >
+                                <TreeView Grid.Row="1" ItemsSource="{Binding Path=ScriptFiles}" 
+                                          Background="{StaticResource BgBrush}" Foreground="AliceBlue">
                                     <TreeView.ItemTemplate>
                                         <HierarchicalDataTemplate DataType="{x:Type local:ScriptItem}" ItemsSource="{Binding Children}">
-                                            <Button HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Content="{Binding Name}" Click="SriptFile_Click"
-                                                    Background="{Binding Background, RelativeSource={RelativeSource AncestorType=TabItem}}"
-                                                    BorderThickness="0"/>
+                                            <Button HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="SriptFile_Click"
+                                                    Background="{Binding Background, RelativeSource={RelativeSource AncestorType=TreeView}}"
+                                                    Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=TreeView}}"
+                                                    BorderThickness="0">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <fa:ImageAwesome Icon="File" Width="10" Margin="5,2"
+                                                                     Foreground="{Binding ColorBrush}" Visibility="{Binding IconVisiblity}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" />
+                                                </Grid>
+                                            </Button>
                                         </HierarchicalDataTemplate>
                                     </TreeView.ItemTemplate>
                                 </TreeView>
