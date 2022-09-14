@@ -21,10 +21,10 @@ namespace partmake.script
     		Terrain();  
         }
         
-        void MouseHandler(LayoutVis.MouseCommand command, int btn, int X, int Y, System.Windows.Forms.Keys keys)
+        void MouseHandler(LayoutVis.MouseCommand command, int btn, int X, int Y, Vector3 worldPos)
         {
         	if (command == LayoutVis.MouseCommand.ButtonDown)
-        		Api.WriteLine("Down");
+        		Api.WriteLine($"{worldPos}");
         }
         
         public void Draw(CommandList cl, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)

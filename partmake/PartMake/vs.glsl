@@ -18,6 +18,7 @@ layout(location = 1) in vec3 Normal;
 layout(location = 2) in vec2 TexCoords;
 layout(location = 0) out vec2 fsin_texCoords;
 layout(location = 1) out vec3 fsin_normal;
+layout(location = 2) out vec4 fsin_Pos;
 
 void main()
 {
@@ -27,4 +28,5 @@ void main()
     gl_Position = clipPosition;
     fsin_texCoords = TexCoords;
     fsin_normal = Normal;
+    fsin_Pos = clipPosition;
 }

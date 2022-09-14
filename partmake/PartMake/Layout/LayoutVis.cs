@@ -64,6 +64,9 @@ namespace partmake
         int selectedPart = -1;
         int selectedConnectorIdx = -1;
         int meshSelectedOffset = -1;
+        bool needPickBufferRefresh = true;
+        int[] pickBuffer = new int[1024 * 1024 * 2];
+        Matrix4x4 invViewProjPick;
 
         public class PartPickEvent
         {
@@ -93,7 +96,8 @@ namespace partmake
             ButtonUp,
             Moved
         }
-        public delegate void MouseDel(MouseCommand command, int btn, int X, int Y, Keys keys);
+        public delegate void MouseDel(MouseCommand command, int btn, int X, int Y, 
+            Vector3 worldPos);
 
         bool mouseMoved = false;
         public void MouseDown(int btn, int X, int Y, Keys keys)
@@ -108,10 +112,31 @@ namespace partmake
             {
                 pickX = (int)((float)X / (float)Window.Width * 1024.0f);
                 pickY = (int)((float)Y / (float)Window.Height * 1024.0f);
-                pickReady = 0;
+                if (needPickBufferRefresh && pickReady == -1)
+                    pickReady = 0;
+                else
+                {
+                    int partIdx, connectorIdx;
+                    Vector3 worldPos;
+                    PickFromBuffer(pickX, pickY, out worldPos, out partIdx, out connectorIdx);
+
+                    if (partIdx >= 0)
+                    {
+                        selectedPart = partIdx;
+                        OnPartPicked?.Invoke(this, new PartPickEvent() { part = scene.PartList[selectedPart], connectorIdx = -1 });
+                    }
+                    else if (connectorIdx >= 0)
+                    {
+                        selectedConnectorIdx = connectorIdx;
+                        OnConnectorPicked?.Invoke(this, new PartPickEvent() { part = scene.PartList[selectedPart], connectorIdx = selectedConnectorIdx });
+                    }
+                    else
+                       selectedPart = -1;
+
+                    if (script.Api.MouseHandler != null)
+                        script.Api.MouseHandler(MouseCommand.ButtonDown, btn, X, Y, worldPos);
+                }
             }
-            if (script.Api.MouseHandler != null)
-                script.Api.MouseHandler(MouseCommand.ButtonDown, btn, X, Y, keys);
         }
         public void MouseUp(int btn, int X, int Y)
         {
@@ -120,7 +145,7 @@ namespace partmake
             {
             }
             if (script.Api.MouseHandler != null)
-                script.Api.MouseHandler(MouseCommand.ButtonUp, btn, X, Y, Keys.None);
+                script.Api.MouseHandler(MouseCommand.ButtonUp, btn, X, Y, Vector3.Zero);
         }
         public void MouseMove(int X, int Y, System.Windows.Forms.Keys keys)
         {
@@ -135,14 +160,29 @@ namespace partmake
                 {
                     lookDir = mouseDownLookDir + (new Vector2(X, Y) - lMouseDownPt) * 0.01f;
                 }
+
+                needPickBufferRefresh = true;
             }
             else if ((mouseDown & 4) != 0)
             {
                 float tscale = 0.01f;
                 cameraPos = mouseDownCameraPos - new Vector3(-X + lMouseDownPt.X, Y - lMouseDownPt.Y, 0) * tscale;
+                needPickBufferRefresh = true;
             }
-            else if (script.Api.MouseHandler != null)
-                script.Api.MouseHandler(MouseCommand.Moved, -1, X, Y, Keys.None);
+            else
+            {
+                if (needPickBufferRefresh && pickReady == -1)
+                    pickReady = 0;
+                else
+                {
+                    int partIdx, connectorIdx;
+                    Vector3 worldPos;
+                    PickFromBuffer(pickX, pickY, out worldPos, out partIdx, out connectorIdx);
+
+                    if (script.Api.MouseHandler != null)
+                        script.Api.MouseHandler(MouseCommand.Moved, -1, X, Y, worldPos);
+                }
+            }
         }
 
         protected unsafe override void CreateResources(ResourceFactory factory)
@@ -298,13 +338,13 @@ namespace partmake
 
                 _pickTexture = factory.CreateTexture(TextureDescription.Texture2D(
                               1024, 1024, 1, 1,
-                               PixelFormat.R32_G32_B32_A32_UInt, TextureUsage.RenderTarget | TextureUsage.Sampled));
+                               PixelFormat.R32_G32_UInt, TextureUsage.RenderTarget | TextureUsage.Sampled));
                 _pickStgTexture = factory.CreateTexture(TextureDescription.Texture2D(
                     1024,
                     1024,
                     1,
                     1,
-                    PixelFormat.R32_G32_B32_A32_UInt,
+                    PixelFormat.R32_G32_UInt,
                     TextureUsage.Staging));
 
                 _pickTextureView = factory.CreateTextureView(_pickTexture);
@@ -510,7 +550,7 @@ namespace partmake
             GraphicsDevice.SubmitCommands(_cl);
             GraphicsDevice.SwapBuffers(MainSwapchain);
             GraphicsDevice.WaitForIdle();
-            HandlePick();
+            HandlePick(ref viewmat, ref projMat);
         }
 
         public void BulletDebugDrawLine(Vector3 from, Vector3 to, Vector3 color)
@@ -638,35 +678,50 @@ namespace partmake
         {
             public uint r;
             public uint g;
-            public uint b;
-            public uint a;
         }
         
-        void HandlePick()
+        void HandlePick(ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
             if (pickReady == 1)
             {
-                meshSelectedOffset = -1;
+                meshSelectedOffset = -1;                
                 MappedResourceView<Rgba> rView = GraphicsDevice.Map<Rgba>(_pickStgTexture, MapMode.Read);
-                Rgba r = rView[pickX, pickY];
-                pickIdx = (int)(r.r + (r.g << 8) + (r.b << 16));
-                selectedConnectorIdx = -1;
-                if (pickIdx >= 1024)
-                {
-                    selectedPart = pickIdx - 1024;
-                    OnPartPicked?.Invoke(this, new PartPickEvent() { part = scene.PartList[selectedPart], connectorIdx = -1 });
-                }
-                else if (pickIdx >= 128)
-                {
-                    selectedConnectorIdx = pickIdx - 128;
-                    OnConnectorPicked?.Invoke(this, new PartPickEvent() { part = scene.PartList[selectedPart], connectorIdx = selectedConnectorIdx });
-                }
-                else
-                {
-                    selectedPart = -1;
-                }
+                
+                Marshal.Copy(rView.MappedResource.Data, pickBuffer, 0, pickBuffer.Length);
                 GraphicsDevice.Unmap(_pickStgTexture);
+                invViewProjPick = viewmat * projMat;
+                Matrix4x4.Invert(invViewProjPick, out invViewProjPick);
                 pickReady = -1;
+                needPickBufferRefresh = false;
+            }
+        }
+
+        void PickFromBuffer(int mx, int my, out Vector3 worldPos, 
+            out int partIdx,
+            out int connectorIdx)
+        {
+            int pr = pickBuffer[(my * 1024 + mx) * 2];
+            int pg = pickBuffer[(my * 1024 + mx) * 2 + 1];
+
+            float xcoord = (mx / 1024.0f) * 2 - 1.0f;
+            float ycoord = 1.0f - (my / 1024.0f) * 2;
+            float zcoord = (pg / 1000000000.0f);
+
+            Vector4 wpos = Vector4.Transform(new Vector4(xcoord, ycoord, zcoord, 1), invViewProjPick);
+            wpos /= (wpos.W * worldScale);
+            worldPos = new Vector3(wpos.X, wpos.Y, wpos.Z);
+            pickIdx = (int)pr;
+            selectedConnectorIdx = -1;
+            partIdx = -1;
+            connectorIdx = -1;
+            if (pickIdx >= 1024)
+            {
+                partIdx = pickIdx - 1024;
+            }
+            else if (pickIdx >= 128)
+            {
+                connectorIdx = pickIdx - 128;
+
             }
         }
     }
