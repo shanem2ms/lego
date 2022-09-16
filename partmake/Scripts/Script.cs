@@ -15,7 +15,7 @@ namespace partmake.script
         public void Run()
         {            
     		Utils u = new Utils();
-    		//Api.CustomDraw = Draw;
+    		Api.CustomDraw = Draw;
     		Api.MouseHandler = MouseHandler;
     		u.Minifig(Matrix4x4.CreateTranslation(new Vector3(8, 68, 0)));
     		Terrain();  
@@ -33,10 +33,10 @@ namespace partmake.script
         	{
         		tg = new TerrainGen();
         		tg.Gen();
-	    		vox.Gen(tg.TerrainTexView);
+	    		//vox.Gen(tg.TerrainTexView);
         		tg.Draw(cl, ref viewmat, ref projMat);
         	}
-        	vox.Draw(cl, ref viewmat, ref projMat);
+        	//vox.Draw(cl, ref viewmat, ref projMat);
         }
         
         void Rain()

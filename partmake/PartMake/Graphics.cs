@@ -7,6 +7,10 @@ using System.Threading.Tasks;
 using System.IO;
 using Veldrid;
 using Veldrid.SPIRV;
+using static partmake.Palette;
+using System.Runtime.InteropServices;
+using System.Windows.Markup;
+using System.Runtime.ConstrainedExecution;
 
 namespace partmake.graphics
 {
@@ -63,5 +67,57 @@ namespace partmake.graphics
             _textureView = Api.ResourceFactory.CreateTextureView(_texture);
             _frameBuffer = Api.ResourceFactory.CreateFramebuffer(new FramebufferDescription(null, _texture));
         }
+
+        public CpuTexture<T> GetCpuTexture<T>(CommandList _cl) where T: struct
+        {
+            var tex = new CpuTexture<T>(this._texture);
+            tex.Update(_cl);
+            return tex;
+        }
+    }
+
+    public class CpuTexture<T> where T : struct
+    {
+        Texture _gpuTexture;
+        Texture _stagingTexture;
+        T[] data;
+
+        public T[] Data => data;
+        public CpuTexture(Texture _textureIn)
+        {
+            _gpuTexture = _textureIn;
+            _stagingTexture = Api.ResourceFactory.CreateTexture(new TextureDescription(_textureIn.Width, _textureIn.Height, _textureIn.Depth,
+                _textureIn.MipLevels, _textureIn.ArrayLayers, _textureIn.Format, TextureUsage.Staging, _textureIn.Type,
+                _textureIn.SampleCount));
+        }
+
+        public void Update(CommandList cl)
+        {
+            cl.CopyTexture(this._gpuTexture, this._stagingTexture);
+        }
+
+        public void Map()
+        {
+            MappedResourceView<T> rView = Api.GraphicsDevice.Map<T>(this._stagingTexture, MapMode.Read);
+            
+            IntPtr startPtr = rView.MappedResource.Data;
+            uint rowPitch = rView.MappedResource.RowPitch;
+            uint width = this._stagingTexture.Width;
+            uint height = this._stagingTexture.Height;
+            int elemSize = Marshal.SizeOf<T>();
+            data = new T[width * height];
+            for (uint y = 0; y < this._stagingTexture.Height; ++y)
+            {
+                uint cy = y * rowPitch;
+                IntPtr curPtr = IntPtr.Add(startPtr, (int)cy);
+                for (uint x = 0; x < width; ++x)
+                {
+                    data[y * width + x] = Marshal.PtrToStructure<T>(curPtr);
+                    curPtr = IntPtr.Add(curPtr, elemSize);
+                }
+            }
+            Api.GraphicsDevice.Unmap(this._stagingTexture);
+        }
+
     }
 }

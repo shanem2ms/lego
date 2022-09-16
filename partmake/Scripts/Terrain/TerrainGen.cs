@@ -20,6 +20,14 @@ namespace partmake.script
 	    private DeviceBuffer _planeIndexBuffer;
 	    private uint _planeIndexCount;
 	    public TextureView TerrainTexView => _erosionRT[0].View;
+	    public struct TerrainVal
+	    {
+	    	public float r;
+	    	public float g;
+	    	public float b;
+	    	public float a;
+	    }
+	    public CpuTexture<TerrainVal> _cpuTexture;
 
     	public void Gen()    
     	{
@@ -62,7 +70,7 @@ namespace partmake.script
                 PrimitiveTopology.TriangleList,
                 terrainSet.Desc,
                 new ResourceLayout[] {},
-                _erosionRT[0].FrameBuffer.OutputDescription));            			                
+                _erosionRT[0].FrameBuffer.OutputDescription));     
 		}
     	
     	public void Draw(CommandList cl, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
@@ -85,6 +93,9 @@ namespace partmake.script
 	            cl.DrawIndexed(_planeIndexCount); 
             }
             }
+                                        
+            _cpuTexture = _erosionRT[1].GetCpuTexture<TerrainVal>(cl);
+
     	}
     }
 }    

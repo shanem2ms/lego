@@ -147,6 +147,7 @@ namespace partmake
         {
             _device?.ResizeMainWindow((uint)Width, (uint)Height);
             Resized?.Invoke();
+            _layoutVis?.OnResize((uint)Width, (uint)Height);
             Invalidate();
             base.OnResize(e);
         }
