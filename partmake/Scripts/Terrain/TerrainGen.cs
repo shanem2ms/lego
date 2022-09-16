@@ -19,7 +19,7 @@ namespace partmake.script
 	    private DeviceBuffer _planeVertexBuffer;
 	    private DeviceBuffer _planeIndexBuffer;
 	    private uint _planeIndexCount;
-	    public TextureView TerrainTexView => _erosionRT[0].View;
+	    public TextureView TerrainTexView => _erosionRT[0].View;	    
 	    public struct TerrainVal
 	    {
 	    	public float r;
@@ -27,7 +27,8 @@ namespace partmake.script
 	    	public float b;
 	    	public float a;
 	    }
-	    public CpuTexture<TerrainVal> _cpuTexture;
+	    CpuTexture<TerrainVal> _cpuTexture;
+	    public CpuTexture<TerrainVal> CpuTex => _cpuTexture;
 
     	public void Gen()    
     	{

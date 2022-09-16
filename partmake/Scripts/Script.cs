@@ -27,14 +27,26 @@ namespace partmake.script
         		Api.WriteLine($"{worldPos}");
         }
         
+        bool doTerrainGen = true;
         public void Draw(CommandList cl, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
+        	if (doTerrainGen)
+        	{
         	if (tg == null)
         	{
         		tg = new TerrainGen();
         		tg.Gen();
 	    		//vox.Gen(tg.TerrainTexView);
         		tg.Draw(cl, ref viewmat, ref projMat);
+        	}
+        	else
+        	{
+        		var cputex = tg.CpuTex;
+        		cputex.Map();
+        		var data = cputex.Data;
+        		Api.WriteLine($"{data[5].a}");
+        		doTerrainGen = false;	
+        	}
         	}
         	//vox.Draw(cl, ref viewmat, ref projMat);
         }
