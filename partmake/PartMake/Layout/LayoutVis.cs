@@ -18,6 +18,7 @@ using System.Windows.Input;
 using SharpText.Core;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using ICSharpCode.AvalonEdit.Highlighting;
+using System.Diagnostics;
 
 namespace partmake
 {
@@ -598,6 +599,8 @@ namespace partmake
         {
             if (pickReady == 0)
             {
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
                 Matrix4x4 viewPrj = viewmat * projMat;
 
                 _cl.SetPipeline(_pipelinePick);
@@ -684,6 +687,8 @@ namespace partmake
                 }
 
                 _cl.CopyTexture(this._pickTexture, this._pickStgTexture);
+                sw.Stop();
+                //script.Api.WriteLine($"pick {sw.Elapsed}");
                 pickReady = 1;
             }
 

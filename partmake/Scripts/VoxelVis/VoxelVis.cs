@@ -57,11 +57,11 @@ namespace partmake.script
             _instanceVB = Api.ResourceFactory.CreateBuffer(new BufferDescription(sizeof(float)*2*_instanceCnt, BufferUsage.VertexBuffer));
             Api.GraphicsDevice.UpdateBuffer(_instanceVB, 0, GetInstanceBuf());
             
-            var cubeVertices = primitives.Cube.GetVertices();
+            var cubeVertices = primitives.Plane.GetVertices();
             _cubeVertexBuffer = Api.ResourceFactory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * cubeVertices.Length), BufferUsage.VertexBuffer));
             Api.GraphicsDevice.UpdateBuffer(_cubeVertexBuffer, 0, cubeVertices);
 
-            var cubeIndices = primitives.Cube.GetIndices();
+            var cubeIndices = primitives.Plane.GetIndices();
             _cubeIndexBuffer = Api.ResourceFactory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)cubeIndices.Length, BufferUsage.IndexBuffer));
             _cubeIndexCount = (uint)cubeIndices.Length;
             Api.GraphicsDevice.UpdateBuffer(_cubeIndexBuffer, 0, cubeIndices);
@@ -133,13 +133,16 @@ namespace partmake.script
 	    Vector2 []GetInstanceBuf()
 	    {
 	    	Vector2[] vtxs = new Vector2[dimcnt *dimcnt];
+	    	int xoff = 0;
+	    	int yoff = 0;
+	    	float scale = 1.0f;
 	    	for (int y = 0; y < dimcnt; ++y)
 	    	{
 		    	for (int x = 0; x < dimcnt; ++x)
 		    	{
 		    		vtxs[y * dimcnt + x] = new Vector2(
-			    		(float)x / (dimcnt - 1),
-			    		(float)y / (dimcnt - 1));
+			    		(float)(x + xoff)/ (dimcnt * scale - 1),
+			    		(float)(y + yoff)/ (dimcnt * scale - 1));
 		    	}
 	    	}
 	    	return vtxs;

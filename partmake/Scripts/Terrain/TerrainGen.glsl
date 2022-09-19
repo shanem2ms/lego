@@ -73,7 +73,7 @@ float noise_octaves(vec2 p)
 {
     float val = 0;
     float scale = 1.0;
-    float mul[5] = { 1.89, .89, 2.13, 2.17, 1.83 };
+    p *= 1;
     for (int i = 0; i < 10; ++i)
     {
         val += snoise(p) * scale;
