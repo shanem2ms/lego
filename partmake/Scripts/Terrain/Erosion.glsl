@@ -172,7 +172,7 @@ void main()
     if ( fragColour.y > maxSediment )
     {
         float deposit = fragColour.y-maxSediment;
-        fragColour.w += deposit*sedimentToHeight; // deposit (perhaps clamp to inslope, or apply slowly)
+        fragColour.w += .2*deposit*sedimentToHeight; // deposit (perhaps clamp to inslope, or apply slowly)
         fragColour.y -= deposit;
     }
     else

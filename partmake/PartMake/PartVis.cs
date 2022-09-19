@@ -100,6 +100,8 @@ namespace partmake
         private TextureView _snapshotTextureView;
         private Framebuffer _snapshotFB;
 
+        private DepthCubeMap _depthCubeMap;
+
         public List<string> ThumbnailList = new List<string>();
         public bool DoMesh { get; set; } = true;
         public bool DoDecomp { get; set; } = false;

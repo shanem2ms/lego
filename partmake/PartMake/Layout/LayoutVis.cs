@@ -59,7 +59,7 @@ namespace partmake
         Vector2 lMouseDownPt;
         Vector2 rMouseDownPt;
         Vector2 mouseDownLookDir;
-        Vector3 cameraPos = new Vector3(0, 0, -8.5f);
+        Vector3 cameraPos = new Vector3(-3.5f, 0.8f, 0.18f);
         Vector3 mouseDownCameraPos;
         float zoom = 3.5f;
         float mouseDownZoom = 0;
@@ -105,6 +105,61 @@ namespace partmake
             Vector3 worldPos);
 
         bool mouseMoved = false;
+
+        bool[] moveDirs = new bool[6];
+        public bool OnKeyDown(System.Windows.Input.KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case System.Windows.Input.Key.W:
+                    moveDirs[0] = true;
+                    break;
+                case System.Windows.Input.Key.S:
+                    moveDirs[1] = true;
+                    break;
+                case System.Windows.Input.Key.A:
+                    moveDirs[2] = true;
+                    break;
+                case System.Windows.Input.Key.D:
+                    moveDirs[3] = true;
+                    break;
+                case System.Windows.Input.Key.Space:
+                    moveDirs[4] = true;
+                    break;
+                case System.Windows.Input.Key.LeftShift:
+                case System.Windows.Input.Key.RightShift:
+                    moveDirs[5] = true;
+                    break;
+            }
+            return true;
+        }
+        public bool OnKeyUp(System.Windows.Input.KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case System.Windows.Input.Key.W:
+                    moveDirs[0] = false;
+                    break;
+                case System.Windows.Input.Key.S:
+                    moveDirs[1] = false;
+                    break;
+                case System.Windows.Input.Key.A:
+                    moveDirs[2] = false;
+                    break;
+                case System.Windows.Input.Key.D:
+                    moveDirs[3] = false;
+                    break;
+                case System.Windows.Input.Key.Space:
+                    moveDirs[4] = false;
+                    break;
+                case System.Windows.Input.Key.LeftShift:
+                case System.Windows.Input.Key.RightShift:
+                    moveDirs[5] = false;
+                    break;
+            }
+            return true;
+        }
+
         public void MouseDown(int btn, int X, int Y, Keys keys)
         {
             mouseDown |= 1 << btn;
@@ -162,7 +217,7 @@ namespace partmake
                 }
                 else
                 {
-                    lookDir = mouseDownLookDir + (new Vector2(X, Y) - lMouseDownPt) * 0.01f;
+                    lookDir = mouseDownLookDir + (lMouseDownPt - new Vector2(X, Y)) * 0.01f;
                 }
 
                 needPickBufferRefresh = true;
@@ -391,9 +446,39 @@ namespace partmake
             textRenderer.ResizeToSwapchain();
         }
         float worldScale = 0.0025f;
+
+
+        Matrix4x4 GetLookMatrix()
+        {
+            return Matrix4x4.CreateRotationX(lookDir.Y) *
+                Matrix4x4.CreateRotationY(lookDir.X);
+        }
+
+        void UpdatePosition()
+        {
+            Matrix4x4 m = GetLookMatrix();
+            Vector3 zdir = Vector3.TransformNormal(Vector3.UnitZ, m);
+            Vector3 xdir = Vector3.TransformNormal(Vector3.UnitX, m);
+            Vector3 zfwd = Vector3.Cross(xdir, Vector3.UnitY);
+            Vector3 xside = Vector3.Cross(Vector3.UnitY, zfwd);
+            float speed = 0.025f;
+            if (moveDirs[0])
+                cameraPos -= zfwd * speed;
+            if (moveDirs[1])
+                cameraPos += zfwd * speed;
+            if (moveDirs[2])
+                cameraPos -= xside * speed;
+            if (moveDirs[3])
+                cameraPos += xside * speed;
+            if (moveDirs[4])
+                cameraPos += Vector3.UnitY * speed;
+            if (moveDirs[5])
+                cameraPos -= Vector3.UnitY * speed;
+        }
         protected override void Draw(float deltaSeconds)
         {
             scene.GameLoop(lookDir, cameraPos);
+            UpdatePosition();
             _cl.Begin();
 
             Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(
@@ -403,9 +488,10 @@ namespace partmake
                 20f);
             _cl.UpdateBuffer(_projectionBuffer, 0, ref projMat);
 
-            Matrix4x4 viewmat = Matrix4x4.CreateRotationY(lookDir.X) *
-                Matrix4x4.CreateRotationX(lookDir.Y) *
-                Matrix4x4.CreateTranslation(cameraPos / System.MathF.Pow(2.0f, zoom));
+            Matrix4x4 viewmat =
+                GetLookMatrix() *
+                Matrix4x4.CreateTranslation(cameraPos);
+            Matrix4x4.Invert(viewmat, out viewmat);
             _cl.UpdateBuffer(_viewBuffer, 0, viewmat);
             _cl.SetPipeline(_pipeline);
             _cl.SetGraphicsResourceSet(0, _projViewSet);

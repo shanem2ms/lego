@@ -165,11 +165,13 @@ namespace partmake
         private void _RenderControl_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             scene.OnKeyDown(e);
+            _LayoutControl.Vis.OnKeyDown(e);
         }
 
         private void _RenderControl_KeyUp(object sender, System.Windows.Input.KeyEventArgs e)
         {
             scene.OnKeyUp(e);
+            _LayoutControl.Vis.OnKeyUp(e);
         }
 
         private void TextBox_LostFocus(object sender, RoutedEventArgs e)

@@ -204,8 +204,11 @@ namespace partmake
             bulletSimulation.Step();            
         }
 
-        public void OnKeyDown(System.Windows.Input.KeyEventArgs e)
+        bool handleKeyPresses = false;
+        public bool OnKeyDown(System.Windows.Input.KeyEventArgs e)
         {
+            if (!handleKeyPresses)
+                return false;
             switch (e.Key)
             {
                 case System.Windows.Input.Key.W:
@@ -221,6 +224,7 @@ namespace partmake
                     rightPressed = true;
                     break;
             }
+            return true;
         }
 
         public void OnKeyUp(System.Windows.Input.KeyEventArgs e)

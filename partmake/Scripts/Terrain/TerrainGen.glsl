@@ -87,5 +87,5 @@ float noise_octaves(vec2 p)
 void main()
 {
     vec4 output_ = vec4(noise_octaves(fsin_0),0,0,1);
-    _outputColor_ = vec4(0,0,0,output_ );
+    _outputColor_ = vec4(0,0,0,output_.x +1);
 }

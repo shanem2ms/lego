@@ -21,6 +21,12 @@ namespace partmake.graphics
                         new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
                         new VertexElementDescription("Normal", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
                         new VertexElementDescription("TexCoords", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2));
+
+        public static VertexLayoutDescription DownScale = 
+            new VertexLayoutDescription(
+                new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
+                new VertexElementDescription("UVW", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3));
+
     }
     public class Shader
     {
@@ -75,7 +81,6 @@ namespace partmake.graphics
             return tex;
         }
     }
-
     public class CpuTexture<T> where T : struct
     {
         Texture _gpuTexture;
@@ -121,5 +126,58 @@ namespace partmake.graphics
             Api.GraphicsDevice.Unmap(this._stagingTexture);
         }
 
+    }
+    struct Rgba32
+    {
+        public float r;
+        public float g;
+        public float b;
+        public float a;
+
+        public override string ToString()
+        {
+            return $"{r} {g} {b} {a}";
+        }
+    }
+    class MMTex
+    {
+        public Rgba32[][] data;
+        public int baseLod = 0;
+
+        public MMTex(int baseLod, int levels)
+        {
+            data = new Rgba32[levels][];
+        }
+        public Rgba32[] this[int i]
+        {
+            get => data[i];
+            set { data[i] = value; }
+        }
+        public int Length => data.Length;
+
+        public void SaveTo(string file)
+        {
+            for (int i = 0; i < data.Length; ++i)
+            {
+                FileStream f = File.Create($"{file}_{i}.dat");
+                byte[] bytes = getBytes(data[i]);
+                f.Write(bytes, 0, bytes.Length);
+                f.Close();
+            }
+        }
+
+        byte[] getBytes<T>(T[] data)
+        {
+            int size = Marshal.SizeOf(typeof(T));
+            byte[] arr = new byte[size * data.Length];
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            for (int i = 0; i < data.Length; ++i)
+            {
+                Marshal.StructureToPtr(data[i], ptr, true);
+                Marshal.Copy(ptr, arr, i * size, size);
+            }
+            Marshal.FreeHGlobal(ptr);
+            return arr;
+        }
     }
 }
