@@ -21,32 +21,32 @@ namespace partmake.script
 			var hand = Api.GetPart("3820");
 
 			var hippart = new PartInst(hip, mat, 1, false);
-			Api.AddUnconnected(hippart);
+			Api.Scene.AddUnconnected(hippart);
     		
     		var leftlegpart = new PartInst(leftleg, 1, false);
-    		Api.Connect(leftlegpart, 1, hippart, 0, true);			
+    		Api.Scene.Connect(leftlegpart, 1, hippart, 0, true);			
 
     		var rightlegpart = new PartInst(rightleg, 1, false);
-    		Api.Connect(rightlegpart, 1, hippart, 1, true);			
+    		Api.Scene.Connect(rightlegpart, 1, hippart, 1, true);			
 				
 			var torsopart = new PartInst(torso, 4);
-    		Api.Connect(torsopart, 3, hippart, 3, true);		
-    		Api.SetPlayerPart(torsopart);
+    		Api.Scene.Connect(torsopart, 3, hippart, 3, true);		
+    		Api.Scene.SetPlayerPart(torsopart);
     		
     		var leftarmpart = new PartInst(leftarm, 4, false);
-    		Api.Connect(leftarmpart, 0, torsopart, 2, true);
+    		Api.Scene.Connect(leftarmpart, 0, torsopart, 2, true);
 
     		var lefthandpart = new PartInst(hand, 14, false);    		
-    		Api.Connect(lefthandpart, 0, leftarmpart, 1, true);
+    		Api.Scene.Connect(lefthandpart, 0, leftarmpart, 1, true);
     		
 			var rightarmpart = new PartInst(rightarm, 4, false);
-    		Api.Connect(rightarmpart, 0, torsopart, 1, true);
+    		Api.Scene.Connect(rightarmpart, 0, torsopart, 1, true);
     		
     		var righthandpart = new PartInst(hand, 14, false);    		
-    		Api.Connect(righthandpart, 0, rightarmpart, 1, true);
+    		Api.Scene.Connect(righthandpart, 0, rightarmpart, 1, true);
 
     		var headpart = new PartInst(head, 14, false);    		
-    		Api.Connect(headpart, 0, torsopart, 0, true);
+    		Api.Scene.Connect(headpart, 0, torsopart, 0, true);
 		}
 		
 		void ConnectorTest()
@@ -55,13 +55,13 @@ namespace partmake.script
 			var stud4side = Api.GetPart("4733");
     		Matrix4x4 mat = 
     			Matrix4x4.CreateTranslation(new Vector3(0, 0, 0));        		        	
-    		Api.AddUnconnected(new PartInst(stud4side,mat, 326));       
+    		Api.Scene.AddUnconnected(new PartInst(stud4side,mat, 326));       
     		foreach (var stud in stud4side.ConnectorsWithType(ConnectorType.Stud))
     		{
 				Matrix4x4 m2 =     
     			stud1side.Connectors[4].IM44 *
     			stud.M44 * mat;
-    				Api.AddUnconnected(new PartInst(stud1side,m2, 29));
+    				Api.Scene.AddUnconnected(new PartInst(stud1side,m2, 29));
 			}
     		        		
     		

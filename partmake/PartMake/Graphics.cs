@@ -82,6 +82,8 @@ namespace partmake.graphics
         Texture _stagingTexture;
         T[] data;
 
+        public uint Width => _gpuTexture.Width;
+        public uint Height => _gpuTexture.Height;
         public T[] Data => data;
         public CpuTexture(Texture _textureIn)
         {

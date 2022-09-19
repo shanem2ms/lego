@@ -26,60 +26,19 @@ namespace partmake
             }
 
             public static string ScriptFolder = null;
-            public static List<PartInst> Parts = null;
-            public static List<System.Numerics.Vector4> Locators;
-            public static OctTree octTree = null;
-            public static PartInst playerPart = null;
+            public static Scene Scene = null;
             public static Veldrid.ResourceFactory ResourceFactory = null;
             public static Veldrid.GraphicsDevice GraphicsDevice = null;
             public static Veldrid.Swapchain Swapchain = null;
             public static LayoutVis.CustomDrawDel CustomDraw = null;
             public static LayoutVis.MouseDel MouseHandler = null;
 
-            public static void Reset()
+            public static void Reset(Scene scene)
             {
-                script.Api.Parts = new List<PartInst>(); ;
-                script.Api.octTree = new OctTree();
-                script.Api.Locators = new List<System.Numerics.Vector4>();
-                script.Api.playerPart = null;
+                script.Api.Scene = scene;
                 script.Api.CustomDraw = null;
                 script.Api.MouseHandler = null;
-            }
-            
-            public static void AddUnconnected(PartInst pi)
-            {
-                Parts.Add(pi);
-                octTree.AddPart(pi);
-            }
-            public static bool Connect(PartInst pi1, int connectorIdx1, PartInst pi0,
-                int connectorIdx0, bool allowCollisions )
-            {
-                var ci0 = pi0.item.Connectors[connectorIdx0];
-                var ci1 = pi1.item.Connectors[connectorIdx1];
-
-                System.Numerics.Matrix4x4 m2 =
-                    ci1.IM44 * ci0.M44 * pi0.mat;
-                pi1.mat = m2;
-                ConnectionInst cinst = new ConnectionInst()
-                {
-                    p0 = pi0,
-                    c0 = connectorIdx0,
-                    p1 = pi1,
-                    c1 = connectorIdx1
-                };
-                pi0.connections[connectorIdx0] = cinst;
-                pi1.connections[connectorIdx1] = cinst;
-                if (!allowCollisions && octTree.CollisionCheck(pi1))
-                    return false;
-                Api.Parts.Add(pi1);
-                octTree.AddPart(pi1);
-                return true;
-            }
-
-            public static void SetPlayerPart(PartInst piPlayer)
-            {
-                playerPart = piPlayer;
-            }
+            }                   
         }
     }
     public class Source
@@ -157,14 +116,8 @@ namespace partmake
                     var type = assembly.GetType("partmake.script.Script");
                     var instance = assembly.CreateInstance("partmake.script.Script");
                     var meth = type.GetMember("Run").First() as MethodInfo;
-                    script.Api.Reset();
+                    script.Api.Reset(scene);
                     meth.Invoke(instance, new object[] {});
-                    script.Api.octTree.CheckCollisions();
-                    lock (scene)
-                    {
-                        scene.Rebuild(script.Api.Parts, script.Api.Locators,
-                            Api.playerPart);
-                    }
                 }
             }
 

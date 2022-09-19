@@ -63,18 +63,19 @@ namespace partmake
             Matrix4x4 submat = Matrix4x4.CreateTranslation(-midpt);
             parts = new List<PartInst>();
             anchored = false;
+            int size = pilist.Count();
+            int curpart = 0;
             foreach (var part in pilist)
             {
                 part.body = this;
                 anchored |= part.anchored;                
                 part.bodySubMat = part.mat * submat;
                 parts.Add(part);
-                var pts = part.item.CollisionPts;
-                for (int idx = 0; idx < pts.Length; idx++)
+                foreach (var shp in part.item.BulletShapes)
                 {
-                    ConvexHullShape cvx = new ConvexHullShape(pts[idx].pts);
-                    shape.AddChildShape(Utils.FromMat4(part.bodySubMat), cvx);
+                    shape.AddChildShape(Utils.FromMat4(part.bodySubMat), shp);
                 }
+                curpart++;
             }
             BulletSharp.Math.Vector3 inertia;
             float mass = anchored ? 0 : 100;

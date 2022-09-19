@@ -13,6 +13,12 @@ namespace partmake
         public int x;
         public int y;
         public int z;
+        public List<PartInst> intersectparts = new List<PartInst>();
+        public List<PartInst> mainparts = new List<PartInst>();
+        static Random random = new Random();
+        public Vector3 tileColor = new Vector3(random.NextSingle(),
+            random.NextSingle(),
+            random.NextSingle());
 
         static bool Intersects(Vector3 mina, Vector3 maxa, Vector3 minb, Vector3 maxb)
         {
@@ -30,7 +36,6 @@ namespace partmake
                 return true;
         }
 
-        public List<PartInst> parts = new List<PartInst>();
 
         public bool Equals(OctTile other)
         {
@@ -44,14 +49,14 @@ namespace partmake
 
         public void CheckCollisions()
         {
-            for (int i = 0; i < parts.Count; i++)
+            for (int i = 0; i < intersectparts.Count; i++)
             {
-                Vector3 mina = parts[i].MinBounds;
-                Vector3 maxa = parts[i].MaxBounds;
-                for (int j = i + 1; j < parts.Count; j++)
+                Vector3 mina = intersectparts[i].MinBounds;
+                Vector3 maxa = intersectparts[i].MaxBounds;
+                for (int j = i + 1; j < intersectparts.Count; j++)
                 {
-                    Vector3 minb = parts[j].MinBounds;
-                    Vector3 maxb = parts[j].MaxBounds;
+                    Vector3 minb = intersectparts[j].MinBounds;
+                    Vector3 maxb = intersectparts[j].MaxBounds;
                     if (Intersects(mina, maxa, minb, maxb))
                     {
                         //
@@ -63,10 +68,10 @@ namespace partmake
         {
             Vector3 mina = p.MinBounds;
             Vector3 maxa = p.MaxBounds;
-            for (int j = 0; j < parts.Count; j++)
+            for (int j = 0; j < intersectparts.Count; j++)
             {
-                Vector3 minb = parts[j].MinBounds;
-                Vector3 maxb = parts[j].MaxBounds;
+                Vector3 minb = intersectparts[j].MinBounds;
+                Vector3 maxb = intersectparts[j].MaxBounds;
                 if (Intersects(mina, maxa, minb, maxb))
                 {
                     return true;
@@ -74,16 +79,29 @@ namespace partmake
             }
             return false;
         }
+        public void AddColliders(BulletSimulation bulletSimulation)
+        {
+            var partlist = mainparts.Where(p => p.grpId == -1);
+            RigidBody rb = new RigidBody(partlist);
+            bulletSimulation.AddObj(rb);
+        }
     }
 
 
-    public class OctTree
+        public class OctTree
     {
         public static float scale = 1.0f / 128.0f;
 
         HashSet<OctTile> octTiles = new HashSet<OctTile>();
 
 
+        public void AddColliders(BulletSimulation bulletSimulation)
+        {
+            foreach (OctTile octTile in octTiles)
+            {
+                octTile.AddColliders(bulletSimulation);
+            }
+        }
         public bool CollisionCheck(PartInst p)
         {
             OctTile olookup = new OctTile();
@@ -113,6 +131,9 @@ namespace partmake
             }
             return collides;
         }
+
+
+
         public void AddPart(PartInst p)
         {
             OctTile olookup = new OctTile();
@@ -137,10 +158,24 @@ namespace partmake
                             tile = new OctTile() { x = ox, y = oy, z = oz };
                             octTiles.Add(tile);
                         }
-                        tile.parts.Add(p);
+                        tile.intersectparts.Add(p);
                         p.octTiles.Add(tile);
                     }
                 }
+            }
+            {
+                Vector3 v = (p.MinBounds + p.MaxBounds) * 0.5f;
+                int oxw = (int)(v.X * scale);
+                int oyw = (int)(v.Y * scale);
+                int ozw = (int)(v.Z * scale);
+                OctTile tile;
+                if (!octTiles.TryGetValue(olookup, out tile))
+                {
+                    tile = new OctTile() { x = oxw, y = oyw, z = ozw };
+                    octTiles.Add(tile);
+                }
+                tile.mainparts.Add(p);
+                p.mainTile = tile;
             }
         }
 

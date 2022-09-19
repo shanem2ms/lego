@@ -9,6 +9,10 @@ using Amazon.S3.Model;
 using BulletSharp.SoftBody;
 using partmake.Topology;
 using static partmake.Topology.Convex;
+using System.Threading;
+using MathNet.Numerics.Distributions;
+using partmake.script;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace partmake
 {
@@ -24,7 +28,24 @@ namespace partmake
         public List<Vector4> DebugLocators { get; set; } = new List<Vector4>();
 
         public PartInst PlayerPart { get; set; } = null;
+        OctTree octTree = new OctTree();
 
+        public void BeginUpdate(bool clearScene)
+        {
+            Monitor.Enter(this.PartList);
+            if (clearScene)
+            {
+                octTree = new OctTree();
+                this.PartList.Clear();
+                this.DebugLocators.Clear();
+            }
+        }
+
+        public void EndUpdate()
+        {
+            Monitor.Exit(this.PartList);
+            Rebuild();
+        }
         public BulletSimulation.DebugDrawLineDel DebugDrawLine
         {
             get => bulletSimulation.DebugDrawLine;
@@ -36,23 +57,21 @@ namespace partmake
             bulletSimulation.DrawDebug();
         }
 
-        public void Rebuild(List<PartInst> newPartList, List<Vector4> newLocators,
-            PartInst playerPart)
+        public void Rebuild()
         {
-            this.PartList.Clear();
-            this.PartList.AddRange(newPartList);
-            this.PlayerPart = playerPart;
             var dynamicConnections = ProcessConnections();
-            this.DebugLocators.Clear();
-            this.DebugLocators.AddRange(newLocators);
             this.bulletSimulation.Clear();
             this.PartList.Sort((p1, p2) => p1.grpId.CompareTo(p2.grpId));
             var groups = PartList.GroupBy(p => p.grpId);
             foreach (var partGroup in groups)
             {
+                if (partGroup.First().grpId == -1)
+                    continue;
                 RigidBody rb = new RigidBody(partGroup);
                 this.bulletSimulation.AddObj(rb);
             }
+
+            this.octTree.AddColliders(this.bulletSimulation);
 
             foreach (var connection in dynamicConnections)
             {
@@ -84,14 +103,17 @@ namespace partmake
             foreach (var anchoredGroup in anchoredGroups)
             {
                 bool anchored = anchoredGroup.First().anchored;
-                while (true)
+                if (!anchored)
                 {
-                    var nextPart = anchoredGroup.FirstOrDefault((p) => p.grpId == -1);
-                    if (nextPart == null)
-                        break;
-                    MarkPartGroup(nextPart, anchored ? 0 : curGroup, connections);
-                    if (!anchored)
-                        curGroup++;
+                    while (true)
+                    {
+                        var nextPart = anchoredGroup.FirstOrDefault((p) => p.grpId == -1);
+                        if (nextPart == null)
+                            break;
+                        MarkPartGroup(nextPart, anchored ? 0 : curGroup, connections);
+                        if (!anchored)
+                            curGroup++;
+                    }
                 }
             }
 
@@ -117,6 +139,40 @@ namespace partmake
                         connections.Add(c);
                 }
             }
+        }
+        public void AddUnconnected(PartInst pi)
+        {
+            this.PartList.Add(pi);
+            this.octTree.AddPart(pi);
+        }
+        public bool Connect(PartInst pi1, int connectorIdx1, PartInst pi0,
+            int connectorIdx0, bool allowCollisions)
+        {
+            var ci0 = pi0.item.Connectors[connectorIdx0];
+            var ci1 = pi1.item.Connectors[connectorIdx1];
+
+            System.Numerics.Matrix4x4 m2 =
+                ci1.IM44 * ci0.M44 * pi0.mat;
+            pi1.mat = m2;
+            ConnectionInst cinst = new ConnectionInst()
+            {
+                p0 = pi0,
+                c0 = connectorIdx0,
+                p1 = pi1,
+                c1 = connectorIdx1
+            };
+            pi0.connections[connectorIdx0] = cinst;
+            pi1.connections[connectorIdx1] = cinst;
+            if (!allowCollisions && octTree.CollisionCheck(pi1))
+                return false;
+            this.PartList.Add(pi1);
+            this.octTree.AddPart(pi1);
+            return true;
+        }
+
+        public void SetPlayerPart(PartInst piPlayer)
+        {
+            this.PlayerPart = piPlayer;
         }
 
         bool fwdPressed = false;

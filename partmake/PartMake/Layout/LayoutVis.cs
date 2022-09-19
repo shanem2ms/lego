@@ -452,7 +452,8 @@ namespace partmake
                     part.mat *
                     Matrix4x4.CreateScale(worldScale);
                 _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
-                _cl.UpdateBuffer(_materialBuffer, 0, ref Palette.AllItems[part.paletteIdx].RGBA);
+                //Vector4 v = new Vector4(part.mainTile.tileColor, 1);
+                _cl.UpdateBuffer(_materialBuffer, 0, Palette.AllItems[part.paletteIdx].RGBA);
                 _cl.DrawIndexed((uint)part.item.ldrLoaderIndexCount);
             }
             textRenderer.Draw();

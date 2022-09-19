@@ -13,6 +13,8 @@ using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Windows.Forms;
 using partmake.Topology;
+using BulletSharp;
+using static partmake.Topology.Convex;
 
 namespace partmake
 {
@@ -43,10 +45,29 @@ namespace partmake
         Vector3 minBounds = Vector3.Zero;
         Vector3 maxBounds = Vector3.Zero;
 
-        public Convex.Part[]CollisionPts
+        public Convex.Part[] CollisionPts
         {
             get { if (collisionPts == null) LoadCollision(); return collisionPts; }
         }
+
+        ConvexHullShape[] bulletShapes = null;
+        public ConvexHullShape[] BulletShapes
+        {
+            get
+            {
+                if (bulletShapes == null)
+                {
+                    var pts = CollisionPts;
+                    bulletShapes = new ConvexHullShape[pts.Length];
+                    for (int idx = 0; idx < pts.Length; idx++)
+                    {
+                        bulletShapes[idx] = new ConvexHullShape(pts[idx].pts);
+                    }
+                }
+                return bulletShapes;
+            }
+        }
+
 
         public Vector3 MinBounds
         {
@@ -80,7 +101,7 @@ namespace partmake
         public string Subtype => descriptor.subtype;
         public string Desc => descriptor.desc;
         public string Dims => descriptor.dims != null ? String.Join('x', descriptor.dims) : null;
-        public Connector []Connectors => descriptor.Connectors;
+        public Connector[] Connectors => descriptor.Connectors;
 
         public IEnumerable<Connector> ConnectorsWithType(ConnectorType connectorType)
         { return descriptor.Connectors.Where(c => c.Type == connectorType); }
@@ -154,11 +175,11 @@ namespace partmake
                 ldrLoaderIndexCount = vlindices.Length;
             }
             LoadCollision();
-        }       
+        }
 
         void LoadCollision()
         {
-            string colfile = 
+            string colfile =
                 Path.Combine(
                 Path.GetDirectoryName(meshPath),
                 Path.GetFileNameWithoutExtension(meshPath) + ".col");
@@ -186,6 +207,7 @@ namespace partmake
         public RigidBody body;
         public Matrix4x4 bodySubMat;
         public List<OctTile> octTiles = new List<OctTile>();
+        public OctTile mainTile = null;
 
         public Vector3 MinBounds { get { return Vector3.Transform(item.MinBounds, mat); } }
         public Vector3 MaxBounds { get { return Vector3.Transform(item.MaxBounds, mat); } }
@@ -197,7 +219,7 @@ namespace partmake
             this(item, Matrix4x4.Identity, paletteIdx, isanchored)
         { }
 
-        public PartInst(Part item, Matrix4x4 mat, int paletteIdx) : 
+        public PartInst(Part item, Matrix4x4 mat, int paletteIdx) :
             this(item, mat, paletteIdx, false)
         {
 
