@@ -24,6 +24,10 @@
 
   <ItemGroup>
     <None Remove="CSharp-Mode.xshd" />
+    <None Remove="Depth-fragment.glsl" />
+    <None Remove="Depth-vertex.glsl" />
+    <None Remove="DepthDownScale-fragment.glsl" />
+    <None Remove="DepthDownScale-vertex.glsl" />
     <None Remove="fs.glsl" />
     <None Remove="glsl.xshd" />
     <None Remove="pick.glsl" />
@@ -34,6 +38,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Depth-fragment.glsl" />
+    <EmbeddedResource Include="Depth-vertex.glsl" />
+    <EmbeddedResource Include="DepthDownScale-fragment.glsl" />
+    <EmbeddedResource Include="DepthDownScale-vertex.glsl" />
     <EmbeddedResource Include="glsl.xshd" />
     <EmbeddedResource Include="pick.glsl" />
     <EmbeddedResource Include="raycast.glsl" />

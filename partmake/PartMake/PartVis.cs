@@ -449,6 +449,9 @@ namespace partmake
             AABB aabb = AABB.CreateFromPoints(vertices.Select(v =>
                 new System.DoubleNumerics.Vector3(v.pos.X, v.pos.Y, v.pos.Z)));
 
+
+            _depthCubeMap = new DepthCubeMap();
+
             partOffset = DTF((aabb.Min + aabb.Max) * 0.5);
             Vector3 vecScale = DTF(aabb.Max - aabb.Min);
             partScale = 0.025f;// 1 / MathF.Max(MathF.Max(vecScale.X, vecScale.Y), vecScale.Z);

@@ -185,12 +185,8 @@ namespace partmake
             public Vector4 DiffuseColor;
         }
 
-        public DepthCubeMap(string model)
+        public DepthCubeMap()
         {
-            string extension = System.IO.Path.GetExtension(model);
-            extension = extension.Substring(1);
-
-
             CreateResource(Api.ResourceFactory, DepthCubeMap.Size, DepthCubeMap.Size);
         }
 

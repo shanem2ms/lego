@@ -11,6 +11,7 @@ using static partmake.Palette;
 using System.Runtime.InteropServices;
 using System.Windows.Markup;
 using System.Runtime.ConstrainedExecution;
+using System.Reflection;
 
 namespace partmake.graphics
 {
@@ -42,7 +43,18 @@ namespace partmake.graphics
             shaders = Api.ResourceFactory.CreateFromSpirv(
                     new ShaderDescription(ShaderStages.Vertex, vtxshaderBytes, "main"),
                     new ShaderDescription(ShaderStages.Fragment, pixshaderBytes, "main"));
-        }        
+        }       
+        
+        public Shader(string vtxrsrc, string pixrsrc, Assembly assembly)
+        {
+            using (Stream stream = assembly.GetManifestResourceStream(vtxrsrc))
+            using (StreamReader reader = new StreamReader(stream))
+            { 
+                shaders = Api.ResourceFactory.CreateFromSpirv(
+                    new ShaderDescription(ShaderStages.Vertex, vtxshaderBytes, "main"),
+                    new ShaderDescription(ShaderStages.Fragment, pixshaderBytes, "main"));
+        }
+    }
     }
 
     public class ShaderSet
