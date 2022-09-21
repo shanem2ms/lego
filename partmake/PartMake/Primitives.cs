@@ -7,6 +7,7 @@ using System.Numerics;
 using Veldrid;
 using partmake.script;
 using partmake.Topology;
+using partmake.graphics;
 
 namespace partmake.primitives
 {
@@ -74,8 +75,8 @@ namespace partmake.primitives
                 if (_vertexBuffer == null)
                 {
                     var vertices = GetVertices();
-                    _vertexBuffer = Api.ResourceFactory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
-                    Api.GraphicsDevice.UpdateBuffer(_vertexBuffer, 0, vertices);
+                    _vertexBuffer = G.ResourceFactory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
+                    G.GraphicsDevice.UpdateBuffer(_vertexBuffer, 0, vertices);
                 }
                 return _vertexBuffer;
             }
@@ -89,8 +90,8 @@ namespace partmake.primitives
                 if (_indexBuffer == null)
                 {
                     var indices = GetIndices();
-                    _indexBuffer = Api.ResourceFactory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)indices.Length, BufferUsage.IndexBuffer));
-                    Api.GraphicsDevice.UpdateBuffer(_indexBuffer, 0, indices);
+                    _indexBuffer = G.ResourceFactory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)indices.Length, BufferUsage.IndexBuffer));
+                    G.GraphicsDevice.UpdateBuffer(_indexBuffer, 0, indices);
                 }
                 return _indexBuffer;
             }
@@ -137,8 +138,8 @@ namespace partmake.primitives
                 if (_vertexBuffer == null)
                 {
                     var vertices = GetVertices();
-                    _vertexBuffer = Api.ResourceFactory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
-                    Api.GraphicsDevice.UpdateBuffer(_vertexBuffer, 0, vertices);
+                    _vertexBuffer = G.ResourceFactory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vertices.Length), BufferUsage.VertexBuffer));
+                    G.GraphicsDevice.UpdateBuffer(_vertexBuffer, 0, vertices);
                 }
                 return _vertexBuffer;
             }
@@ -152,8 +153,8 @@ namespace partmake.primitives
                 if (_indexBuffer == null)
                 {
                     var indices = GetIndices();
-                    _indexBuffer = Api.ResourceFactory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)indices.Length, BufferUsage.IndexBuffer));
-                    Api.GraphicsDevice.UpdateBuffer(_indexBuffer, 0, indices);
+                    _indexBuffer = G.ResourceFactory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)indices.Length, BufferUsage.IndexBuffer));
+                    G.GraphicsDevice.UpdateBuffer(_indexBuffer, 0, indices);
                 }
                 return _indexBuffer;
             }

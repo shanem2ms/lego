@@ -9,6 +9,8 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Veldrid;
+using System.Reflection;
+using partmake.graphics;
 
 namespace partmake
 {
@@ -25,15 +27,20 @@ namespace partmake
             public graphics.MMTex _pixelData;
             DownScale[] _mips;
             Texture[] _staging;
+            Vector3 _offset;
+            Vector3 _scale;
 
             public TextureView[] View => new TextureView[] { _view }.Concat(_mips.Select(m => m.View)).ToArray();
 
             int idx;
 
             public Side(int _idx, ResourceFactory factory, uint width, uint height,
-                ShaderSetDescription depthShaders, ResourceLayout depthLayout, DeviceBuffer[] materials)
+                ShaderSetDescription depthShaders, ResourceLayout depthLayout, DeviceBuffer[] materials,
+                Vector3 offset, Vector3 scale)
             {
                 idx = _idx;
+                _offset = offset;
+                _scale = scale;
                 bool frontOrBack = (idx & 1) == 0;
                 _color = factory.CreateTexture(TextureDescription.Texture2D(
                                 width, height, 1, 1,
@@ -86,8 +93,14 @@ namespace partmake
                 Matrix4x4.CreateRotationY((float)(Math.PI * 0.5)),
                 };
 
-                ui.Model = rots[idx / 2];
-                Api.GraphicsDevice.UpdateBuffer(cbufferTransform, 0, ref ui);
+                float maxscale = MathF.Max(MathF.Max(_scale.X, _scale.Y), _scale.Z);
+
+                
+                ui.Model = Matrix4x4.CreateTranslation(-_offset) *
+                    Matrix4x4.CreateScale(2.0f / maxscale) *
+                    Matrix4x4.CreateRotationZ((float)(Math.PI)) *
+                    rots[idx / 2];
+                G.GraphicsDevice.UpdateBuffer(cbufferTransform, 0, ref ui);
             }
 
             public void CopyMips(CommandList cl)
@@ -100,7 +113,7 @@ namespace partmake
                     for (int idx = 0; idx < _pixelData.Length; ++idx)
                     {
                         Texture tex = idx == 0 ? _color : _mips[idx - 1].OutTexture;
-                        _staging[idx] = Api.ResourceFactory.CreateTexture(TextureDescription.Texture2D(
+                        _staging[idx] = G.ResourceFactory.CreateTexture(TextureDescription.Texture2D(
                             tex.Width, tex.Height, 1, 1,
                              PixelFormat.R32_G32_B32_A32_Float, TextureUsage.Staging));
                         _pixelData[_pixelData.Length - idx - 1] = new graphics.Rgba32[tex.Width * tex.Height];
@@ -122,7 +135,7 @@ namespace partmake
 
             void CopyTexture(Texture tex, graphics.Rgba32[] pixelData)
             {
-                MappedResourceView<graphics.Rgba32> map = Api.GraphicsDevice.Map<graphics.Rgba32>(tex, MapMode.Read);
+                MappedResourceView<graphics.Rgba32> map = G.GraphicsDevice.Map<graphics.Rgba32>(tex, MapMode.Read);
 
                 for (int y = 0; y < tex.Height; y++)
                 {
@@ -132,7 +145,7 @@ namespace partmake
                         pixelData[index] = map[x, y];
                     }
                 }
-                Api.GraphicsDevice.Unmap(tex);
+                G.GraphicsDevice.Unmap(tex);
             }
 
             public void Prepare(CommandList cl)
@@ -171,7 +184,11 @@ namespace partmake
         public TextureView[] View => views;
         static uint Size = 128;
         DeviceBuffer[] materialCbs;
-
+        Vector3 _offset;
+        Vector3 _scale;
+        DeviceBuffer _vertexBuffer;
+        DeviceBuffer _indexBuffer;
+        uint _indexCount;
         public struct Transform
         {
             public Matrix4x4 Projection;
@@ -185,25 +202,26 @@ namespace partmake
             public Vector4 DiffuseColor;
         }
 
-        public DepthCubeMap()
+        public DepthCubeMap(Vector3 offset, Vector3 scale, DeviceBuffer vertexBuffer,
+            DeviceBuffer indexBuffer,
+            uint indexCount)
         {
-            CreateResource(Api.ResourceFactory, DepthCubeMap.Size, DepthCubeMap.Size);
+            _offset = offset;
+            _scale = scale;
+            _vertexBuffer = vertexBuffer;
+            _indexBuffer = indexBuffer;
+            _indexCount = indexCount;
+            CreateResource(G.ResourceFactory, DepthCubeMap.Size, DepthCubeMap.Size);
         }
 
         void CreateResource(ResourceFactory factory, uint width, uint height)
         {
-            VertexLayoutDescription vertexLayout = new VertexLayoutDescription(
-                         new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
-                         new VertexElementDescription("UV", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2),
-                         new VertexElementDescription("Color", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
-                         new VertexElementDescription("Normal", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3));
-
             ResourceLayout depthLayout = factory.CreateResourceLayout(new ResourceLayoutDescription(new ResourceLayoutElementDescription[] {
                 new ResourceLayoutElementDescription("UBO", ResourceKind.UniformBuffer, ShaderStages.Vertex),
                 new ResourceLayoutElementDescription("UBO", ResourceKind.UniformBuffer, ShaderStages.Fragment) }));
 
             graphics.ShaderSet shader = new graphics.ShaderSet(
-                "Depth-vertex", "Depth-fragment");
+                "partmake.Depth-vertex.glsl", "partmake.Depth-fragment.glsl", true);
 
             materialCbs = new DeviceBuffer[1];
             for (int idx = 0; idx < 1; ++idx)
@@ -211,33 +229,31 @@ namespace partmake
                 materialCbs[idx] = factory.CreateBuffer(new BufferDescription((uint)Marshal.SizeOf<Material>(), BufferUsage.UniformBuffer));
                 Material m = new Material();
                 m.DiffuseColor = new Vector4(1, 1, 1, 1);
-                Api.GraphicsDevice.UpdateBuffer(materialCbs[idx], 0, ref m);
+                G.GraphicsDevice.UpdateBuffer(materialCbs[idx], 0, ref m);
             }
 
             sides = new Side[6];
             views = new TextureView[6];
             for (int i = 0; i < 6; ++i)
             {
-                sides[i] = new Side(i, factory, width, height, shader.Desc, depthLayout, materialCbs);
+                sides[i] = new Side(i, factory, width, height, shader.Desc, depthLayout, materialCbs,
+                    _offset, _scale);
                 views[i] = sides[i].View[0];
             }
         }
 
-        public void DrawOffscreen(
-            DeviceBuffer vertexBuffer,
-            DeviceBuffer indexBuffer,
-            uint indexCount,
+        public void DrawOffscreen(            
             CommandList cl)
         {
             for (int idx = 0; idx < 6; ++idx)
             {
                 sides[idx].Prepare(cl);
-                cl.SetVertexBuffer(0, vertexBuffer);
-                cl.SetIndexBuffer(indexBuffer, IndexFormat.UInt32);
+                cl.SetVertexBuffer(0, _vertexBuffer);
+                cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt32);
                 for (int pIdx = 0; pIdx < 1; ++pIdx)
                 {
                     sides[idx].Draw(cl, pIdx);
-                    cl.DrawIndexed(indexCount, 1, 0, 0, 0);
+                    cl.DrawIndexed(_indexCount);
                 }
 
                 sides[idx].BuildMips(cl);

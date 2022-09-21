@@ -34,11 +34,11 @@ namespace partmake.script
     	{
     		ShaderSet terrainSet = new ShaderSet(
     			Path.Combine(Api.ScriptFolder, "Terrain\\VtxBlit.glsl"),
-    			Path.Combine(Api.ScriptFolder, "Terrain\\TerrainGen.glsl"));
+    			Path.Combine(Api.ScriptFolder, "Terrain\\TerrainGen.glsl"), false);
     			
     		ShaderSet erosionSet = new ShaderSet(
     			Path.Combine(Api.ScriptFolder, "Terrain\\VtxBlit.glsl"),
-    			Path.Combine(Api.ScriptFolder, "Terrain\\Erosion.glsl"));
+    			Path.Combine(Api.ScriptFolder, "Terrain\\Erosion.glsl"), false);
     				               
             _planeVertexBuffer = primitives.Plane.VertexBuffer;
             _planeIndexBuffer = primitives.Plane.IndexBuffer;

@@ -117,7 +117,7 @@
         <TabItem Header="Layout">
             <local:LayoutWindow />
         </TabItem>
-        <TabItem Header="Parts">
+        <TabItem Header="Parts" IsSelected="True">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="200" />

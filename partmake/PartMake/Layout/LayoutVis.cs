@@ -19,6 +19,7 @@ using SharpText.Core;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using ICSharpCode.AvalonEdit.Highlighting;
 using System.Diagnostics;
+using partmake.graphics;
 
 namespace partmake
 {
@@ -247,9 +248,9 @@ namespace partmake
 
         protected unsafe override void CreateResources(ResourceFactory factory)
         {
-            script.Api.ResourceFactory = factory;
-            script.Api.Swapchain = MainSwapchain;
-            script.Api.GraphicsDevice = GraphicsDevice;
+            G.ResourceFactory = factory;
+            G.Swapchain = MainSwapchain;
+            G.GraphicsDevice = GraphicsDevice;
             _factory = factory;
             _projectionBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _viewBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));

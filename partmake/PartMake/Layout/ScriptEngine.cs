@@ -27,9 +27,6 @@ namespace partmake
 
             public static string ScriptFolder = null;
             public static Scene Scene = null;
-            public static Veldrid.ResourceFactory ResourceFactory = null;
-            public static Veldrid.GraphicsDevice GraphicsDevice = null;
-            public static Veldrid.Swapchain Swapchain = null;
             public static LayoutVis.CustomDrawDel CustomDraw = null;
             public static LayoutVis.MouseDel MouseHandler = null;
 

@@ -12,9 +12,17 @@ using System.Runtime.InteropServices;
 using System.Windows.Markup;
 using System.Runtime.ConstrainedExecution;
 using System.Reflection;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace partmake.graphics
 {
+    public static class G
+    {
+        public static ResourceFactory ResourceFactory;
+        public static Swapchain Swapchain;
+        public static GraphicsDevice GraphicsDevice;
+
+    }
     public static class Layouts
     {
         public static VertexLayoutDescription Standard =
@@ -29,32 +37,64 @@ namespace partmake.graphics
                 new VertexElementDescription("UVW", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3));
 
     }
+
     public class Shader
     {
+        static Dictionary<string, Shader> shaderCache = new Dictionary<string, Shader>();
+        public static Shader GetShaderFromFile(string vtxpath, string pixpath)
+        {
+            string key = vtxpath + pixpath;
+            Shader outshader;
+            if (!shaderCache.TryGetValue(key, out outshader))
+            {
+                outshader = new Shader(vtxpath, pixpath);
+                shaderCache.Add(key, outshader);
+            }
+            return outshader;
+        }
+
+        public static Shader GetShaderFromResource(string vtxpath, string pixpath)
+        {
+            string key = vtxpath + pixpath;
+            Shader outshader;
+            if (!shaderCache.TryGetValue(key, out outshader))
+            {
+                outshader = new Shader(vtxpath, pixpath, Assembly.GetExecutingAssembly());
+                shaderCache.Add(key, outshader);
+            }
+            return outshader;
+        }
+
         byte[] vtxshaderBytes;
         byte[] pixshaderBytes;
         Veldrid.Shader[] shaders;
 
         public Veldrid.Shader[] Shaders => shaders;
-        public Shader(string vtxpath, string pixpath)
+        Shader(string vtxpath, string pixpath)
         {
             vtxshaderBytes = File.ReadAllBytes(Path.Combine(vtxpath));
             pixshaderBytes = File.ReadAllBytes(Path.Combine(pixpath));
-            shaders = Api.ResourceFactory.CreateFromSpirv(
+            shaders = G.ResourceFactory.CreateFromSpirv(
                     new ShaderDescription(ShaderStages.Vertex, vtxshaderBytes, "main"),
                     new ShaderDescription(ShaderStages.Fragment, pixshaderBytes, "main"));
         }       
         
-        public Shader(string vtxrsrc, string pixrsrc, Assembly assembly)
+        Shader(string vtxrsrc, string pixrsrc, Assembly assembly)
         {
             using (Stream stream = assembly.GetManifestResourceStream(vtxrsrc))
-            using (StreamReader reader = new StreamReader(stream))
-            { 
-                shaders = Api.ResourceFactory.CreateFromSpirv(
+            {
+                vtxshaderBytes = new byte[stream.Length];
+                stream.Read(vtxshaderBytes, 0, vtxshaderBytes.Length);
+            }
+            using (Stream stream = assembly.GetManifestResourceStream(pixrsrc))
+            {
+                pixshaderBytes = new byte[stream.Length];
+                stream.Read(pixshaderBytes, 0, pixshaderBytes.Length);
+            }
+            shaders = G.ResourceFactory.CreateFromSpirv(
                     new ShaderDescription(ShaderStages.Vertex, vtxshaderBytes, "main"),
                     new ShaderDescription(ShaderStages.Fragment, pixshaderBytes, "main"));
         }
-    }
     }
 
     public class ShaderSet
@@ -62,9 +102,10 @@ namespace partmake.graphics
         ShaderSetDescription _shaderSetDescription;
         public ShaderSetDescription Desc => _shaderSetDescription;
         Shader _shader;
-        public ShaderSet(string vtxpath, string pixpath)
+        public ShaderSet(string vtxpath, string pixpath, bool fromResource)
         {
-            _shader = new Shader(vtxpath, pixpath);
+            _shader = fromResource ? Shader.GetShaderFromResource(vtxpath, pixpath) :
+                Shader.GetShaderFromFile(vtxpath, pixpath);
             _shaderSetDescription = new ShaderSetDescription(new[] { Layouts.Standard },
                 _shader.Shaders);
         }
@@ -79,11 +120,11 @@ namespace partmake.graphics
         public Framebuffer FrameBuffer => _frameBuffer;
         public RenderTarget(uint width, uint height, PixelFormat format)
         {
-            _texture = Api.ResourceFactory.CreateTexture(
+            _texture = G.ResourceFactory.CreateTexture(
                                 new TextureDescription(width, height, 1, 1, 1, format,
                                     TextureUsage.RenderTarget | TextureUsage.Sampled, TextureType.Texture2D, TextureSampleCount.Count1));
-            _textureView = Api.ResourceFactory.CreateTextureView(_texture);
-            _frameBuffer = Api.ResourceFactory.CreateFramebuffer(new FramebufferDescription(null, _texture));
+            _textureView = G.ResourceFactory.CreateTextureView(_texture);
+            _frameBuffer = G.ResourceFactory.CreateFramebuffer(new FramebufferDescription(null, _texture));
         }
 
         public CpuTexture<T> GetCpuTexture<T>(CommandList _cl) where T: struct
@@ -105,7 +146,7 @@ namespace partmake.graphics
         public CpuTexture(Texture _textureIn)
         {
             _gpuTexture = _textureIn;
-            _stagingTexture = Api.ResourceFactory.CreateTexture(new TextureDescription(_textureIn.Width, _textureIn.Height, _textureIn.Depth,
+            _stagingTexture = G.ResourceFactory.CreateTexture(new TextureDescription(_textureIn.Width, _textureIn.Height, _textureIn.Depth,
                 _textureIn.MipLevels, _textureIn.ArrayLayers, _textureIn.Format, TextureUsage.Staging, _textureIn.Type,
                 _textureIn.SampleCount));
         }
@@ -117,7 +158,7 @@ namespace partmake.graphics
 
         public void Map()
         {
-            MappedResourceView<T> rView = Api.GraphicsDevice.Map<T>(this._stagingTexture, MapMode.Read);
+            MappedResourceView<T> rView = G.GraphicsDevice.Map<T>(this._stagingTexture, MapMode.Read);
             
             IntPtr startPtr = rView.MappedResource.Data;
             uint rowPitch = rView.MappedResource.RowPitch;
@@ -135,7 +176,7 @@ namespace partmake.graphics
                     curPtr = IntPtr.Add(curPtr, elemSize);
                 }
             }
-            Api.GraphicsDevice.Unmap(this._stagingTexture);
+            G.GraphicsDevice.Unmap(this._stagingTexture);
         }
 
     }

@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Veldrid;
+using System.Reflection;
 
 namespace partmake
 {
@@ -47,7 +48,8 @@ namespace partmake
               new ResourceLayoutElementDescription("Sampler", ResourceKind.Sampler, ShaderStages.Fragment),
               new ResourceLayoutElementDescription("UBO", ResourceKind.UniformBuffer, ShaderStages.Fragment)));
 
-            graphics.ShaderSet shaderSet = new ShaderSet("DepthDownScale-vertex", "DepthDownScale-fragment");
+            graphics.ShaderSet shaderSet = new ShaderSet("partmake.DepthDownScale-vertex.glsl", 
+                "partmake.DepthDownScale-fragment.glsl", true);
 
             GraphicsPipelineDescription mirrorPD = new GraphicsPipelineDescription(
                BlendStateDescription.SingleOverrideBlend,
@@ -71,7 +73,7 @@ namespace partmake
                 cbufferSubsample));
             _pipeline = factory.CreateGraphicsPipeline(ref mirrorPD);
             Subsample ss = new Subsample() { ddx = 0.5f / width, ddy = 0.5f / height };
-            script.Api.GraphicsDevice.UpdateBuffer(cbufferSubsample, 0, ref ss);
+            G.GraphicsDevice.UpdateBuffer(cbufferSubsample, 0, ref ss);
         }
 
 

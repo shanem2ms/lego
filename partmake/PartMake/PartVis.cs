@@ -10,6 +10,7 @@ using System.Linq;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Reflection;
+using partmake.graphics;
 
 namespace partmake
 {
@@ -450,10 +451,10 @@ namespace partmake
                 new System.DoubleNumerics.Vector3(v.pos.X, v.pos.Y, v.pos.Z)));
 
 
-            _depthCubeMap = new DepthCubeMap();
 
             partOffset = DTF((aabb.Min + aabb.Max) * 0.5);
             Vector3 vecScale = DTF(aabb.Max - aabb.Min);
+            
             partScale = 0.025f;// 1 / MathF.Max(MathF.Max(vecScale.X, vecScale.Y), vecScale.Z);
 
             uint[] indices = new uint[vlist.Count];
@@ -468,6 +469,10 @@ namespace partmake
             _indexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)indices.Length, BufferUsage.IndexBuffer));
             GraphicsDevice.UpdateBuffer(_indexBuffer, 0, indices);
             _indexCount = indices.Length;
+
+            _depthCubeMap = new DepthCubeMap(partOffset, vecScale, _vertexBuffer, _indexBuffer, 
+                (uint)_indexCount);
+
             _triangleCount = _indexCount / 3;
 
             _decompMeshes = _part.GetTopoMesh().convexDecomp;
@@ -759,6 +764,9 @@ namespace partmake
         }
         protected unsafe override void CreateResources(ResourceFactory factory)
         {
+            graphics.G.ResourceFactory = factory;
+            G.Swapchain = MainSwapchain;
+            G.GraphicsDevice = GraphicsDevice;
             _factory = factory;
             _projectionBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _viewBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
@@ -1151,6 +1159,8 @@ namespace partmake
         }
         protected override void Draw(float deltaSeconds)
         {
+            _depthCubeMap.DrawOffscreen(_cl);
+
             if (ThumbnailList.Count > 0)
             {
                 DrawThumbnail();
