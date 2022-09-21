@@ -104,6 +104,7 @@ namespace partmake
         private DepthCubeMap _depthCubeMap;
 
         public List<string> ThumbnailList = new List<string>();
+        public List<string> DepthCubeList = new List<string>();
         public bool DoMesh { get; set; } = true;
         public bool DoDecomp { get; set; } = false;
         public bool BSPPortals { get; set; } = false;

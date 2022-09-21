@@ -8,12 +8,6 @@ struct Vox_Shaders_DepthDownScale_Subsample
     vec2 filler;
 };
 
-struct Vox_Shaders_DepthDownScale_VertexInput
-{
-    vec3 Position;
-    vec3 UVW;
-};
-
 struct Vox_Shaders_DepthDownScale_FragmentInput
 {
     vec4 Position;
@@ -39,36 +33,20 @@ float Vox_Shaders_DepthDownScale_Encode( vec3 c)
 }
 
 
-
-vec4 FS( Vox_Shaders_DepthDownScale_FragmentInput input_)
-{
-    float x = field_ss.ddx * 0.5f;
-    float y = field_ss.ddy * 0.5f;
-    vec4 v0 = texture(sampler2D(Texture, Sampler), input_.fsUV + vec2(-x, -y));
-    vec4 v1 = texture(sampler2D(Texture, Sampler), input_.fsUV + vec2(x, -y));
-    vec4 v2 = texture(sampler2D(Texture, Sampler), input_.fsUV + vec2(-x, y));
-    vec4 v3 = texture(sampler2D(Texture, Sampler), input_.fsUV + vec2(x, y));
-    vec3 c0 = Vox_Shaders_DepthDownScale_Decode(v0.z);
-    vec3 c1 = Vox_Shaders_DepthDownScale_Decode(v1.z);
-    vec3 c2 = Vox_Shaders_DepthDownScale_Decode(v2.z);
-    vec3 c3 = Vox_Shaders_DepthDownScale_Decode(v3.z);
-    vec3 cavg = (c0 + c1 + c2 + c3) * 0.25f;
-    float vzavg = Vox_Shaders_DepthDownScale_Encode(cavg);
-    float maxdepth = max(max(max(v0.x, v1.x), v2.x), v3.x);
-    float mindepth = min(min(min(v0.y, v1.y), v2.y), v3.y);
-    float mask = (v0.w + v1.w + v2.w + v3.w) * 0.25f;
-    return vec4(maxdepth, mindepth, vzavg, mask);
-}
-
-
-layout(location = 0) in vec2 fsin_0;
-layout(location = 0) out vec4 _outputColor_;
+layout(location = 0) in vec2 fsUV;
+layout(location = 0) out vec4 OutColor;
 
 void main()
 {
-    Vox_Shaders_DepthDownScale_FragmentInput input_;
-    input_.Position = gl_FragCoord;
-    input_.fsUV = fsin_0;
-    vec4 output_ = FS(input_);
-    _outputColor_ = output_;
+    float x = field_ss.ddx * 0.5f;
+    float y = field_ss.ddy * 0.5f;
+    vec4 v0 = texture(sampler2D(Texture, Sampler), fsUV + vec2(-x, -y));
+    vec4 v1 = texture(sampler2D(Texture, Sampler), fsUV + vec2(x, -y));
+    vec4 v2 = texture(sampler2D(Texture, Sampler), fsUV + vec2(-x, y));
+    vec4 v3 = texture(sampler2D(Texture, Sampler), fsUV + vec2(x, y));
+    float avgz = (v0.z + v1.z + v2.z + v3.z) * 0.25;
+    float avgw = (v0.w + v1.w + v2.w + v3.w) * 0.25;
+    float maxdepth = max(max(max(v0.x, v1.x), v2.x), v3.x);
+    float mindepth = min(min(min(v0.y, v1.y), v2.y), v3.y);
+    OutColor = vec4(maxdepth, mindepth, avgz, avgw);
 }

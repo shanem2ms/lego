@@ -107,8 +107,7 @@ namespace partmake
             {
                 if (_pixelData == null)
                 {
-                    _pixelData = new graphics.MMTex(2, _mips.Length + 1);
-                    _pixelData.baseLod = 2;
+                    _pixelData = new graphics.MMTex(_mips.Length + 1);
                     _staging = new Texture[_mips.Length + 1];
                     for (int idx = 0; idx < _pixelData.Length; ++idx)
                     {
@@ -123,6 +122,13 @@ namespace partmake
                 {
                     Texture tex = idx == 0 ? _color : _mips[idx - 1].OutTexture;
                     cl.CopyTexture(tex, _staging[idx]);
+                }
+            }
+
+            public void CopyToCpu()
+            {
+                for (int idx = 0; idx < _pixelData.Length; ++idx)
+                {
                     CopyTexture(_staging[idx], _pixelData[_pixelData.Length - idx - 1]);
                 }
             }
@@ -242,22 +248,44 @@ namespace partmake
             }
         }
 
-        public void DrawOffscreen(            
+        int stage = 0;
+        public void DrawOffscreen(
             CommandList cl)
         {
-            for (int idx = 0; idx < 6; ++idx)
+            if (stage == 0)
             {
-                sides[idx].Prepare(cl);
-                cl.SetVertexBuffer(0, _vertexBuffer);
-                cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt32);
-                for (int pIdx = 0; pIdx < 1; ++pIdx)
+                for (int idx = 0; idx < 6; ++idx)
                 {
-                    sides[idx].Draw(cl, pIdx);
-                    cl.DrawIndexed(_indexCount);
-                }
+                    sides[idx].Prepare(cl);
+                    cl.SetVertexBuffer(0, _vertexBuffer);
+                    cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt32);
+                    for (int pIdx = 0; pIdx < 1; ++pIdx)
+                    {
+                        sides[idx].Draw(cl, pIdx);
+                        cl.DrawIndexed(_indexCount);
+                    }
 
-                sides[idx].BuildMips(cl);
+                    sides[idx].BuildMips(cl);
+                }
+                stage++;
             }
+            else if (stage == 1)
+            {
+                for (int idx = 0; idx < 6; ++idx)
+                {
+                    sides[idx].CopyMips(cl);
+                }
+                stage++;
+            }
+            else if (stage == 2)
+            {
+                for (int idx = 0; idx < 6; ++idx)
+                {
+                    sides[idx].CopyToCpu();
+                }
+                stage++;
+            }
+
         }
     }
 }

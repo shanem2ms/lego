@@ -10,5 +10,5 @@ layout(location = 0) out vec4 OutColor;
 void main()
 {
     float v = (InDepth.x / InDepth.y);
-    OutColor = vec4(v,v,v,v);
+    OutColor = vec4(v,v,InNormal.xy);
 }

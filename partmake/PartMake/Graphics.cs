@@ -195,9 +195,8 @@ namespace partmake.graphics
     class MMTex
     {
         public Rgba32[][] data;
-        public int baseLod = 0;
 
-        public MMTex(int baseLod, int levels)
+        public MMTex(int levels)
         {
             data = new Rgba32[levels][];
         }
