@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 using Veldrid;
 using System.Reflection;
 using partmake.graphics;
+using System.Windows.Controls;
+using Vulkan;
 
 namespace partmake
 {
@@ -65,7 +67,8 @@ namespace partmake
                     depthResourceSets[idx] = factory.CreateResourceSet(new ResourceSetDescription(depthLayout, cbufferTransform, materials[idx]));
                 }
 
-                int levels = (int)Math.Log2(width) - 2;
+                int levels = Math.Min((int)Math.Log2(width),
+                    (int)Math.Log2(height)) - 2;
                 _mips = new DownScale[levels];
                 TextureView curView = _view;
                 for (int idx = 0; idx < levels; ++idx)
@@ -92,12 +95,11 @@ namespace partmake
                 Matrix4x4.CreateRotationX((float)(Math.PI * 0.5)),
                 Matrix4x4.CreateRotationY((float)(Math.PI * 0.5)),
                 };
-
-                float maxscale = MathF.Max(MathF.Max(_scale.X, _scale.Y), _scale.Z);
-
-                
+                Vector3 s = _scale;
+                float ps = 1.9f;
+                s = new Vector3(ps / s.X, ps / s.Y, ps / s.Z);
                 ui.Model = Matrix4x4.CreateTranslation(-_offset) *
-                    Matrix4x4.CreateScale(2.0f / maxscale) *
+                    Matrix4x4.CreateScale(s) *
                     Matrix4x4.CreateRotationZ((float)(Math.PI)) *
                     rots[idx / 2];
                 G.GraphicsDevice.UpdateBuffer(cbufferTransform, 0, ref ui);
@@ -167,7 +169,7 @@ namespace partmake
 
             public void Draw(CommandList cl, int idx)
             {
-               cl.SetGraphicsResourceSet(0, depthResourceSets[idx]);
+                cl.SetGraphicsResourceSet(0, depthResourceSets[idx]);
             }
 
             public void BuildMips(CommandList cl)
@@ -188,7 +190,7 @@ namespace partmake
 
         TextureView[] views = null;
         public TextureView[] View => views;
-        static uint Size = 128;
+        static uint[] size = new uint[3];
         DeviceBuffer[] materialCbs;
         Vector3 _offset;
         Vector3 _scale;
@@ -217,10 +219,10 @@ namespace partmake
             _vertexBuffer = vertexBuffer;
             _indexBuffer = indexBuffer;
             _indexCount = indexCount;
-            CreateResource(G.ResourceFactory, DepthCubeMap.Size, DepthCubeMap.Size);
+            CreateResource(G.ResourceFactory);
         }
 
-        void CreateResource(ResourceFactory factory, uint width, uint height)
+        void CreateResource(ResourceFactory factory)
         {
             ResourceLayout depthLayout = factory.CreateResourceLayout(new ResourceLayoutDescription(new ResourceLayoutElementDescription[] {
                 new ResourceLayoutElementDescription("UBO", ResourceKind.UniformBuffer, ShaderStages.Vertex),
@@ -238,11 +240,20 @@ namespace partmake
                 G.GraphicsDevice.UpdateBuffer(materialCbs[idx], 0, ref m);
             }
 
+            size[0] = (uint)MathF.Pow(2, MathF.Ceiling(MathF.Log2(_scale.X * 6)));
+            size[1] = (uint)MathF.Pow(2, MathF.Ceiling(MathF.Log2(_scale.Y * 6)));
+            size[2] = (uint)MathF.Pow(2, MathF.Ceiling(MathF.Log2(_scale.Z * 6)));
             sides = new Side[6];
             views = new TextureView[6];
+            int[][] sideDims = new int[3][]
+            {
+                new int[2]{ 0, 1 },
+                new int[2]{ 0, 2 },
+                new int[2]{ 2, 1 },
+            };
             for (int i = 0; i < 6; ++i)
             {
-                sides[i] = new Side(i, factory, width, height, shader.Desc, depthLayout, materialCbs,
+                sides[i] = new Side(i, factory, size[sideDims[i / 2][0]], size[sideDims[i / 2][1]], shader.Desc, depthLayout, materialCbs,
                     _offset, _scale);
                 views[i] = sides[i].View[0];
             }
@@ -252,6 +263,7 @@ namespace partmake
         public void DrawOffscreen(
             CommandList cl)
         {
+            stage = 0;
             if (stage == 0)
             {
                 for (int idx = 0; idx < 6; ++idx)
@@ -288,4 +300,89 @@ namespace partmake
 
         }
     }
+
+    class CubeMapVisualizer
+    {
+        private Pipeline _dbgPipeline;
+        private DeviceBuffer[] blitTransform;
+        private ResourceSet[] _dbgResourceSet;
+        private DepthCubeMap _cubeMap;
+        public struct Transform
+        {
+            public Matrix4x4 MWP;
+        }
+
+        public CubeMapVisualizer(DepthCubeMap cubeMap)
+        {
+            _cubeMap = cubeMap;
+            CreateResources();
+        }
+
+        protected void CreateResources()
+        {
+
+            ResourceLayout layout = G.ResourceFactory.CreateResourceLayout(new ResourceLayoutDescription(
+                new ResourceLayoutElementDescription("Texture", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
+                new ResourceLayoutElementDescription("Sampler", ResourceKind.Sampler, ShaderStages.Fragment),
+                new ResourceLayoutElementDescription("UBO", ResourceKind.UniformBuffer, ShaderStages.Vertex)));
+
+            graphics.ShaderSet shader = new graphics.ShaderSet(
+                "partmake.Blit-vertex.glsl", "partmake.Blit-fragment.glsl", true);
+            GraphicsPipelineDescription pd = new GraphicsPipelineDescription(
+                BlendStateDescription.SingleDisabled,
+                DepthStencilStateDescription.Disabled,
+                RasterizerStateDescription.Default,
+                PrimitiveTopology.TriangleList,
+                shader.Desc,
+                layout,
+                G.GraphicsDevice.SwapchainFramebuffer.OutputDescription);
+
+            GraphicsPipelineDescription mirrorPD = new GraphicsPipelineDescription(
+                BlendStateDescription.SingleOverrideBlend,
+                DepthStencilStateDescription.DepthOnlyLessEqual,
+                new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.Clockwise, true, false),
+                PrimitiveTopology.TriangleList,
+                shader.Desc,
+                layout,
+                G.GraphicsDevice.SwapchainFramebuffer.OutputDescription);
+            _dbgPipeline = G.ResourceFactory.CreateGraphicsPipeline(ref mirrorPD);
+
+            _dbgResourceSet = new ResourceSet[6];
+            blitTransform = new DeviceBuffer[6];
+            for (int i = 0; i < 6; ++i)
+            {
+                blitTransform[i] = G.ResourceFactory.CreateBuffer(new BufferDescription((uint)Marshal.SizeOf<Transform>(),
+                    BufferUsage.UniformBuffer | BufferUsage.Dynamic));
+                _dbgResourceSet[i] = G.ResourceFactory.CreateResourceSet(new ResourceSetDescription(layout,
+                    _cubeMap.View[i],
+                    G.GraphicsDevice.LinearSampler,
+                    blitTransform[i]));
+            }
+        }
+
+        public void DrawMain(CommandList cl)
+        {
+            for (int i = 0; i < 6; ++i)
+            {
+                UpdateUniformBuffers(i);
+                cl.SetPipeline(_dbgPipeline);
+                cl.SetGraphicsResourceSet(0, _dbgResourceSet[i]);
+                cl.SetVertexBuffer(0, primitives.Plane.VertexBuffer);
+                cl.SetIndexBuffer(primitives.Plane.IndexBuffer, IndexFormat.UInt16);
+                cl.DrawIndexed(primitives.Plane.IndexLength, 1, 0, 0, 0);
+            }
+        }
+
+        private void UpdateUniformBuffers(int i)
+        {
+            int x = i % 3;
+            int y = i / 3;
+
+            Transform ui = new Transform
+            { MWP = Matrix4x4.CreateScale(new Vector3(1f / 3f, 0.5f, 1)) * Matrix4x4.CreateTranslation(new Vector3((x - 1) * (2f / 3f), (y - 0.5f), 0)) };
+            G.GraphicsDevice.UpdateBuffer(blitTransform[i], 0, ref ui);
+        }
+
+    }
+
 }

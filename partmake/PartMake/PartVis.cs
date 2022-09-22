@@ -102,6 +102,7 @@ namespace partmake
         private Framebuffer _snapshotFB;
 
         private DepthCubeMap _depthCubeMap;
+        private CubeMapVisualizer _cubeMapVisualizer;
 
         public List<string> ThumbnailList = new List<string>();
         public List<string> DepthCubeList = new List<string>();
@@ -110,6 +111,7 @@ namespace partmake
         public bool BSPPortals { get; set; } = false;
         public bool BSPFaces { get; set; } = false;
 
+        public bool ViewCubeMap { get; set; } = true;
         public bool DoRaycast { get; set; } = false;
         public bool ShowEdges { get; set; } = true;
 
@@ -473,6 +475,8 @@ namespace partmake
 
             _depthCubeMap = new DepthCubeMap(partOffset, vecScale, _vertexBuffer, _indexBuffer, 
                 (uint)_indexCount);
+
+            _cubeMapVisualizer = new CubeMapVisualizer(_depthCubeMap);
 
             _triangleCount = _indexCount / 3;
 
@@ -1160,7 +1164,6 @@ namespace partmake
         }
         protected override void Draw(float deltaSeconds)
         {
-            _depthCubeMap.DrawOffscreen(_cl);
 
             if (ThumbnailList.Count > 0)
             {
@@ -1170,6 +1173,8 @@ namespace partmake
             if (_vertexBuffer == null)
                 return;
             _cl.Begin();
+
+            _depthCubeMap.DrawOffscreen(_cl);
 
             Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(
                 1.0f,
@@ -1189,7 +1194,11 @@ namespace partmake
             _cl.SetFramebuffer(MainSwapchain.Framebuffer);
             _cl.ClearColorTarget(0, RgbaFloat.Black);
             _cl.ClearDepthStencil(1f);
-            if (DoRaycast)
+            if (ViewCubeMap)
+            {
+                _cubeMapVisualizer.DrawMain(_cl);
+            }
+            else if (DoRaycast)
                 DrawRaycast(ref viewmat);
             else
             {

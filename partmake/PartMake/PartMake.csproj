@@ -23,6 +23,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Blit-fragment.glsl" />
+    <None Remove="Blit-vertex.glsl" />
     <None Remove="CSharp-Mode.xshd" />
     <None Remove="Depth-fragment.glsl" />
     <None Remove="Depth-vertex.glsl" />
@@ -38,6 +40,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Blit-fragment.glsl" />
+    <EmbeddedResource Include="Blit-vertex.glsl" />
     <EmbeddedResource Include="Depth-fragment.glsl" />
     <EmbeddedResource Include="Depth-vertex.glsl" />
     <EmbeddedResource Include="DepthDownScale-fragment.glsl" />
