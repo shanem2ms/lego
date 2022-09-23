@@ -44,6 +44,7 @@ namespace partmake
         Convex.Part[] collisionPts;
         Vector3 minBounds = Vector3.Zero;
         Vector3 maxBounds = Vector3.Zero;
+        DepthCubeMap cubeMap;
 
         public Convex.Part[] CollisionPts
         {

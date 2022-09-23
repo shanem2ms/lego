@@ -114,7 +114,7 @@
         </Style>
     </Window.Resources>
     <TabControl>
-        <TabItem Header="Layout">
+        <TabItem Header="Layout" >
             <local:LayoutWindow />
         </TabItem>
         <TabItem Header="Parts" IsSelected="True">

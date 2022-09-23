@@ -12,7 +12,10 @@ using Veldrid;
 using System.Reflection;
 using partmake.graphics;
 using System.Windows.Controls;
+using System.IO.Compression;
 using Vulkan;
+using System.Windows.Shell;
+using Newtonsoft.Json;
 
 namespace partmake
 {
@@ -32,7 +35,8 @@ namespace partmake
             Vector3 _offset;
             Vector3 _scale;
 
-            public TextureView[] View => new TextureView[] { _view }.Concat(_mips.Select(m => m.View)).ToArray();
+            public TextureView[] View => _mips != null ? new TextureView[] { _view }.Concat(_mips.Select(m => m.View)).ToArray() :
+                new TextureView[] { _view };
 
             int idx;
 
@@ -69,13 +73,16 @@ namespace partmake
 
                 int levels = Math.Min((int)Math.Log2(width),
                     (int)Math.Log2(height)) - 2;
-                _mips = new DownScale[levels];
-                TextureView curView = _view;
-                for (int idx = 0; idx < levels; ++idx)
+                if (levels > 0)
                 {
-                    _mips[idx] = new DownScale();
-                    _mips[idx].CreateResources(factory, curView, width >> (idx + 1), height >> (idx + 1));
-                    curView = _mips[idx].View;
+                    _mips = new DownScale[levels];
+                    TextureView curView = _view;
+                    for (int idx = 0; idx < levels; ++idx)
+                    {
+                        _mips[idx] = new DownScale();
+                        _mips[idx].CreateResources(factory, curView, width >> (idx + 1), height >> (idx + 1));
+                        curView = _mips[idx].View;
+                    }
                 }
             }
 
@@ -109,8 +116,9 @@ namespace partmake
             {
                 if (_pixelData == null)
                 {
-                    _pixelData = new graphics.MMTex(_mips.Length + 1);
-                    _staging = new Texture[_mips.Length + 1];
+                    int arraySize = (_mips != null ? _mips.Length : 0) + 1;
+                    _pixelData = new graphics.MMTex(arraySize);
+                    _staging = new Texture[arraySize];
                     for (int idx = 0; idx < _pixelData.Length; ++idx)
                     {
                         Texture tex = idx == 0 ? _color : _mips[idx - 1].OutTexture;
@@ -174,6 +182,8 @@ namespace partmake
 
             public void BuildMips(CommandList cl)
             {
+                if (_mips == null)
+                    return;
                 for (int idx = 0; idx < _mips.Length; ++idx)
                 {
                     _mips[idx].Draw(cl);
@@ -197,6 +207,12 @@ namespace partmake
         DeviceBuffer _vertexBuffer;
         DeviceBuffer _indexBuffer;
         uint _indexCount;
+
+        public struct DescriptionInfo
+        {
+            public Vector3 Offset { get; set; }
+            public Vector3 Scale { get; set; }
+        }
         public struct Transform
         {
             public Matrix4x4 Projection;
@@ -263,7 +279,6 @@ namespace partmake
         public void DrawOffscreen(
             CommandList cl)
         {
-            stage = 0;
             if (stage == 0)
             {
                 for (int idx = 0; idx < 6; ++idx)
@@ -279,17 +294,13 @@ namespace partmake
 
                     sides[idx].BuildMips(cl);
                 }
-                stage++;
-            }
-            else if (stage == 1)
-            {
                 for (int idx = 0; idx < 6; ++idx)
                 {
                     sides[idx].CopyMips(cl);
                 }
                 stage++;
             }
-            else if (stage == 2)
+            else if (stage == 1)
             {
                 for (int idx = 0; idx < 6; ++idx)
                 {
@@ -297,6 +308,55 @@ namespace partmake
                 }
                 stage++;
             }
+
+        }
+
+        public void DrawToFile(CommandList cl)
+        {
+            for (int idx = 0; idx < 6; ++idx)
+            {
+                sides[idx].Prepare(cl);
+                cl.SetVertexBuffer(0, _vertexBuffer);
+                cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt32);
+                for (int pIdx = 0; pIdx < 1; ++pIdx)
+                {
+                    sides[idx].Draw(cl, pIdx);
+                    cl.DrawIndexed(_indexCount);
+                }
+
+                sides[idx].BuildMips(cl);
+            }
+            for (int idx = 0; idx < 6; ++idx)
+            {
+                sides[idx].CopyMips(cl);
+            }
+        }
+
+        public void SaveToFile(string filepath)
+        {
+            string path = Path.GetTempPath();
+            string tmppath = Path.Combine(path, "cubetmp");
+            if (Directory.Exists(tmppath))
+                Directory.Delete(tmppath, true);
+            Directory.CreateDirectory(tmppath);
+            for (int idx = 0; idx < 6; ++idx)
+            {
+                string sidepath = Path.Combine(tmppath, "side");
+                sides[idx].CopyToCpu();
+                sides[idx]._pixelData.SaveTo($"{sidepath}_{idx}");
+            }
+            DescriptionInfo di = new DescriptionInfo();
+            di.Scale = _scale;
+            di.Offset = _offset;
+            string jsonstr = JsonConvert.SerializeObject(di);
+            File.WriteAllText(Path.Combine(tmppath, "desc.json"), jsonstr);
+            if (File.Exists(filepath))
+                File.Delete(filepath);
+            ZipFile.CreateFromDirectory(tmppath, filepath);
+        }
+
+        public void LoadFromFile(string filepath)
+        {
 
         }
     }

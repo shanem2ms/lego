@@ -44,18 +44,18 @@ namespace partmake.script
             _planeIndexBuffer = primitives.Plane.IndexBuffer;
             _planeIndexCount = primitives.Plane.IndexLength;
                                                                                       						        
-			ResourceLayout textureLayout = Api.ResourceFactory.CreateResourceLayout(
+			ResourceLayout textureLayout = G.ResourceFactory.CreateResourceLayout(
                 new ResourceLayoutDescription(                    
                     new ResourceLayoutElementDescription("Texture", ResourceKind.TextureReadOnly, ShaderStages.Fragment)));     
             for (int i = 0; i < 2; ++i)
 			{
 				_erosionRT[i] = new RenderTarget(1024, 1024, PixelFormat.R32_G32_B32_A32_Float);
-	    		_erosionResourceSet[1 - i] = Api.ResourceFactory.CreateResourceSet(new ResourceSetDescription(
+	    		_erosionResourceSet[1 - i] = G.ResourceFactory.CreateResourceSet(new ResourceSetDescription(
 	    			textureLayout,
 	    			_erosionRT[i].View));
 			}
 		
-			_erosionPipeline = Api.ResourceFactory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
+			_erosionPipeline = G.ResourceFactory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
 			                BlendStateDescription.SingleDisabled,
 			                DepthStencilStateDescription.Disabled,
 			                new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
@@ -64,7 +64,7 @@ namespace partmake.script
 			                textureLayout,
 			                _erosionRT[0].FrameBuffer.OutputDescription));    	  
 			                                                
-            _pipeline = Api.ResourceFactory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
+            _pipeline = G.ResourceFactory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
                 BlendStateDescription.SingleDisabled,
                 DepthStencilStateDescription.Disabled,
                 new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),

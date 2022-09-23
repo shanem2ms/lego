@@ -111,7 +111,7 @@ namespace partmake
         public bool BSPPortals { get; set; } = false;
         public bool BSPFaces { get; set; } = false;
 
-        public bool ViewCubeMap { get; set; } = true;
+        public bool ViewCubeMap { get; set; } = false;
         public bool DoRaycast { get; set; } = false;
         public bool ShowEdges { get; set; } = true;
 
@@ -1173,15 +1173,20 @@ namespace partmake
             ldrLoader.LoadCached(path, out ldrvertices, out ldrindices);
             if (ldrvertices.Length > 0 && ldrindices.Length > 0)
             {
+                var vertices = ldrvertices.Where(v => 
+                    !float.IsNaN(v.m_x) &&
+                    !float.IsNaN(v.m_y) &&
+                    !float.IsNaN(v.m_z));
+
                 Vector3 vmax = new Vector3(
-                    ldrvertices.Select(v => v.m_x).Max(),
-                    ldrvertices.Select(v => v.m_y).Max(),
-                    ldrvertices.Select(v => v.m_z).Max());
+                    vertices.Select(v => v.m_x).Max(),
+                    vertices.Select(v => v.m_y).Max(),
+                    vertices.Select(v => v.m_z).Max());
 
                 Vector3 vmin = new Vector3(
-                    ldrvertices.Select(v => v.m_x).Min(),
-                    ldrvertices.Select(v => v.m_y).Min(),
-                    ldrvertices.Select(v => v.m_z).Min());
+                    vertices.Select(v => v.m_x).Min(),
+                    vertices.Select(v => v.m_y).Min(),
+                    vertices.Select(v => v.m_z).Min());
 
                 Vector3 vecscale = vmax - vmin;
                 partScale = 1.0f / Math.Max(Math.Max(vecscale.X, vecscale.Y), vecscale.Z);
@@ -1203,11 +1208,15 @@ namespace partmake
                 DepthCubeMap depthCubeMap = new DepthCubeMap(partOffset, vecscale, _ldrLoaderVertexBuffer, _ldrLoaderIndexBuffer,
                     (uint)_ldrLoaderIndexCount);
 
-                //_cubeMapVisualizer = new CubeMapVisualizer(_depthCubeMap);
-
                 _cl.Begin();
-                depthCubeMap.DrawOffscreen(_cl);
+                depthCubeMap.DrawToFile(_cl);
                 _cl.End();
+                GraphicsDevice.SubmitCommands(_cl);
+                GraphicsDevice.SwapBuffers(MainSwapchain);
+                GraphicsDevice.WaitForIdle();
+                string depthfilepath = Path.Combine(Path.GetDirectoryName(path),
+                    Path.GetFileNameWithoutExtension(path) + ".zcube");
+                depthCubeMap.SaveToFile(depthfilepath);
             }
         }
 
