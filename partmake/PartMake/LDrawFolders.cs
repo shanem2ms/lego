@@ -608,7 +608,8 @@ namespace partmake
             DirectoryInfo di = new DirectoryInfo(path);
             foreach (var fi in di.GetFiles("*.hr_mesh"))
             {
-                partVis.ThumbnailList.Add(fi.FullName);
+                //partVis.ThumbnailList.Add(fi.FullName);
+                partVis.DepthCubeList.Add(fi.FullName);
             }
         }
         static void WriteAllCacheFiles(Func<int, int, string, bool> updateFunc, PartVis partVis)

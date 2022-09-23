@@ -120,7 +120,7 @@ namespace partmake
         public bool ShowConnectors { get; set; } = true;
 
         public bool ShowExteriorPortals { get; set; } = false;
-        public bool ShowLdrLoader { get; set; } = false;
+        public bool ShowLdrLoader { get; set; } = true;
         public bool ShowMbx { get; set; } = false;
 
         Vector4[] edgePalette;
@@ -473,11 +473,6 @@ namespace partmake
             GraphicsDevice.UpdateBuffer(_indexBuffer, 0, indices);
             _indexCount = indices.Length;
 
-            _depthCubeMap = new DepthCubeMap(partOffset, vecScale, _vertexBuffer, _indexBuffer, 
-                (uint)_indexCount);
-
-            _cubeMapVisualizer = new CubeMapVisualizer(_depthCubeMap);
-
             _triangleCount = _indexCount / 3;
 
             _decompMeshes = _part.GetTopoMesh().convexDecomp;
@@ -600,6 +595,11 @@ namespace partmake
                     _ldrLoaderIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)vlindices.Length, BufferUsage.IndexBuffer));
                     GraphicsDevice.UpdateBuffer(_ldrLoaderIndexBuffer, 0, vlindices);
                     _ldrLoaderIndexCount = vlindices.Length;
+
+                    _depthCubeMap = new DepthCubeMap(partOffset, vecScale, _ldrLoaderVertexBuffer, _ldrLoaderIndexBuffer,
+                        (uint)_ldrLoaderIndexCount);
+
+                    _cubeMapVisualizer = new CubeMapVisualizer(_depthCubeMap);
                 }
             }
 
@@ -1162,6 +1162,55 @@ namespace partmake
                 HandleSnapshot(pngpath);
             }
         }
+        void DrawDepthCube()
+        {
+            string path = DepthCubeList[0];
+            DepthCubeList.RemoveAt(0);
+
+            LdrLoader.PosTexcoordNrmVertex[] ldrvertices;
+            int[] ldrindices;
+            LdrLoader ldrLoader = new LdrLoader();
+            ldrLoader.LoadCached(path, out ldrvertices, out ldrindices);
+            if (ldrvertices.Length > 0 && ldrindices.Length > 0)
+            {
+                Vector3 vmax = new Vector3(
+                    ldrvertices.Select(v => v.m_x).Max(),
+                    ldrvertices.Select(v => v.m_y).Max(),
+                    ldrvertices.Select(v => v.m_z).Max());
+
+                Vector3 vmin = new Vector3(
+                    ldrvertices.Select(v => v.m_x).Min(),
+                    ldrvertices.Select(v => v.m_y).Min(),
+                    ldrvertices.Select(v => v.m_z).Min());
+
+                Vector3 vecscale = vmax - vmin;
+                partScale = 1.0f / Math.Max(Math.Max(vecscale.X, vecscale.Y), vecscale.Z);
+                Vtx[] vlvertices = ldrvertices.Select(v => new Vtx(new Vector3(v.m_x, v.m_y, v.m_z), new Vector3(v.m_nx, v.m_ny, v.m_nz),
+                    new Vector2(v.m_u, v.m_v))).ToArray();
+
+                Vector3 vmid = (vmax + vmin) * 0.5f;
+                partOffset = vmid;
+
+                uint[] vlindices = ldrindices.Select(i => (uint)i).ToArray();
+
+                DeviceBuffer ldrLoaderVertexBuffer = _factory.CreateBuffer(new BufferDescription((uint)(Vtx.SizeInBytes * vlvertices.Length), BufferUsage.VertexBuffer));
+                GraphicsDevice.UpdateBuffer(ldrLoaderVertexBuffer, 0, vlvertices);
+
+                DeviceBuffer ldrLoaderIndexBuffer = _factory.CreateBuffer(new BufferDescription(sizeof(uint) * (uint)vlindices.Length, BufferUsage.IndexBuffer));
+                GraphicsDevice.UpdateBuffer(ldrLoaderIndexBuffer, 0, vlindices);
+                int ldrLoaderIndexCount = vlindices.Length;
+
+                DepthCubeMap depthCubeMap = new DepthCubeMap(partOffset, vecscale, _ldrLoaderVertexBuffer, _ldrLoaderIndexBuffer,
+                    (uint)_ldrLoaderIndexCount);
+
+                //_cubeMapVisualizer = new CubeMapVisualizer(_depthCubeMap);
+
+                _cl.Begin();
+                depthCubeMap.DrawOffscreen(_cl);
+                _cl.End();
+            }
+        }
+
         protected override void Draw(float deltaSeconds)
         {
 
@@ -1170,6 +1219,12 @@ namespace partmake
                 DrawThumbnail();
                 return;
             }
+            else if (DepthCubeList.Count > 0)
+            {
+                DrawDepthCube();
+                return;
+            }
+
             if (_vertexBuffer == null)
                 return;
             _cl.Begin();
