@@ -185,8 +185,9 @@ namespace partmake
 
                 cacheItems.Add(new Part(name,
                     Path.Combine(di.FullName, name + ".hr_mesh"),
-                    Path.Combine(di.FullName, 
-                    name + ".png"), d));
+                    Path.Combine(di.FullName, name + ".png"),
+                    Path.Combine(di.FullName, name + ".zcube"),
+                    d));
             }
             cacheItems.Sort();
             CacheItems = cacheItems.ToArray();

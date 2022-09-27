@@ -4,9 +4,10 @@
 struct Vox_Shaders_Blit_Transform
 {
     mat4 MWP;
+    ivec2 texSize;
 };
 
-layout(set = 0, binding = 2) uniform t
+layout(set = 0, binding = 1) uniform t
 {
     Vox_Shaders_Blit_Transform field_t;
 };

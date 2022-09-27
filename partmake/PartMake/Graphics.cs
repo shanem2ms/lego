@@ -181,12 +181,12 @@ namespace partmake.graphics
         }
 
     }
-    struct Rgba32
+    struct RgbaUI32
     {
-        public float r;
-        public float g;
-        public float b;
-        public float a;
+        public uint r;
+        public uint g;
+        public uint b;
+        public uint a;
 
         public override string ToString()
         {
@@ -195,13 +195,13 @@ namespace partmake.graphics
     }
     class MMTex
     {
-        public Rgba32[][] data;
+        public RgbaUI32[][] data;
 
         public MMTex(int levels)
         {
-            data = new Rgba32[levels][];
+            data = new RgbaUI32[levels][];
         }
-        public Rgba32[] this[int i]
+        public RgbaUI32[] this[int i]
         {
             get => data[i];
             set { data[i] = value; }

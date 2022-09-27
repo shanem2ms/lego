@@ -29,7 +29,7 @@ namespace partmake
             public Pipeline _pipeline;
             private DeviceBuffer cbufferTransform;
             private ResourceSet[] depthResourceSets;
-            public graphics.MMTex _pixelData;
+            public MMTex _pixelData;
             DownScale[] _mips;
             Texture[] _staging;
             Vector3 _offset;
@@ -125,7 +125,7 @@ namespace partmake
                         _staging[idx] = G.ResourceFactory.CreateTexture(TextureDescription.Texture2D(
                             tex.Width, tex.Height, 1, 1,
                              PixelFormat.R32_G32_B32_A32_UInt, TextureUsage.Staging));
-                        _pixelData[_pixelData.Length - idx - 1] = new graphics.Rgba32[tex.Width * tex.Height];
+                        _pixelData[_pixelData.Length - idx - 1] = new graphics.RgbaUI32[tex.Width * tex.Height];
                     }
                 }
                 for (int idx = 0; idx < _pixelData.Length; ++idx)
@@ -149,9 +149,9 @@ namespace partmake
                 return lod == 0 ? _color : _mips[lod - 1].OutTexture;
             }
 
-            void CopyTexture(Texture tex, graphics.Rgba32[] pixelData)
+            void CopyTexture(Texture tex, graphics.RgbaUI32[] pixelData)
             {
-                MappedResourceView<graphics.Rgba32> map = G.GraphicsDevice.Map<graphics.Rgba32>(tex, MapMode.Read);
+                MappedResourceView<graphics.RgbaUI32> map = G.GraphicsDevice.Map<graphics.RgbaUI32>(tex, MapMode.Read);
 
                 for (int y = 0; y < tex.Height; y++)
                 {
@@ -238,6 +238,11 @@ namespace partmake
             CreateResource(G.ResourceFactory);
         }
 
+        public DepthCubeMap(string filename)
+        {
+            LoadFromFile(filename);
+        }
+
         void CreateResource(ResourceFactory factory)
         {
             ResourceLayout depthLayout = factory.CreateResourceLayout(new ResourceLayoutDescription(new ResourceLayoutElementDescription[] {
@@ -279,7 +284,6 @@ namespace partmake
         public void DrawOffscreen(
             CommandList cl)
         {
-            stage = 0;
             if (stage == 0)
             {
                 for (int idx = 0; idx < 6; ++idx)
@@ -356,7 +360,7 @@ namespace partmake
             ZipFile.CreateFromDirectory(tmppath, filepath);
         }
 
-        public void LoadFromFile(string filepath)
+        void LoadFromFile(string filepath)
         {
 
         }
@@ -371,6 +375,10 @@ namespace partmake
         public struct Transform
         {
             public Matrix4x4 MWP;
+            public int width;
+            public int height;
+            public int padding0;
+            public int padding1;
         }
 
         public CubeMapVisualizer(DepthCubeMap cubeMap)
@@ -384,8 +392,7 @@ namespace partmake
 
             ResourceLayout layout = G.ResourceFactory.CreateResourceLayout(new ResourceLayoutDescription(
                 new ResourceLayoutElementDescription("Texture", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
-                new ResourceLayoutElementDescription("Sampler", ResourceKind.Sampler, ShaderStages.Fragment),
-                new ResourceLayoutElementDescription("UBO", ResourceKind.UniformBuffer, ShaderStages.Vertex)));
+                new ResourceLayoutElementDescription("UBO", ResourceKind.UniformBuffer, ShaderStages.Vertex | ShaderStages.Fragment)));
 
             graphics.ShaderSet shader = new graphics.ShaderSet(
                 "partmake.Blit-vertex.glsl", "partmake.Blit-fragment.glsl", true);
@@ -416,7 +423,6 @@ namespace partmake
                     BufferUsage.UniformBuffer | BufferUsage.Dynamic));
                 _dbgResourceSet[i] = G.ResourceFactory.CreateResourceSet(new ResourceSetDescription(layout,
                     _cubeMap.View[i],
-                    G.GraphicsDevice.LinearSampler,
                     blitTransform[i]));
             }
         }
@@ -440,7 +446,10 @@ namespace partmake
             int y = i / 3;
 
             Transform ui = new Transform
-            { MWP = Matrix4x4.CreateScale(new Vector3(1f / 3f, 0.5f, 1)) * Matrix4x4.CreateTranslation(new Vector3((x - 1) * (2f / 3f), (y - 0.5f), 0)) };
+            { MWP = Matrix4x4.CreateScale(new Vector3(1f / 3f, 0.5f, 1)) * Matrix4x4.CreateTranslation(new Vector3((x - 1) * (2f / 3f), (y - 0.5f), 0)),
+                width = (int)_cubeMap.View[i].Target.Width,
+                height = (int)_cubeMap.View[i].Target.Height,
+            };
             G.GraphicsDevice.UpdateBuffer(blitTransform[i], 0, ref ui);
         }
 

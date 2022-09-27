@@ -15,16 +15,18 @@ using System.Windows.Forms;
 using partmake.Topology;
 using BulletSharp;
 using static partmake.Topology.Convex;
+using partmake.graphics;
 
 namespace partmake
 {
 
     public class Part : IComparable<Part>
     {
-        public Part(string name, string mp, string thumb, LDrawDatFile.Descriptor d)
+        public Part(string name, string mp, string thumb, string zcubefile, LDrawDatFile.Descriptor d)
         {
             Name = name;
             thumbnailPath = thumb;
+            zcubePath = zcubefile;
             meshPath = mp;
             descriptor = d;
 
@@ -36,15 +38,18 @@ namespace partmake
                     dimsf[i] = descriptor.dims[i];
                 }
             }
+
+            depthCubeMap = new DepthCubeMap(zcubePath);
         }
         float[] dimsf = null;
         public string Name { get; }
         string thumbnailPath;
         string meshPath;
+        string zcubePath;
         Convex.Part[] collisionPts;
         Vector3 minBounds = Vector3.Zero;
         Vector3 maxBounds = Vector3.Zero;
-        DepthCubeMap cubeMap;
+        DepthCubeMap depthCubeMap;
 
         public Convex.Part[] CollisionPts
         {

@@ -40,13 +40,38 @@ layout(location = 0) out uvec4 OutColor;
 void main()
 {
     ivec2 iv = ivec2(int(fsUV.x * field_ss.ddx), int(fsUV.y * field_ss.ddy));
-    uvec4 v0 = texelFetch(Texture, iv + ivec2(0, 0), 0);
-    uvec4 v1 = texelFetch(Texture, iv + ivec2(0, 1), 0);
-    uvec4 v2 = texelFetch(Texture, iv + ivec2(1, 0), 0);
-    uvec4 v3 = texelFetch(Texture, iv + ivec2(1, 1), 0);
-    uint avgz = (v0.z + v1.z + v2.z + v3.z) / 4;
-    uint avgw = (v0.w + v1.w + v2.w + v3.w) / 4;
-    uint maxdepth = max(max(max(v0.x, v1.x), v2.x), v3.x);
-    uint mindepth = min(min(min(v0.y, v1.y), v2.y), v3.y);
-    OutColor = uvec4(maxdepth, mindepth, avgz, avgw);
+    uvec4 v[4];
+    v[0] = texelFetch(Texture, iv + ivec2(0, 0), 0);
+    v[1] = texelFetch(Texture, iv + ivec2(0, -1), 0);
+    v[2] = texelFetch(Texture, iv + ivec2(-1, 0), 0);
+    v[3] = texelFetch(Texture, iv + ivec2(-1, -1), 0);    
+    int cnt = 0;
+    uint maxdepth = 0;
+    uint mindepth = 4294967295;
+    for (int i = 0; i < 4; ++i)
+    {
+        if (v[i].x > 0)
+        {   
+            cnt++;
+        }
+    }
+    uint avgz = 0;
+    uint avgw = 0;
+    if (cnt > 0)
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            if (v[i].x == 0)
+                continue;
+            avgz += v[i].z / cnt;
+            avgw += v[i].w / cnt;
+            maxdepth = max(maxdepth, v[i].x);
+            mindepth = min(mindepth, v[i].y);
+        }
+        OutColor = uvec4(maxdepth, mindepth, avgz, avgw);
+    }
+    else
+    {
+        OutColor = uvec4(0, 0, 0, 0);
+    }
 }

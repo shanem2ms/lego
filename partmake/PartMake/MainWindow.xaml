@@ -114,10 +114,10 @@
         </Style>
     </Window.Resources>
     <TabControl>
-        <TabItem Header="Layout" >
+        <TabItem Header="Layout" IsSelected="True" >
             <local:LayoutWindow />
         </TabItem>
-        <TabItem Header="Parts" IsSelected="True">
+        <TabItem Header="Parts" >
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="200" />

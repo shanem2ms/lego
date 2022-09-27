@@ -9,12 +9,11 @@ layout(location = 0) out uvec4 OutColor;
 
 uint ftou(float f)
 {
-    const uint div = 4294967294;
-    return uint((f * div) + 1);
+    const uint div = 4294967295;
+    return uint(f * div);
 }
 void main()
-{
-    
+{    
     float v = (InDepth.x / InDepth.y);
     vec2 nrm = (InNormal.xy + vec2(1,1)) * 0.5;
     OutColor = uvec4(ftou(v),ftou(v),ftou(nrm.x), ftou(nrm.y));
