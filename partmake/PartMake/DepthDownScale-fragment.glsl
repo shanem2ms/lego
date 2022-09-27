@@ -1,6 +1,8 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
+#extension GL_EXT_samplerless_texture_functions : enable
 #extension GL_ARB_shading_language_420pack : enable
+
 struct Vox_Shaders_DepthDownScale_Subsample
 {
     float ddx;
@@ -14,8 +16,7 @@ struct Vox_Shaders_DepthDownScale_FragmentInput
     vec2 fsUV;
 };
 
-layout(set = 0, binding = 0) uniform texture2D Texture;
-layout(set = 0, binding = 1) uniform sampler Sampler;
+layout(set = 0, binding = 0) uniform utexture2D Texture;
 layout(set = 0, binding = 2) uniform ss
 {
     Vox_Shaders_DepthDownScale_Subsample field_ss;
@@ -34,19 +35,18 @@ float Vox_Shaders_DepthDownScale_Encode( vec3 c)
 
 
 layout(location = 0) in vec2 fsUV;
-layout(location = 0) out vec4 OutColor;
+layout(location = 0) out uvec4 OutColor;
 
 void main()
 {
-    float x = field_ss.ddx * 0.5f;
-    float y = field_ss.ddy * 0.5f;
-    vec4 v0 = texture(sampler2D(Texture, Sampler), fsUV + vec2(-x, -y));
-    vec4 v1 = texture(sampler2D(Texture, Sampler), fsUV + vec2(x, -y));
-    vec4 v2 = texture(sampler2D(Texture, Sampler), fsUV + vec2(-x, y));
-    vec4 v3 = texture(sampler2D(Texture, Sampler), fsUV + vec2(x, y));
-    float avgz = (v0.z + v1.z + v2.z + v3.z) * 0.25;
-    float avgw = (v0.w + v1.w + v2.w + v3.w) * 0.25;
-    float maxdepth = max(max(max(v0.x, v1.x), v2.x), v3.x);
-    float mindepth = min(min(min(v0.y, v1.y), v2.y), v3.y);
-    OutColor = vec4(maxdepth, mindepth, avgz, avgw);
+    ivec2 iv = ivec2(int(fsUV.x * field_ss.ddx), int(fsUV.y * field_ss.ddy));
+    uvec4 v0 = texelFetch(Texture, iv + ivec2(0, 0), 0);
+    uvec4 v1 = texelFetch(Texture, iv + ivec2(0, 1), 0);
+    uvec4 v2 = texelFetch(Texture, iv + ivec2(1, 0), 0);
+    uvec4 v3 = texelFetch(Texture, iv + ivec2(1, 1), 0);
+    uint avgz = (v0.z + v1.z + v2.z + v3.z) / 4;
+    uint avgw = (v0.w + v1.w + v2.w + v3.w) / 4;
+    uint maxdepth = max(max(max(v0.x, v1.x), v2.x), v3.x);
+    uint mindepth = min(min(min(v0.y, v1.y), v2.y), v3.y);
+    OutColor = uvec4(maxdepth, mindepth, avgz, avgw);
 }

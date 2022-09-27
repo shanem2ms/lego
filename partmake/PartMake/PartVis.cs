@@ -111,7 +111,6 @@ namespace partmake
         public bool BSPPortals { get; set; } = false;
         public bool BSPFaces { get; set; } = false;
 
-        public bool ViewCubeMap { get; set; } = false;
         public bool DoRaycast { get; set; } = false;
         public bool ShowEdges { get; set; } = true;
 
@@ -122,6 +121,7 @@ namespace partmake
         public bool ShowExteriorPortals { get; set; } = false;
         public bool ShowLdrLoader { get; set; } = true;
         public bool ShowMbx { get; set; } = false;
+        public bool ShowDepthCube { get; set; } = true;
 
         Vector4[] edgePalette;
         uint numPrimitives;
@@ -577,7 +577,7 @@ namespace partmake
 
             LoadPortalsMesh();
 
-            if (ShowLdrLoader)
+            if (ShowLdrLoader || ShowDepthCube)
             {
                 LdrLoader.PosTexcoordNrmVertex[] ldrvertices;
                 int[] ldrindices;
@@ -1238,7 +1238,8 @@ namespace partmake
                 return;
             _cl.Begin();
 
-            _depthCubeMap.DrawOffscreen(_cl);
+            if (ShowDepthCube)
+                _depthCubeMap.DrawOffscreen(_cl);
 
             Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(
                 1.0f,
@@ -1258,12 +1259,12 @@ namespace partmake
             _cl.SetFramebuffer(MainSwapchain.Framebuffer);
             _cl.ClearColorTarget(0, RgbaFloat.Black);
             _cl.ClearDepthStencil(1f);
-            if (ViewCubeMap)
+            if (ShowDepthCube)
             {
                 _cubeMapVisualizer.DrawMain(_cl);
             }
             else if (DoRaycast)
-                DrawRaycast(ref viewmat);
+                DrawRaycast(ref viewmat);            
             else
             {
                 DrawMesh(ref mat);

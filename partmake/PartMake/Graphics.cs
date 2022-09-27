@@ -74,6 +74,7 @@ namespace partmake.graphics
         {
             vtxshaderBytes = File.ReadAllBytes(Path.Combine(vtxpath));
             pixshaderBytes = File.ReadAllBytes(Path.Combine(pixpath));
+            CrossCompileOptions cc = new CrossCompileOptions();
             shaders = G.ResourceFactory.CreateFromSpirv(
                     new ShaderDescription(ShaderStages.Vertex, vtxshaderBytes, "main"),
                     new ShaderDescription(ShaderStages.Fragment, pixshaderBytes, "main"));

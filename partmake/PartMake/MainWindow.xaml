@@ -445,6 +445,7 @@
                     <CheckBox Content="Exterior Portals" IsChecked="{Binding ShowExteriorPortals, ElementName=_RenderControl}"/>
                     <CheckBox Content="LdrLoader" IsChecked="{Binding ShowLdrLoader, ElementName=_RenderControl}"/>
                     <CheckBox Content="Mbx" IsChecked="{Binding ShowMbx, ElementName=_RenderControl}"/>
+                    <CheckBox Content="DepthCube" IsChecked="{Binding ShowDepthCube, ElementName=_RenderControl}"/>
                     <Button Click="HideAllBSPBtn_Click">Hide All BSP</Button>
                     <Button Click="ShowAllBSPBtn_Click">Show All BSP</Button>
                 </StackPanel>

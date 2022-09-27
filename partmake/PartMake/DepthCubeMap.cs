@@ -50,7 +50,7 @@ namespace partmake
                 bool frontOrBack = (idx & 1) == 0;
                 _color = factory.CreateTexture(TextureDescription.Texture2D(
                                 width, height, 1, 1,
-                                 PixelFormat.R32_G32_B32_A32_Float, TextureUsage.RenderTarget | TextureUsage.Sampled));
+                                 PixelFormat.R32_G32_B32_A32_UInt, TextureUsage.RenderTarget | TextureUsage.Sampled));
                 _view = factory.CreateTextureView(_color);
                 Texture offscreenDepth = factory.CreateTexture(TextureDescription.Texture2D(
                     width, height, 1, 1, PixelFormat.D24_UNorm_S8_UInt, TextureUsage.DepthStencil));
@@ -124,7 +124,7 @@ namespace partmake
                         Texture tex = idx == 0 ? _color : _mips[idx - 1].OutTexture;
                         _staging[idx] = G.ResourceFactory.CreateTexture(TextureDescription.Texture2D(
                             tex.Width, tex.Height, 1, 1,
-                             PixelFormat.R32_G32_B32_A32_Float, TextureUsage.Staging));
+                             PixelFormat.R32_G32_B32_A32_UInt, TextureUsage.Staging));
                         _pixelData[_pixelData.Length - idx - 1] = new graphics.Rgba32[tex.Width * tex.Height];
                     }
                 }
@@ -279,6 +279,7 @@ namespace partmake
         public void DrawOffscreen(
             CommandList cl)
         {
+            stage = 0;
             if (stage == 0)
             {
                 for (int idx = 0; idx < 6; ++idx)

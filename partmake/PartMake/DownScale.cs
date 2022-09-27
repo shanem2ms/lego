@@ -39,7 +39,7 @@ namespace partmake
         {
             plane = new Plane();
             _color = factory.CreateTexture(TextureDescription.Texture2D(width, height, 1, 1,
-            PixelFormat.R32_G32_B32_A32_Float, TextureUsage.RenderTarget | TextureUsage.Sampled));
+            PixelFormat.R32_G32_B32_A32_UInt, TextureUsage.RenderTarget | TextureUsage.Sampled));
             _outView = factory.CreateTextureView(_color);
             _FB = factory.CreateFramebuffer(new FramebufferDescription(null, _color));
 
@@ -72,7 +72,7 @@ namespace partmake
                 greateSampler,
                 cbufferSubsample));
             _pipeline = factory.CreateGraphicsPipeline(ref mirrorPD);
-            Subsample ss = new Subsample() { ddx = 0.5f / width, ddy = 0.5f / height };
+            Subsample ss = new Subsample() { ddx = width * 2, ddy = height * 2};
             G.GraphicsDevice.UpdateBuffer(cbufferSubsample, 0, ref ss);
         }
 

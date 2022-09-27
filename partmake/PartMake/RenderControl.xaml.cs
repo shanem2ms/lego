@@ -25,7 +25,8 @@ namespace partmake
         public bool ShowConnectors { get => Vis.ShowConnectors; set => Vis.ShowConnectors = value; }
         public bool ShowExteriorPortals { get => Vis.ShowExteriorPortals; set => Vis.ShowExteriorPortals = value; }
         public bool ShowLdrLoader { get => Vis.ShowLdrLoader; set => Vis.ShowLdrLoader = value; }
-        public bool ShowMbx { get => Vis.ShowMbx; set => Vis.ShowMbx = value; }        
+        public bool ShowMbx { get => Vis.ShowMbx; set => Vis.ShowMbx = value; }
+        public bool ShowDepthCube { get => Vis.ShowDepthCube; set => Vis.ShowDepthCube = value; }        
         public bool DoRaycast { get => Vis.DoRaycast; set => Vis.DoRaycast = value; }
         public bool ShowEdges { get => Vis.ShowEdges; set => Vis.ShowEdges = value; }
         public bool BSPPortals { get => Vis.BSPPortals; set => Vis.BSPPortals = value; }

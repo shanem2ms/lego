@@ -5,10 +5,17 @@
 
 layout(location = 0) in vec2 InDepth;
 layout(location = 1) in vec3 InNormal;
-layout(location = 0) out vec4 OutColor;
+layout(location = 0) out uvec4 OutColor;
 
+uint ftou(float f)
+{
+    const uint div = 4294967294;
+    return uint((f * div) + 1);
+}
 void main()
 {
+    
     float v = (InDepth.x / InDepth.y);
-    OutColor = vec4(v,v,InNormal.xy);
+    vec2 nrm = (InNormal.xy + vec2(1,1)) * 0.5;
+    OutColor = uvec4(ftou(v),ftou(v),ftou(nrm.x), ftou(nrm.y));
 }
