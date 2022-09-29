@@ -20,6 +20,7 @@ using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using ICSharpCode.AvalonEdit.Highlighting;
 using System.Diagnostics;
 using partmake.graphics;
+using System.Threading;
 
 namespace partmake
 {
@@ -65,6 +66,7 @@ namespace partmake
         float zoom = 3.5f;
         float mouseDownZoom = 0;
         int pickReady = -1;
+        CommandList pickCommandList;
         int pickIdx = -1;
         int selectedPart = -1;
         int selectedConnectorIdx = -1;
@@ -160,7 +162,6 @@ namespace partmake
             }
             return true;
         }
-
         public void MouseDown(int btn, int X, int Y, Keys keys)
         {
             mouseDown |= 1 << btn;
@@ -172,7 +173,9 @@ namespace partmake
             if (btn == 0)
             {
                 if (needPickBufferRefresh && pickReady == -1)
-                    pickReady = 0;
+                {
+                    
+                }
                 else
                 {
                     int partIdx, connectorIdx;
@@ -190,7 +193,7 @@ namespace partmake
                         OnConnectorPicked?.Invoke(this, new PartPickEvent() { part = scene.PartList[selectedPart], connectorIdx = selectedConnectorIdx });
                     }
                     else
-                       selectedPart = -1;
+                        selectedPart = -1;
 
                     if (script.Api.MouseHandler != null)
                         script.Api.MouseHandler(MouseCommand.ButtonDown, btn, X, Y, worldPos);
@@ -232,7 +235,27 @@ namespace partmake
             else
             {
                 if (needPickBufferRefresh && pickReady == -1)
+                {
+                    needPickBufferRefresh = false;
                     pickReady = 0;
+                    Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(
+                                                        1.0f,
+                                                        (float)Window.Width / Window.Height,
+                                                        0.05f,
+                                                        20f);
+                    _cl.UpdateBuffer(_projectionBuffer, 0, ref projMat);
+
+                    Matrix4x4 viewmat =
+                        GetLookMatrix() *
+                        Matrix4x4.CreateTranslation(cameraPos);
+                    Matrix4x4.Invert(viewmat, out viewmat);
+
+                    Thread pickThread = new Thread(() => {
+                        CommandList clPick = DrawPicking(ref viewmat, ref projMat);
+                        this.pickCommandList = clPick;
+                    });
+                    pickThread.Start();
+                }
                 else
                 {
                     int partIdx, connectorIdx;
@@ -647,9 +670,15 @@ namespace partmake
             }
             if (DrawDebug != null)
                 DrawDebug();
-            DrawPicking(ref viewmat, ref projMat);
             _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
+
+            if (pickCommandList != null)
+            {
+                GraphicsDevice.SubmitCommands(pickCommandList);
+                pickCommandList = null;
+                pickReady = 1;
+            }
             GraphicsDevice.SwapBuffers(MainSwapchain);
             GraphicsDevice.WaitForIdle();
             HandlePick(ref viewmat, ref projMat);
@@ -682,24 +711,31 @@ namespace partmake
             _cl.DrawIndexed(_cubeIndexCount);
         }
 
-        void DrawPicking(ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
+        CommandList DrawPicking(ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
             if (pickReady == 0)
             {
+                CommandList cl = G.ResourceFactory.CreateCommandList();
+                cl.Begin();
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
                 Matrix4x4 viewPrj = viewmat * projMat;
 
-                _cl.SetPipeline(_pipelinePick);
-                _cl.SetFramebuffer(_pickFB);
-                _cl.ClearColorTarget(0, RgbaFloat.Black);
-                _cl.ClearDepthStencil(1f);
-                _cl.SetGraphicsResourceSet(0, _projViewSet);
-                _cl.SetGraphicsResourceSet(1, _worldTextureSet);
+                cl.SetPipeline(_pipelinePick);
+                cl.SetFramebuffer(_pickFB);
+                cl.ClearColorTarget(0, RgbaFloat.Black);
+                cl.ClearDepthStencil(1f);
+                cl.SetGraphicsResourceSet(0, _projViewSet);
+                cl.SetGraphicsResourceSet(1, _worldTextureSet);
 
 
                 for (int partIdx = 0; partIdx < scene.PartList.Count; ++partIdx)
                 {
+                    if (needPickBufferRefresh)
+                    {
+                        pickReady = -1;
+                        return null;
+                    }
                     var part = scene.PartList[partIdx];
                     if (part.item == null)
                         continue;
@@ -707,24 +743,24 @@ namespace partmake
                         part.item.LoadLdr(_factory, GraphicsDevice);
                     if (part.item.ldrLoaderVertexBuffer == null)
                         continue;
-                    _cl.SetVertexBuffer(0, part.item.ldrLoaderVertexBuffer);
-                    _cl.SetIndexBuffer(part.item.ldrLoaderIndexBuffer, IndexFormat.UInt32);
+                    cl.SetVertexBuffer(0, part.item.ldrLoaderVertexBuffer);
+                    cl.SetIndexBuffer(part.item.ldrLoaderIndexBuffer, IndexFormat.UInt32);
                     Matrix4x4 cm =
                         part.mat *
                         Matrix4x4.CreateScale(worldScale);
-                    _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
+                    cl.UpdateBuffer(_worldBuffer, 0, ref cm);
                     int pickIdx = partIdx + 1024;
                     int r = pickIdx & 0xFF;
                     int g = (pickIdx >> 8) & 0xFF;
                     int b = (pickIdx >> 16) & 0xFF;
                     Vector4 meshColor = new Vector4(r / 255.0f, g / 255.0f, b / 255.0f, 1);
-                    _cl.UpdateBuffer(_materialBuffer, 0, ref meshColor);
-                    _cl.DrawIndexed((uint)part.item.ldrLoaderIndexCount);
+                    cl.UpdateBuffer(_materialBuffer, 0, ref meshColor);
+                    cl.DrawIndexed((uint)part.item.ldrLoaderIndexCount);
                 }
 
                 if (selectedPart >= 0 && selectedPart < scene.PartList.Count)
                 {
-                    _cl.SetPipeline(_pipelinePickConnectors);
+                    cl.SetPipeline(_pipelinePickConnectors);
                     var part = scene.PartList[selectedPart];
                     Matrix4x4 cm =
                                 part.mat *
@@ -752,33 +788,35 @@ namespace partmake
                             Matrix4x4.CreateFromQuaternion(q) *
                             Matrix4x4.CreateTranslation(pos) * cm;
 
-                        _cl.UpdateBuffer(_worldBuffer, 0, ref cmat2);
-                        _cl.UpdateBuffer(_materialBuffer, 0, ref meshColor);
-                        _cl.SetVertexBuffer(0, _cubeVertexBuffer);
-                        _cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
-                        _cl.DrawIndexed(_cubeIndexCount);
+                        cl.UpdateBuffer(_worldBuffer, 0, ref cmat2);
+                        cl.UpdateBuffer(_materialBuffer, 0, ref meshColor);
+                        cl.SetVertexBuffer(0, _cubeVertexBuffer);
+                        cl.SetIndexBuffer(_cubeIndexBuffer, IndexFormat.UInt16);
+                        cl.DrawIndexed(_cubeIndexCount);
 
                         Matrix4x4 cmat3 =
                             Matrix4x4.CreateTranslation(new Vector3(0, -2, 0)) *
                             Matrix4x4.CreateScale(new Vector3(3, 3, 3)) *
                             Matrix4x4.CreateFromQuaternion(q) *
                             Matrix4x4.CreateTranslation(pos) * cm;
-                        _cl.UpdateBuffer(_worldBuffer, 0, ref cmat3);
+                        cl.UpdateBuffer(_worldBuffer, 0, ref cmat3);
 
-                        _cl.UpdateBuffer(_materialBuffer, 0, ref meshColor);
-                        _cl.SetVertexBuffer(0, _isoVertexBuffer);
-                        _cl.SetIndexBuffer(_isoIndexBuffer, IndexFormat.UInt32);
-                        _cl.DrawIndexed(_isoIndexCount);
+                        cl.UpdateBuffer(_materialBuffer, 0, ref meshColor);
+                        cl.SetVertexBuffer(0, _isoVertexBuffer);
+                        cl.SetIndexBuffer(_isoIndexBuffer, IndexFormat.UInt32);
+                        cl.DrawIndexed(_isoIndexCount);
 
                     }
                 }
 
-                _cl.CopyTexture(this._pickTexture, this._pickStgTexture);
+                cl.CopyTexture(this._pickTexture, this._pickStgTexture);
                 sw.Stop();
                 //script.Api.WriteLine($"pick {sw.Elapsed}");
                 pickReady = 1;
+                cl.End();
+                return cl;
             }
-
+            return null;
         }
         struct Rgba
         {
@@ -798,7 +836,6 @@ namespace partmake
                 invViewProjPick = viewmat * projMat;
                 Matrix4x4.Invert(invViewProjPick, out invViewProjPick);
                 pickReady = -1;
-                needPickBufferRefresh = false;
             }
         }
 

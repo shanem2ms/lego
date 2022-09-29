@@ -16,6 +16,7 @@ using System.IO.Compression;
 using Vulkan;
 using System.Windows.Shell;
 using Newtonsoft.Json;
+using System.Text.RegularExpressions;
 
 namespace partmake
 {
@@ -86,6 +87,11 @@ namespace partmake
                 }
             }
 
+            public Side(int _idx, int mipCount, ZipArchive archive)
+            {
+                idx = _idx;
+                LoadFromArchive(archive, mipCount);
+            }
             public void UpdateUniformBufferOffscreen()
             {
                 Transform ui = new Transform { LightPos = new Vector4(0, 0, 0, 1) };
@@ -193,6 +199,11 @@ namespace partmake
             public void WriteBmp(string path)
             {
                 _pixelData.SaveTo(path);
+            }
+
+            void LoadFromArchive(ZipArchive archive, int mipCount)
+            {                
+                _pixelData = new MMTex(mipCount, $"side_{idx}", archive);
             }
         };
 
@@ -362,7 +373,36 @@ namespace partmake
 
         void LoadFromFile(string filepath)
         {
-
+            ZipArchive za = ZipFile.OpenRead(filepath);
+            ZipArchiveEntry ent = za.Entries.First(e => e.Name == "desc.json");
+            StreamReader reader = new StreamReader(ent.Open());
+            string jsontext = reader.ReadToEnd();
+            DescriptionInfo di = JsonConvert.DeserializeObject<DescriptionInfo>(jsontext);
+            sides = new Side[6];
+            Regex r = new Regex(@"side_(\d+)_(\d+)");
+            List<int>[] sideIdxs = new List<int>[6]
+            {
+                new List<int>(),
+                new List<int>(),
+                new List<int>(),
+                new List<int>(),
+                new List<int>(),
+                new List<int>()
+            };
+            foreach (ZipArchiveEntry ae in za.Entries)
+            {
+                Match m = r.Match(ae.Name);
+                if (m.Success)
+                {
+                    int v1 = int.Parse(m.Groups[1].Value);
+                    int v2 = int.Parse(m.Groups[2].Value);
+                    sideIdxs[v1].Add(v2);
+                }
+            }
+            for (int idx = 0; idx < 6; ++idx)
+            {
+                sides[idx] = new Side(idx, sideIdxs[idx].Count, za);
+            }
         }
     }
 
@@ -446,7 +486,8 @@ namespace partmake
             int y = i / 3;
 
             Transform ui = new Transform
-            { MWP = Matrix4x4.CreateScale(new Vector3(1f / 3f, 0.5f, 1)) * Matrix4x4.CreateTranslation(new Vector3((x - 1) * (2f / 3f), (y - 0.5f), 0)),
+            {
+                MWP = Matrix4x4.CreateScale(new Vector3(1f / 3f, 0.5f, 1)) * Matrix4x4.CreateTranslation(new Vector3((x - 1) * (2f / 3f), (y - 0.5f), 0)),
                 width = (int)_cubeMap.View[i].Target.Width,
                 height = (int)_cubeMap.View[i].Target.Height,
             };

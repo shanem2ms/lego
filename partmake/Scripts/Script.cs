@@ -42,8 +42,8 @@ namespace partmake.script
         		cputex.Map();
     			Utils u = new Utils();        		
 	    		Api.Scene.BeginUpdate(true);
-	    		//u.Minifig(Matrix4x4.CreateTranslation(new Vector3(8, 68, 0)));
-	    		//Terrain(cputex.Data, cputex.Width, cputex.Height);  
+	    		u.Minifig(Matrix4x4.CreateTranslation(new Vector3(8, 68, 0)));
+	    		Terrain(cputex.Data, cputex.Width, cputex.Height);  
 	    		Api.Scene.EndUpdate();
         		
         		doTerrainGen = false;	
@@ -70,6 +70,7 @@ namespace partmake.script
     		var plate4x4 = Api.GetPart("3031");
     		var brick2x2 = Api.GetPart("3003");
     		var plate1x1 = Api.GetPart("3024");
+    		var slope1x1 = Api.GetPart("54200");
         	Utils u = new Utils();
         	int div = 8;
         	int cnt = 1024/div;
@@ -79,10 +80,10 @@ namespace partmake.script
         		for (int x = 0; x < cnt; ++x)
         		{
         			int index = (x * div) * (int)w + (int)(y * div);
-        			float height = terrainData[index].a  * 200;
+        			float height = terrainData[index].a  * 250;
         			height = MathF.Round(height / 8.0f) * 8.0f;
 					Matrix4x4 mat = Matrix4x4.CreateTranslation(new Vector3((y - cnt/2)*20-10, height, (x-cnt/2)*20-10));   
-					var plate1x1part = new PartInst(plate1x1,
+					var plate1x1part = new PartInst(slope1x1,
 						mat, c, true );
 					Api.Scene.AddUnconnected(plate1x1part);
         		}

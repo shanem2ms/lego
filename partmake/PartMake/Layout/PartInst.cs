@@ -39,7 +39,7 @@ namespace partmake
                 }
             }
 
-            depthCubeMap = new DepthCubeMap(zcubePath);
+            //depthCubeMap = new DepthCubeMap(zcubePath);
         }
         float[] dimsf = null;
         public string Name { get; }
@@ -49,8 +49,17 @@ namespace partmake
         Convex.Part[] collisionPts;
         Vector3 minBounds = Vector3.Zero;
         Vector3 maxBounds = Vector3.Zero;
-        DepthCubeMap depthCubeMap;
+        DepthCubeMap depthCubeMap = null;
 
+        DepthCubeMap CubeMap
+        {
+            get
+            {
+                if (depthCubeMap == null)
+                    depthCubeMap = new DepthCubeMap(zcubePath);
+                return depthCubeMap;
+            }
+        }
         public Convex.Part[] CollisionPts
         {
             get { if (collisionPts == null) LoadCollision(); return collisionPts; }

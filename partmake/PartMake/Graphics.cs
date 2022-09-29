@@ -13,6 +13,8 @@ using System.Windows.Markup;
 using System.Runtime.ConstrainedExecution;
 using System.Reflection;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Amazon.S3.Model;
+using System.IO.Compression;
 
 namespace partmake.graphics
 {
@@ -201,6 +203,21 @@ namespace partmake.graphics
         {
             data = new RgbaUI32[levels][];
         }
+
+        public MMTex(int levels, string file, ZipArchive za) :
+            this(levels)
+        {
+            for (int i = 0; i < data.Length; i++)
+            {
+                string mipname = $"{file}_{i}.dat";
+                ZipArchiveEntry ent = za.GetEntry(mipname);                
+                Stream s = ent.Open();
+                byte[] bytes = new byte[ent.Length];
+                s.Read(bytes, 0, bytes.Length);
+                data[i] = FromBytes<RgbaUI32>(bytes);
+            }
+        }
+
         public RgbaUI32[] this[int i]
         {
             get => data[i];
@@ -219,6 +236,7 @@ namespace partmake.graphics
             }
         }
 
+    
         byte[] getBytes<T>(T[] data)
         {
             int size = Marshal.SizeOf(typeof(T));
@@ -228,6 +246,23 @@ namespace partmake.graphics
             {
                 Marshal.StructureToPtr(data[i], ptr, true);
                 Marshal.Copy(ptr, arr, i * size, size);
+            }
+            Marshal.FreeHGlobal(ptr);
+            return arr;
+        }
+
+        T[] FromBytes<T>(byte[] data)
+        {
+            
+            IntPtr ptr = Marshal.AllocHGlobal(data.Length);
+            Marshal.Copy(data, 0, ptr, data.Length);
+            int size = Marshal.SizeOf(typeof(T));
+            T[] arr = new T[data.Length / size];
+            IntPtr curptr = ptr;
+            for (int i = 0; i < arr.Length; ++i)
+            {
+                arr[i] = Marshal.PtrToStructure<T>(curptr);
+                curptr = IntPtr.Add(curptr, size);
             }
             Marshal.FreeHGlobal(ptr);
             return arr;
