@@ -164,11 +164,13 @@
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <fa:ImageAwesome Icon="File" Width="10" Margin="5,2"
+                                                    <CheckBox Width="14" Margin="3,2" IsChecked="{Binding Path=Enabled}"/>
+                                                    <fa:ImageAwesome Grid.Column="1" Icon="File" Width="10" Margin="5,2"
                                                                      Foreground="{Binding ColorBrush}" Visibility="{Binding IconVisiblity}"/>
-                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding Name}" />
                                                 </Grid>
                                             </Button>
                                         </HierarchicalDataTemplate>

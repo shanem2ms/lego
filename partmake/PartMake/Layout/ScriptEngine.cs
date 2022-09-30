@@ -112,9 +112,25 @@ namespace partmake
                     Assembly assembly = AssemblyLoadContext.Default.LoadFromStream(ms);
                     var type = assembly.GetType("partmake.script.Script");
                     var instance = assembly.CreateInstance("partmake.script.Script");
-                    var meth = type.GetMember("Run").First() as MethodInfo;
-                    script.Api.Reset(scene);
-                    meth.Invoke(instance, new object[] {});
+                    if (instance != null && type != null)
+                    {
+                        var meth = type.GetMember("Run").First() as MethodInfo;
+                        if (meth != null)
+                        {
+                            script.Api.Reset(scene);
+                            meth.Invoke(instance, new object[] { });
+                        }
+                        else
+                        {
+                            script.Api.WriteLine("Script.Run not found");
+                            OnCompileErrors?.Invoke(this, true);
+                        }
+                    }
+                    else
+                    {
+                        script.Api.WriteLine("partmake.script.Script not found");
+                        OnCompileErrors?.Invoke(this, true);
+                    }
                 }
             }
 

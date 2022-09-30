@@ -201,7 +201,7 @@ namespace partmake
                         float[] d = new float[] {
                             float.Parse(m.Groups[2].Value),
                             float.Parse(m.Groups[3].Value),
-                            m.Groups[4].Value.Length > 0 ? float.Parse(m.Groups[4].Value) : 1 };
+                            m.Groups[4].Value.Length > 0 ? float.Parse(m.Groups[5].Value) : 0 };
                         foreach (var item in curItems)
                         {
                             bool match = true;
@@ -209,7 +209,8 @@ namespace partmake
                                 continue;
                             for (int i = 0; i < 3; i++)
                             {
-                                if (d[i] != item.DimsF[i])
+                                if (d[i] > 0 && 
+                                    d[i] != item.DimsF[i])
                                     match = false;
                             }
                             if (match)

@@ -21,6 +21,7 @@ using ICSharpCode.AvalonEdit.Highlighting;
 using System.Diagnostics;
 using partmake.graphics;
 using System.Threading;
+using Typography.OpenFont.Tables;
 
 namespace partmake
 {
@@ -42,6 +43,7 @@ namespace partmake
         uint _planeIndexCount;
         uint _isoIndexCount;
         private CommandList _cl;
+        private CommandList _partCl;
         private Pipeline _pipeline;
         private Pipeline _pipelineConnectors;
         private Pipeline _pipelinePick;
@@ -457,6 +459,7 @@ namespace partmake
             }
 
             _cl = factory.CreateCommandList();
+            _partCl = factory.CreateCommandList();
             using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream("partmake.unispace.ttf"))
             {
                 Font font = new Font(s, 20);
@@ -549,6 +552,7 @@ namespace partmake
                 _cl.UpdateBuffer(_worldBuffer, 0, ref cmx);
                 _cl.DrawIndexed(_cubeIndexCount);
             }
+            _partCl.Begin();
             foreach (var part in scene.PartList)
             {
                 if (part.item == null)
@@ -853,9 +857,43 @@ namespace partmake
             float ycoord = 1.0f - (my / 1024.0f) * 2;
             float zcoord = (pg / 1000000000.0f);
 
-            Vector4 wpos = Vector4.Transform(new Vector4(xcoord, ycoord, zcoord, 1), invViewProjPick);
-            wpos /= (wpos.W * worldScale);
-            worldPos = new Vector3(wpos.X, wpos.Y, wpos.Z);
+            if (pg > 0)
+            {
+                Vector4 wpos = Vector4.Transform(new Vector4(xcoord, ycoord, zcoord, 1), invViewProjPick);
+                wpos /= (wpos.W * worldScale);
+                worldPos = new Vector3(wpos.X, wpos.Y, wpos.Z);
+            }
+            else
+            {
+                Vector4 wpos0 = Vector4.Transform(new Vector4(xcoord, ycoord, 0.0f, 1), invViewProjPick);
+                wpos0 /= (wpos0.W * worldScale);
+                Vector3 l0 = new Vector3(wpos0.X, wpos0.Y, wpos0.Z);
+
+                Vector4 wpos1 = Vector4.Transform(new Vector4(xcoord, ycoord, 1.0f, 1), invViewProjPick);
+                wpos1 /= (wpos1.W * worldScale);
+                Vector3 l1 = new Vector3(wpos1.X, wpos1.Y, wpos1.Z);
+
+                Vector3 l = Vector3.Normalize(l1 - l0);
+                Vector3 n = Vector3.UnitY;
+                Vector3 p0 = Vector3.Zero;
+                float denom = Vector3.Dot(n, l);
+
+                Vector3 p0l0 = p0 - l0;
+                float t = Vector3.Dot(p0l0, n) / denom;
+                worldPos = l0 + l * t;
+
+                /*
+bool intersectPlane(const Vec3f &n, const Vec3f &p0, const Vec3f &l0, const Vec3f &l, float &t) 
+{ 
+    // assuming vectors are all normalized
+    float denom = dotProduct(n, l); 
+    if (denom > 1e-6) { 
+        Vec3f p0l0 = p0 - l0; 
+        t = dotProduct(p0l0, n) / denom; 
+        return (t >= 0); 
+    } 
+     return false; } */
+            }
             pickIdx = (int)pr;
             selectedConnectorIdx = -1;
             partIdx = -1;
