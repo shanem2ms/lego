@@ -91,7 +91,7 @@ namespace partmake
             _LayoutControl.Vis.AfterDeviceCreated += Vis_AfterDeviceCreated;
             scene.DebugDrawLine =
                 _LayoutControl.Vis.BulletDebugDrawLine;
-            RefrehScriptsFolder();
+            RefrehScriptsFolder();            
         }
 
         private void ScriptEngine_OnCompileErrors(object sender, bool e)
@@ -296,7 +296,7 @@ namespace partmake
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             
-        }
+        }        
     }
 
     public class Editor : IEquatable<Editor>

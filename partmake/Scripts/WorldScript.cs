@@ -14,7 +14,7 @@ namespace partmake.script
 
         public void Run()
         {                    	
-    		//Api.CustomDraw = Draw;
+    		Api.CustomDraw = Draw;
     		Api.MouseHandler = MouseHandler;
         }
         
@@ -24,7 +24,7 @@ namespace partmake.script
         		Api.WriteLine($"{worldPos}");
         }
         
-        bool doTerrainGen = false;
+        bool doTerrainGen = true;
         public void Draw(CommandList cl, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
         	if (doTerrainGen)

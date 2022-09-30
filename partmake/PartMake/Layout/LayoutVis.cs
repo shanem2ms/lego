@@ -91,8 +91,21 @@ namespace partmake
 
         public Scene scene;
         public bool IsActive { get; set; }
+
+        Thread pickThread;
+        AutoResetEvent pickEvent = new AutoResetEvent(false);
+        bool terminatePickThread = false;
         public LayoutVis(ApplicationWindow window) : base(window)
         {
+            pickThread = new Thread(PickThreadProc);
+            pickThread.Start();
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.ShutdownStarted += CurrentDispatcher_ShutdownStarted;
+        }
+
+        private void CurrentDispatcher_ShutdownStarted(object sender, EventArgs e)
+        {
+            this.terminatePickThread = true;
+            pickEvent.Set();
         }
 
         public delegate void DrawDebugDel();
@@ -164,6 +177,11 @@ namespace partmake
             }
             return true;
         }
+
+        void InvalidateView()
+        {
+            needPickBufferRefresh = true;
+        }
         public void MouseDown(int btn, int X, int Y, Keys keys)
         {
             mouseDown |= 1 << btn;
@@ -202,6 +220,30 @@ namespace partmake
                 }
             }
         }
+
+
+        void PickThreadProc()
+        {
+            while (!terminatePickThread)
+            {
+                pickEvent.WaitOne();
+                if (terminatePickThread)
+                    break;
+                Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(
+                                                    1.0f,
+                                                    (float)Window.Width / Window.Height,
+                                                    0.05f,
+                                                    20f);
+                Matrix4x4 viewmat =
+                    GetLookMatrix() *
+                    Matrix4x4.CreateTranslation(cameraPos);
+                Matrix4x4.Invert(viewmat, out viewmat);
+                CommandList clPick = DrawPicking(ref viewmat, ref projMat);
+                this.pickCommandList = clPick;
+                this.pickReady = 1;
+            }
+        }
+
         public void MouseUp(int btn, int X, int Y)
         {
             mouseDown &= ~(1 << btn);
@@ -226,39 +268,16 @@ namespace partmake
                     lookDir = mouseDownLookDir + (lMouseDownPt - new Vector2(X, Y)) * 0.01f;
                 }
 
-                needPickBufferRefresh = true;
+                InvalidateView();
             }
             else if ((mouseDown & 4) != 0)
             {
                 float tscale = 0.01f;
                 cameraPos = mouseDownCameraPos - new Vector3(-X + lMouseDownPt.X, Y - lMouseDownPt.Y, 0) * tscale;
-                needPickBufferRefresh = true;
+                InvalidateView();
             }
             else
             {
-                if (needPickBufferRefresh && pickReady == -1)
-                {
-                    needPickBufferRefresh = false;
-                    pickReady = 0;
-                    Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(
-                                                        1.0f,
-                                                        (float)Window.Width / Window.Height,
-                                                        0.05f,
-                                                        20f);
-                    _cl.UpdateBuffer(_projectionBuffer, 0, ref projMat);
-
-                    Matrix4x4 viewmat =
-                        GetLookMatrix() *
-                        Matrix4x4.CreateTranslation(cameraPos);
-                    Matrix4x4.Invert(viewmat, out viewmat);
-
-                    Thread pickThread = new Thread(() => {
-                        CommandList clPick = DrawPicking(ref viewmat, ref projMat);
-                        this.pickCommandList = clPick;
-                    });
-                    pickThread.Start();
-                }
-                else
                 {
                     int partIdx, connectorIdx;
                     Vector3 worldPos;
@@ -345,33 +364,7 @@ namespace partmake
             {
                 var vsfile = "partmake.vs.glsl";
                 var fsfile = "partmake.fs.glsl";
-                //var floorgridfile = "partmake.floorgrid.glsl";
-
-                string VertexCode;
-                string FragmentCode;
-                using (Stream stream = assembly.GetManifestResourceStream(vsfile))
-                using (StreamReader reader = new StreamReader(stream))
-                {
-                    VertexCode = reader.ReadToEnd();
-                }
-                using (Stream stream = assembly.GetManifestResourceStream(fsfile))
-                using (StreamReader reader = new StreamReader(stream))
-                {
-                    FragmentCode = reader.ReadToEnd();
-                }
-
-                ShaderSetDescription shaderSet = new ShaderSetDescription(
-                    new[]
-                    {
-                    new VertexLayoutDescription(
-                        new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
-                        new VertexElementDescription("Normal", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
-                        new VertexElementDescription("TexCoords", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2))
-                    },
-                    factory.CreateFromSpirv(
-                        new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(VertexCode), "main"),
-                        new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(FragmentCode), "main")));
-
+                ShaderSet ss = new ShaderSet(vsfile, fsfile, true);
 
 
                 _pipeline = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
@@ -379,7 +372,7 @@ namespace partmake
                     DepthStencilStateDescription.DepthOnlyLessEqual,
                     new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
                     PrimitiveTopology.TriangleList,
-                    shaderSet,
+                    ss.Desc,
                     new[] { projViewLayout, worldTextureLayout },
                     MainSwapchain.Framebuffer.OutputDescription));
 
@@ -388,40 +381,16 @@ namespace partmake
                     DepthStencilStateDescription.Disabled,
                     new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
                     PrimitiveTopology.TriangleList,
-                    shaderSet,
+                    ss.Desc,
                     new[] { projViewLayout, worldTextureLayout },
                     MainSwapchain.Framebuffer.OutputDescription));
             }
 
             {
                 var vsfile = "partmake.vs.glsl";
-                var fsfile = "partmake.pick.glsl";
-
-                string VertexCode;
-                string FragmentCode;
-                using (Stream stream = assembly.GetManifestResourceStream(vsfile))
-                using (StreamReader reader = new StreamReader(stream))
-                {
-                    VertexCode = reader.ReadToEnd();
-                }
-                using (Stream stream = assembly.GetManifestResourceStream(fsfile))
-                using (StreamReader reader = new StreamReader(stream))
-                {
-                    FragmentCode = reader.ReadToEnd();
-                }
-
-                ShaderSetDescription shaderSet = new ShaderSetDescription(
-                    new[]
-                    {
-                    new VertexLayoutDescription(
-                        new VertexElementDescription("Position", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
-                        new VertexElementDescription("Normal", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float3),
-                        new VertexElementDescription("TexCoords", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2))
-                    },
-                    factory.CreateFromSpirv(
-                        new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(VertexCode), "main"),
-                        new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(FragmentCode), "main")));
-
+                var fsfile = "partmake.fs.glsl";
+                ShaderSet ss = new ShaderSet(vsfile, fsfile, true);
+                
                 _pickTexture = factory.CreateTexture(TextureDescription.Texture2D(
                               1024, 1024, 1, 1,
                                PixelFormat.R32_G32_UInt, TextureUsage.RenderTarget | TextureUsage.Sampled));
@@ -444,7 +413,7 @@ namespace partmake
                     DepthStencilStateDescription.DepthOnlyLessEqual,
                     new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
                     PrimitiveTopology.TriangleList,
-                    shaderSet,
+                    ss.Desc,
                     new[] { projViewLayout, worldTextureLayout },
                     _pickFB.OutputDescription));
 
@@ -453,7 +422,7 @@ namespace partmake
                     DepthStencilStateDescription.Disabled,
                     new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.CounterClockwise, false, false),
                     PrimitiveTopology.TriangleList,
-                    shaderSet,
+                    ss.Desc,
                     new[] { projViewLayout, worldTextureLayout },
                     _pickFB.OutputDescription));
             }
@@ -490,20 +459,45 @@ namespace partmake
             Vector3 xside = Vector3.Cross(Vector3.UnitY, zfwd);
             float speed = 0.025f;
             if (moveDirs[0])
+            {
                 cameraPos -= zfwd * speed;
+                InvalidateView();
+            }
             if (moveDirs[1])
+            {
                 cameraPos += zfwd * speed;
+                InvalidateView();
+            }
             if (moveDirs[2])
+            {
+                InvalidateView();
                 cameraPos -= xside * speed;
+            }
             if (moveDirs[3])
+            {
+                InvalidateView();
                 cameraPos += xside * speed;
+            }
             if (moveDirs[4])
+            {
+                InvalidateView();
                 cameraPos += Vector3.UnitY * speed;
+            }
             if (moveDirs[5])
+            {
+                InvalidateView();
                 cameraPos -= Vector3.UnitY * speed;
+            }
         }
         protected override void Draw(float deltaSeconds)
         {
+            if (needPickBufferRefresh && pickReady == -1)
+            {
+                needPickBufferRefresh = false;
+                pickReady = 0;
+                pickEvent.Set();
+            }
+
             scene.GameLoop(lookDir, cameraPos);
             UpdatePosition();
             _cl.Begin();
@@ -677,11 +671,11 @@ namespace partmake
             _cl.End();
             GraphicsDevice.SubmitCommands(_cl);
 
-            if (pickCommandList != null)
+            if (pickReady == 1)
             {
                 GraphicsDevice.SubmitCommands(pickCommandList);
                 pickCommandList = null;
-                pickReady = 1;
+                pickReady = 2;
             }
             GraphicsDevice.SwapBuffers(MainSwapchain);
             GraphicsDevice.WaitForIdle();
@@ -816,7 +810,6 @@ namespace partmake
                 cl.CopyTexture(this._pickTexture, this._pickStgTexture);
                 sw.Stop();
                 //script.Api.WriteLine($"pick {sw.Elapsed}");
-                pickReady = 1;
                 cl.End();
                 return cl;
             }
@@ -830,7 +823,7 @@ namespace partmake
         
         void HandlePick(ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
-            if (pickReady == 1)
+            if (pickReady == 2)
             {
                 meshSelectedOffset = -1;                
                 MappedResourceView<Rgba> rView = GraphicsDevice.Map<Rgba>(_pickStgTexture, MapMode.Read);

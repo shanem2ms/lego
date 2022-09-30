@@ -15,6 +15,7 @@ using System.Reflection;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Amazon.S3.Model;
 using System.IO.Compression;
+using SharpDX.DXGI;
 
 namespace partmake.graphics
 {
@@ -84,19 +85,22 @@ namespace partmake.graphics
         
         Shader(string vtxrsrc, string pixrsrc, Assembly assembly)
         {
+            string VertexCode;
+            string FragmentCode;
             using (Stream stream = assembly.GetManifestResourceStream(vtxrsrc))
+            using (StreamReader reader = new StreamReader(stream))
             {
-                vtxshaderBytes = new byte[stream.Length];
-                stream.Read(vtxshaderBytes, 0, vtxshaderBytes.Length);
+                VertexCode = reader.ReadToEnd();
             }
             using (Stream stream = assembly.GetManifestResourceStream(pixrsrc))
+            using (StreamReader reader = new StreamReader(stream))
             {
-                pixshaderBytes = new byte[stream.Length];
-                stream.Read(pixshaderBytes, 0, pixshaderBytes.Length);
+                FragmentCode = reader.ReadToEnd();
             }
+
             shaders = G.ResourceFactory.CreateFromSpirv(
-                    new ShaderDescription(ShaderStages.Vertex, vtxshaderBytes, "main"),
-                    new ShaderDescription(ShaderStages.Fragment, pixshaderBytes, "main"));
+                    new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(VertexCode), "main"),
+                    new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(FragmentCode), "main"));
         }
     }
 
