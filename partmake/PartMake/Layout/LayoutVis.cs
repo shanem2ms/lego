@@ -120,7 +120,7 @@ namespace partmake
             Moved
         }
         public delegate void MouseDel(MouseCommand command, int btn, int X, int Y, 
-            Vector3 worldPos);
+            Vector3 w0, Vector3 w1);
 
         bool mouseMoved = false;
 
@@ -215,8 +215,10 @@ namespace partmake
                     else
                         selectedPart = -1;
 
+                    Vector3 l0, l1;
+                    GetMouseWsRays(X, Y, out l0, out l1);
                     if (script.Api.MouseHandler != null)
-                        script.Api.MouseHandler(MouseCommand.ButtonDown, btn, X, Y, worldPos);
+                        script.Api.MouseHandler(MouseCommand.ButtonDown, btn, X, Y, l0, l1);
                 }
             }
         }
@@ -251,7 +253,7 @@ namespace partmake
             {
             }
             if (script.Api.MouseHandler != null)
-                script.Api.MouseHandler(MouseCommand.ButtonUp, btn, X, Y, Vector3.Zero);
+                script.Api.MouseHandler(MouseCommand.ButtonUp, btn, X, Y, Vector3.Zero, Vector3.One);
         }
         public void MouseMove(int X, int Y, System.Windows.Forms.Keys keys)
         {
@@ -283,9 +285,10 @@ namespace partmake
                     Vector3 worldPos;
                     PickFromBuffer(X, Y, out worldPos, out partIdx, out connectorIdx);
                     //textRenderer.DrawText($"{worldPos}", new Vector2(X, Y), new SharpText.Core.Color(1, 1, 0, 1), 1);
-
+                    Vector3 l0, l1;
+                    GetMouseWsRays(X, Y, out l0, out l1);
                     if (script.Api.MouseHandler != null)
-                        script.Api.MouseHandler(MouseCommand.Moved, -1, X, Y, worldPos);
+                        script.Api.MouseHandler(MouseCommand.Moved, -1, X, Y, l0, l1);
                 }
             }
         }
@@ -362,9 +365,9 @@ namespace partmake
 
 
             {
-                var vsfile = "partmake.vs.glsl";
-                var fsfile = "partmake.fs.glsl";
-                ShaderSet ss = new ShaderSet(vsfile, fsfile, true);
+                ShaderSet ss = new ShaderSet(
+                    partmake.graphics.Shader.VSDefault,
+                    partmake.graphics.Shader.FSDefault, true);
 
 
                 _pipeline = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription(
@@ -441,9 +444,7 @@ namespace partmake
         {
             textRenderer.ResizeToSwapchain();
         }
-        float worldScale = 0.0025f;
-
-
+        
         Matrix4x4 GetLookMatrix()
         {
             return Matrix4x4.CreateRotationX(lookDir.Y) *
@@ -533,7 +534,7 @@ namespace partmake
                 Matrix4x4 cmz =
                     Matrix4x4.CreateScale(100 * gridSize, 1, 1) *
                     Matrix4x4.CreateTranslation(0, 0, z * gridSize) *
-                    Matrix4x4.CreateScale(worldScale);
+                    Matrix4x4.CreateScale(G.WorldScale);
 
                 _cl.UpdateBuffer(_worldBuffer, 0, ref cmz);
                 _cl.DrawIndexed(_cubeIndexCount);
@@ -541,7 +542,7 @@ namespace partmake
                 Matrix4x4 cmx =
                     Matrix4x4.CreateScale(1, 1, 100 * gridSize) *
                     Matrix4x4.CreateTranslation(z * gridSize, 0, 0) *
-                    Matrix4x4.CreateScale(worldScale);
+                    Matrix4x4.CreateScale(G.WorldScale);
 
                 _cl.UpdateBuffer(_worldBuffer, 0, ref cmx);
                 _cl.DrawIndexed(_cubeIndexCount);
@@ -559,7 +560,7 @@ namespace partmake
                 _cl.SetIndexBuffer(part.item.ldrLoaderIndexBuffer, IndexFormat.UInt32);
                 Matrix4x4 cm =
                     part.mat *
-                    Matrix4x4.CreateScale(worldScale);
+                    Matrix4x4.CreateScale(G.WorldScale);
                 _cl.UpdateBuffer(_worldBuffer, 0, ref cm);
                 //Vector4 v = new Vector4(part.mainTile.tileColor, 1);
                 _cl.UpdateBuffer(_materialBuffer, 0, Palette.AllItems[part.paletteIdx].RGBA);
@@ -573,7 +574,7 @@ namespace partmake
                 var part = scene.PartList[selectedPart];
                 Matrix4x4 cm =
                             part.mat *
-                            Matrix4x4.CreateScale(worldScale);
+                            Matrix4x4.CreateScale(G.WorldScale);
                 foreach (var connector in part.item.Connectors)
                 {
                     if (connector.Type == ConnectorType.StudJ || connector.Type == ConnectorType.Clip)
@@ -643,7 +644,7 @@ namespace partmake
                     Matrix4x4 mat =
                         Matrix4x4.CreateScale(loc.W) *
                         Matrix4x4.CreateTranslation(new Vector3(loc.X, loc.Y, loc.Z)) *
-                        Matrix4x4.CreateScale(worldScale);
+                        Matrix4x4.CreateScale(G.WorldScale);
 
                     _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
                     Vector4 color = new Vector4(1, 0.5f, 0.5f, 1);
@@ -700,7 +701,7 @@ namespace partmake
                     Matrix4x4.CreateScale(len, lineWidth, lineWidth) *
                     rotmat *
                     Matrix4x4.CreateTranslation((from + to) * 0.5f) *
-                    Matrix4x4.CreateScale(worldScale);
+                    Matrix4x4.CreateScale(G.WorldScale);
             _cl.UpdateBuffer(_worldBuffer, 0, ref mat);
             Vector4 col = new Vector4(color.X, color.Y, color.Z, 1);
             _cl.UpdateBuffer(_materialBuffer, 0, ref col);
@@ -745,7 +746,7 @@ namespace partmake
                     cl.SetIndexBuffer(part.item.ldrLoaderIndexBuffer, IndexFormat.UInt32);
                     Matrix4x4 cm =
                         part.mat *
-                        Matrix4x4.CreateScale(worldScale);
+                        Matrix4x4.CreateScale(G.WorldScale);
                     cl.UpdateBuffer(_worldBuffer, 0, ref cm);
                     int pickIdx = partIdx + 1024;
                     int r = pickIdx & 0xFF;
@@ -762,7 +763,7 @@ namespace partmake
                     var part = scene.PartList[selectedPart];
                     Matrix4x4 cm =
                                 part.mat *
-                                Matrix4x4.CreateScale(worldScale);
+                                Matrix4x4.CreateScale(G.WorldScale);
                     for (int connectorIdx = 0; connectorIdx < part.item.Connectors.Length; ++connectorIdx)
                     {
                         int pickIdx = connectorIdx + 128;
@@ -836,6 +837,22 @@ namespace partmake
             }
         }
 
+        void GetMouseWsRays(int x, int y, out Vector3 l0, out Vector3 l1)
+        {
+            int mx = (int)((float)x / (float)Window.Width * 1024.0f);
+            int my = (int)((float)y / (float)Window.Height * 1024.0f);
+            float xcoord = (mx / 1024.0f) * 2 - 1.0f;
+            float ycoord = 1.0f - (my / 1024.0f) * 2;
+
+            Vector4 wpos0 = Vector4.Transform(new Vector4(xcoord, ycoord, 0.0f, 1), invViewProjPick);
+            wpos0 /= (wpos0.W * G.WorldScale);
+            l0 = new Vector3(wpos0.X, wpos0.Y, wpos0.Z);
+
+            Vector4 wpos1 = Vector4.Transform(new Vector4(xcoord, ycoord, 1.0f, 1), invViewProjPick);
+            wpos1 /= (wpos1.W * G.WorldScale);
+            l1 = new Vector3(wpos1.X, wpos1.Y, wpos1.Z);
+        }
+
         void PickFromBuffer(int x, int y, out Vector3 worldPos, 
             out int partIdx,
             out int connectorIdx)
@@ -853,39 +870,12 @@ namespace partmake
             if (pg > 0)
             {
                 Vector4 wpos = Vector4.Transform(new Vector4(xcoord, ycoord, zcoord, 1), invViewProjPick);
-                wpos /= (wpos.W * worldScale);
+                wpos /= (wpos.W * G.WorldScale);
                 worldPos = new Vector3(wpos.X, wpos.Y, wpos.Z);
             }
             else
             {
-                Vector4 wpos0 = Vector4.Transform(new Vector4(xcoord, ycoord, 0.0f, 1), invViewProjPick);
-                wpos0 /= (wpos0.W * worldScale);
-                Vector3 l0 = new Vector3(wpos0.X, wpos0.Y, wpos0.Z);
-
-                Vector4 wpos1 = Vector4.Transform(new Vector4(xcoord, ycoord, 1.0f, 1), invViewProjPick);
-                wpos1 /= (wpos1.W * worldScale);
-                Vector3 l1 = new Vector3(wpos1.X, wpos1.Y, wpos1.Z);
-
-                Vector3 l = Vector3.Normalize(l1 - l0);
-                Vector3 n = Vector3.UnitY;
-                Vector3 p0 = Vector3.Zero;
-                float denom = Vector3.Dot(n, l);
-
-                Vector3 p0l0 = p0 - l0;
-                float t = Vector3.Dot(p0l0, n) / denom;
-                worldPos = l0 + l * t;
-
-                /*
-bool intersectPlane(const Vec3f &n, const Vec3f &p0, const Vec3f &l0, const Vec3f &l, float &t) 
-{ 
-    // assuming vectors are all normalized
-    float denom = dotProduct(n, l); 
-    if (denom > 1e-6) { 
-        Vec3f p0l0 = p0 - l0; 
-        t = dotProduct(p0l0, n) / denom; 
-        return (t >= 0); 
-    } 
-     return false; } */
+                worldPos = Vector3.Zero;
             }
             pickIdx = (int)pr;
             selectedConnectorIdx = -1;

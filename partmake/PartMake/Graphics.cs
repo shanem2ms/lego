@@ -1,21 +1,15 @@
 ﻿using partmake.script;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 using Veldrid;
 using Veldrid.SPIRV;
 using static partmake.Palette;
 using System.Runtime.InteropServices;
-using System.Windows.Markup;
-using System.Runtime.ConstrainedExecution;
 using System.Reflection;
-using Microsoft.CodeAnalysis.Diagnostics;
-using Amazon.S3.Model;
 using System.IO.Compression;
-using SharpDX.DXGI;
+using System.Numerics;
 
 namespace partmake.graphics
 {
@@ -24,6 +18,7 @@ namespace partmake.graphics
         public static ResourceFactory ResourceFactory;
         public static Swapchain Swapchain;
         public static GraphicsDevice GraphicsDevice;
+        public static float WorldScale = 0.0025f;
 
     }
     public static class Layouts
@@ -43,6 +38,9 @@ namespace partmake.graphics
 
     public class Shader
     {
+        public static string VSDefault = "partmake.vs.glsl";
+        public static string FSDefault = "partmake.fs.glsl";
+
         static Dictionary<string, Shader> shaderCache = new Dictionary<string, Shader>();
         public static Shader GetShaderFromFile(string vtxpath, string pixpath)
         {
@@ -272,4 +270,20 @@ namespace partmake.graphics
             return arr;
         }
     }
+
+    public static class Utils
+    {
+        public static bool IntersectPlane(Vector3 l0, Vector3 l1,
+            Vector3 planeNrm, Vector3 planePt, out Vector3 iPos)
+        {
+            Vector3 l = Vector3.Normalize(l1 - l0);
+            float denom = Vector3.Dot(planeNrm, l);
+
+            Vector3 p0l0 = planePt - l0;
+            float t = Vector3.Dot(p0l0, planeNrm) / denom;
+            iPos = l0 + l * t;
+            return (t >= 0 && t <= 1);
+        }
+    }
+
 }
