@@ -75,10 +75,40 @@ namespace partmake.script
     	        
     	List<Vector3> mousePts = new List<Vector3>();
         void MouseHandler(LayoutVis.MouseCommand command, int btn, int X, int Y, Vector3 p0,
-        	Vector3 p1)
+        	Vector3 p1, ref Matrix4x4 viewProj)
         {
+        	Vector3 []snapDirs = new Vector3[3]
+	        	{ Vector3.UnitX,
+	        	Vector3.UnitY,
+	        	Vector3.UnitZ };
+			if (mousePts.Count > 0)
+			{
+				Vector3 from = mousePts[mousePts.Count - 1];
+				from *= G.WorldScale;
+				Vector2 fromWpt;
+				{
+					Vector4 from4 = new Vector4(from, 1);				
+					Vector4 spt = Vector4.Transform(from4, viewProj);
+					spt /= spt.W;
+					fromWpt = new Vector2(G.WindowSize.X * (spt.X + 1) * 0.5f,
+						G.WindowSize.Y * (-spt.Y + 1) * 0.5f);
+				}
+				int idx = 0;
+				foreach (Vector3 snapdir in snapDirs)
+				{
+					Vector4 from4 = new Vector4(from + snapdir, 1);				
+					Vector4 spt = Vector4.Transform(from4, viewProj);
+					spt /= spt.W;
+					Vector2 snapDir = new Vector2(G.WindowSize.X * (spt.X + 1) * 0.5f,
+						G.WindowSize.Y * (-spt.Y + 1) * 0.5f);
+					float dist = partmake.graphics.Utils.DistanceToLine(fromWpt, snapDir, new Vector2(X, Y));
+					Api.WriteLine($"{idx} [{dist}] ");
+					idx++;
+				}
+			}
+			
         	Vector3 worldPos;
-        	partmake.graphics.Utils.IntersectPlane(p0, p1, Vector3.UnitX, Vector3.Zero, out worldPos);
+        	partmake.graphics.Utils.IntersectPlane(p0, p1, Vector3.UnitY, Vector3.Zero, out worldPos);
         	if (command == LayoutVis.MouseCommand.ButtonDown)
         	{
         		mousePts.Add(worldPos);

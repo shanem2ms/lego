@@ -76,8 +76,18 @@ namespace partmake
         bool needPickBufferRefresh = true;
         int[] pickBuffer = new int[1024 * 1024 * 2];
         Matrix4x4 invViewProjPick;
+        Matrix4x4 viewProjPick;
         VeldridTextRenderer textRenderer;
 
+        Matrix4x4 ViewMat =>
+                GetLookMatrix() *
+                Matrix4x4.CreateTranslation(cameraPos);
+
+        Matrix4x4 ProjMat => Matrix4x4.CreatePerspectiveFieldOfView(
+                1.0f,
+                (float)Window.Width / Window.Height,
+                0.05f,
+                20f);
         public class PartPickEvent
         {
             public PartInst part;
@@ -120,7 +130,7 @@ namespace partmake
             Moved
         }
         public delegate void MouseDel(MouseCommand command, int btn, int X, int Y, 
-            Vector3 w0, Vector3 w1);
+            Vector3 w0, Vector3 w1, ref Matrix4x4 viewProj);
 
         bool mouseMoved = false;
 
@@ -218,7 +228,7 @@ namespace partmake
                     Vector3 l0, l1;
                     GetMouseWsRays(X, Y, out l0, out l1);
                     if (script.Api.MouseHandler != null)
-                        script.Api.MouseHandler(MouseCommand.ButtonDown, btn, X, Y, l0, l1);
+                        script.Api.MouseHandler(MouseCommand.ButtonDown, btn, X, Y, l0, l1, ref viewProjPick);
                 }
             }
         }
@@ -253,7 +263,7 @@ namespace partmake
             {
             }
             if (script.Api.MouseHandler != null)
-                script.Api.MouseHandler(MouseCommand.ButtonUp, btn, X, Y, Vector3.Zero, Vector3.One);
+                script.Api.MouseHandler(MouseCommand.ButtonUp, btn, X, Y, Vector3.Zero, Vector3.One, ref viewProjPick);
         }
         public void MouseMove(int X, int Y, System.Windows.Forms.Keys keys)
         {
@@ -288,7 +298,7 @@ namespace partmake
                     Vector3 l0, l1;
                     GetMouseWsRays(X, Y, out l0, out l1);
                     if (script.Api.MouseHandler != null)
-                        script.Api.MouseHandler(MouseCommand.Moved, -1, X, Y, l0, l1);
+                        script.Api.MouseHandler(MouseCommand.Moved, -1, X, Y, l0, l1, ref viewProjPick);
                 }
             }
         }
@@ -442,6 +452,7 @@ namespace partmake
 
         public void OnResize(uint width, uint height)
         {
+            G.WindowSize = new Vector2(Window.Width, Window.Height);
             textRenderer.ResizeToSwapchain();
         }
         
@@ -503,16 +514,10 @@ namespace partmake
             UpdatePosition();
             _cl.Begin();
 
-            Matrix4x4 projMat = Matrix4x4.CreatePerspectiveFieldOfView(
-                1.0f,
-                (float)Window.Width / Window.Height,
-                0.05f,
-                20f);
+            Matrix4x4 projMat = ProjMat;
             _cl.UpdateBuffer(_projectionBuffer, 0, ref projMat);
 
-            Matrix4x4 viewmat =
-                GetLookMatrix() *
-                Matrix4x4.CreateTranslation(cameraPos);
+            Matrix4x4 viewmat = ViewMat;
             Matrix4x4.Invert(viewmat, out viewmat);
             _cl.UpdateBuffer(_viewBuffer, 0, viewmat);
             _cl.SetPipeline(_pipeline);
@@ -831,8 +836,8 @@ namespace partmake
                 
                 Marshal.Copy(rView.MappedResource.Data, pickBuffer, 0, pickBuffer.Length);
                 GraphicsDevice.Unmap(_pickStgTexture);
-                invViewProjPick = viewmat * projMat;
-                Matrix4x4.Invert(invViewProjPick, out invViewProjPick);
+                viewProjPick = viewmat * projMat;
+                Matrix4x4.Invert(viewProjPick, out invViewProjPick);
                 pickReady = -1;
             }
         }
