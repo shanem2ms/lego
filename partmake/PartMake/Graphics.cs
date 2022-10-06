@@ -285,31 +285,12 @@ namespace partmake.graphics
             return (t >= 0 && t <= 1);
         }
       
-        //Compute the cross product AB x AC
-        private static float CrossProduct(Vector2 pointA, Vector2 pointB, Vector2 pointC)
-        {
-            Vector2 AB = new Vector2();
-            Vector2 AC = new Vector2();
-            AB.X = pointB.X - pointA.X;
-            AB.Y = pointB.Y - pointA.Y;
-            AC.X = pointC.X - pointA.X;
-            AC.Y = pointC.Y - pointA.Y;
-            float cross = AB.X * AC.Y - AB.Y * AC.X;
-            return cross;
-        }
-
-        //Compute the distance from A to B
-        static float Distance(Vector2 pointA, Vector2 pointB)
-        {
-            float d1 = pointA.X - pointB.X;
-            float d2 = pointA.Y - pointB.Y;
-
-            return MathF.Sqrt(d1 * d1 + d2 * d2);
-        }
         //Compute the distance from AB to C
-        public static float DistanceToLine(Vector2 pointA, Vector2 pointB, Vector2 pointC)
+        public static Vector2 ClosestPtOnLine(Vector2 pointA, Vector2 pointB, Vector2 pointC)
         {
-            return CrossProduct(pointA, pointB, pointC) / Distance(pointA, pointB);
+            Vector2 dir = Vector2.Normalize(pointB - pointA);
+            float distAlongLine = Vector2.Dot(pointC - pointA, dir);
+            return pointA + dir * distAlongLine;
         }
     }
 

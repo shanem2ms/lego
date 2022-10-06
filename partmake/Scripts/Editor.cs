@@ -94,6 +94,8 @@ namespace partmake.script
 						G.WindowSize.Y * (-spt.Y + 1) * 0.5f);
 				}
 				int idx = 0;
+				int minIdx = 0;
+				float minDist = 10000;
 				foreach (Vector3 snapdir in snapDirs)
 				{
 					Vector4 from4 = new Vector4(from + snapdir, 1);				
@@ -101,12 +103,19 @@ namespace partmake.script
 					spt /= spt.W;
 					Vector2 snapDir = new Vector2(G.WindowSize.X * (spt.X + 1) * 0.5f,
 						G.WindowSize.Y * (-spt.Y + 1) * 0.5f);
-					float dist = partmake.graphics.Utils.DistanceToLine(fromWpt, snapDir, new Vector2(X, Y));
-					Api.WriteLine($"{idx} [{dist}] ");
+					Vector2 closestPt =
+						partmake.graphics.Utils.ClosestPtOnLine(fromWpt, snapDir, new Vector2(X, Y));
+						float dlen = (closestPt - new Vector2(X, Y)).Length();
+					if (dlen < minDist)
+					{
+						minIdx = idx;
+						minDist = dlen;
+					}
 					idx++;
 				}
+				Api.WriteLine($"{minIdx} [{minDist}]");
 			}
-			
+
         	Vector3 worldPos;
         	partmake.graphics.Utils.IntersectPlane(p0, p1, Vector3.UnitY, Vector3.Zero, out worldPos);
         	if (command == LayoutVis.MouseCommand.ButtonDown)
