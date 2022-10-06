@@ -129,7 +129,7 @@ namespace partmake
             ButtonUp,
             Moved
         }
-        public delegate void MouseDel(MouseCommand command, int btn, int X, int Y, 
+        public delegate void MouseDel(MouseCommand command, int btn, Vector2 screenPos, 
             Vector3 w0, Vector3 w1, ref Matrix4x4 viewProj);
 
         bool mouseMoved = false;
@@ -225,10 +225,14 @@ namespace partmake
                     else
                         selectedPart = -1;
 
+                    Vector2 screenPos = new Vector2(
+                        (X / (float)Window.Width) * 2 - 1.0f,
+                        1.0f - (Y / (float)Window.Height) * 2);
+
                     Vector3 l0, l1;
-                    GetMouseWsRays(X, Y, out l0, out l1);
+                    Utils.GetMouseWsRays(screenPos, out l0, out l1, ref invViewProjPick);
                     if (script.Api.MouseHandler != null)
-                        script.Api.MouseHandler(MouseCommand.ButtonDown, btn, X, Y, l0, l1, ref viewProjPick);
+                        script.Api.MouseHandler(MouseCommand.ButtonDown, btn, screenPos, l0, l1, ref viewProjPick);
                 }
             }
         }
@@ -262,8 +266,13 @@ namespace partmake
             if (!mouseMoved)
             {
             }
+
+            Vector2 screenPos = new Vector2(
+                (X / (float)Window.Width) * 2 - 1.0f,
+                1.0f - (Y / (float)Window.Height) * 2);
+
             if (script.Api.MouseHandler != null)
-                script.Api.MouseHandler(MouseCommand.ButtonUp, btn, X, Y, Vector3.Zero, Vector3.One, ref viewProjPick);
+                script.Api.MouseHandler(MouseCommand.ButtonUp, btn, screenPos, Vector3.Zero, Vector3.One, ref viewProjPick);
         }
         public void MouseMove(int X, int Y, System.Windows.Forms.Keys keys)
         {
@@ -295,10 +304,15 @@ namespace partmake
                     Vector3 worldPos;
                     PickFromBuffer(X, Y, out worldPos, out partIdx, out connectorIdx);
                     //textRenderer.DrawText($"{worldPos}", new Vector2(X, Y), new SharpText.Core.Color(1, 1, 0, 1), 1);
+
+                    Vector2 screenPos = new Vector2(
+                        (X / (float)Window.Width) * 2 - 1.0f,
+                        1.0f - (Y / (float)Window.Height) * 2);
+
                     Vector3 l0, l1;
-                    GetMouseWsRays(X, Y, out l0, out l1);
+                    Utils.GetMouseWsRays(screenPos, out l0, out l1, ref invViewProjPick);
                     if (script.Api.MouseHandler != null)
-                        script.Api.MouseHandler(MouseCommand.Moved, -1, X, Y, l0, l1, ref viewProjPick);
+                        script.Api.MouseHandler(MouseCommand.Moved, -1, screenPos, l0, l1, ref viewProjPick);
                 }
             }
         }
@@ -840,22 +854,6 @@ namespace partmake
                 Matrix4x4.Invert(viewProjPick, out invViewProjPick);
                 pickReady = -1;
             }
-        }
-
-        void GetMouseWsRays(int x, int y, out Vector3 l0, out Vector3 l1)
-        {
-            int mx = (int)((float)x / (float)Window.Width * 1024.0f);
-            int my = (int)((float)y / (float)Window.Height * 1024.0f);
-            float xcoord = (mx / 1024.0f) * 2 - 1.0f;
-            float ycoord = 1.0f - (my / 1024.0f) * 2;
-
-            Vector4 wpos0 = Vector4.Transform(new Vector4(xcoord, ycoord, 0.0f, 1), invViewProjPick);
-            wpos0 /= (wpos0.W * G.WorldScale);
-            l0 = new Vector3(wpos0.X, wpos0.Y, wpos0.Z);
-
-            Vector4 wpos1 = Vector4.Transform(new Vector4(xcoord, ycoord, 1.0f, 1), invViewProjPick);
-            wpos1 /= (wpos1.W * G.WorldScale);
-            l1 = new Vector3(wpos1.X, wpos1.Y, wpos1.Z);
         }
 
         void PickFromBuffer(int x, int y, out Vector3 worldPos, 

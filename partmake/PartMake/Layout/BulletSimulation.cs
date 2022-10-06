@@ -11,7 +11,7 @@ using System.Collections.ObjectModel;
 
 namespace partmake
 {
-    static class Utils
+    static class BulletUtils
     {
         public static BM.Matrix FromMat4(Matrix4x4 m4)
         {
@@ -73,7 +73,7 @@ namespace partmake
                 parts.Add(part);
                 foreach (var shp in part.item.BulletShapes)
                 {
-                    shape.AddChildShape(Utils.FromMat4(part.bodySubMat), shp);
+                    shape.AddChildShape(BulletUtils.FromMat4(part.bodySubMat), shp);
                 }
                 curpart++;
             }
@@ -82,7 +82,7 @@ namespace partmake
             shape.CalculateLocalInertia(mass, out inertia);
             RigidBodyConstructionInfo constructInfo =
                 new RigidBodyConstructionInfo(mass, new DefaultMotionState(
-                    Utils.FromMat4(worldMatrix)), shape, inertia);
+                    BulletUtils.FromMat4(worldMatrix)), shape, inertia);
             body = new BulletSharp.RigidBody(constructInfo);
             body.SetDamping(0.3f, 0.3f);
         }
@@ -101,7 +101,7 @@ namespace partmake
         {
             if (!anchored)
             {
-                worldMatrix = Utils.FromMat(body.WorldTransform);
+                worldMatrix = BulletUtils.FromMat(body.WorldTransform);
                 foreach (var part in parts)
                 {
                     part.mat = part.bodySubMat * worldMatrix;
@@ -113,7 +113,7 @@ namespace partmake
         {
             worldMatrix = t;
             body.WorldTransform =
-                Utils.FromMat4(worldMatrix);
+                BulletUtils.FromMat4(worldMatrix);
         }
 
         public int CollisionGroup { get; set; } = -1;
@@ -146,7 +146,7 @@ namespace partmake
         {
             pinnedBody = mesh1;
             pinnedBody.Body.ActivationState = ActivationState.DisableDeactivation;
-            p2p = new Point2PointConstraint(mesh1.Body, Utils.FromVector3(m1pivot));
+            p2p = new Point2PointConstraint(mesh1.Body, BulletUtils.FromVector3(m1pivot));
             p2p.Setting.ImpulseClamp = 30.0f;
             p2p.Setting.Tau = 0.001f;
         }
@@ -156,8 +156,8 @@ namespace partmake
         {
             pinnedBody = mesh1;
             pinnedBody.Body.ActivationState = ActivationState.DisableDeactivation;
-            p2p = new Point2PointConstraint(mesh1.Body, mesh2.Body, Utils.FromVector3(m1pivot),
-                Utils.FromVector3(m2pivot));
+            p2p = new Point2PointConstraint(mesh1.Body, mesh2.Body, BulletUtils.FromVector3(m1pivot),
+                BulletUtils.FromVector3(m2pivot));
             p2p.Setting.ImpulseClamp = 30.0f;
             p2p.Setting.Tau = 0.001f;
         }
@@ -166,7 +166,7 @@ namespace partmake
         public void UpdateWsPos(Vector3 wspos)
         {
             //OpenTK.Vector3 lPos = OpenTK.Vector3.TransformPosition(wspos, pinnedBody.WorldMatrix.Inverted());
-            p2p.PivotInB = Utils.FromVector3(wspos);
+            p2p.PivotInB = BulletUtils.FromVector3(wspos);
         }
     }
 
@@ -185,10 +185,10 @@ namespace partmake
         {
             pinnedBody = mesh1;
             pinnedBody.Body.ActivationState = ActivationState.DisableDeactivation;
-            hinge = new HingeConstraint(mesh1.Body, mesh2.Body, Utils.FromVector3(m1pivot),
-                Utils.FromVector3(m2pivot),
-                Utils.FromVector3(m1axis),
-                Utils.FromVector3(m2axis));
+            hinge = new HingeConstraint(mesh1.Body, mesh2.Body, BulletUtils.FromVector3(m1pivot),
+                BulletUtils.FromVector3(m2pivot),
+                BulletUtils.FromVector3(m1axis),
+                BulletUtils.FromVector3(m2axis));
             
         }
 
@@ -211,9 +211,9 @@ namespace partmake
                     Vector3 AngleUpper)
         {
             dof = new Generic6DofConstraint(mesh1.Body, mesh2.Body,
-                Utils.FromMat4(m1matrix), Utils.FromMat4(m2matrix), true);
-            dof.AngularUpperLimit = Utils.FromVector3(AngleUpper);
-            dof.AngularLowerLimit = Utils.FromVector3(AngleLower);
+                BulletUtils.FromMat4(m1matrix), BulletUtils.FromMat4(m2matrix), true);
+            dof.AngularUpperLimit = BulletUtils.FromVector3(AngleUpper);
+            dof.AngularLowerLimit = BulletUtils.FromVector3(AngleLower);
             dof.BreakingImpulseThreshold = 1e+5f;
             //p2p = new Point2PointConstraint(mesh1.Body, mesh2.Body, Utils.FromVector3(m1pivot), Utils.FromVector3(m2pivot));
             //p2p.BreakingImpulseThreshold = 10.0f;
@@ -257,7 +257,7 @@ namespace partmake
         public void DrawLine(ref BM.Vector3 from, ref BM.Vector3 to, ref BM.Vector3 color)
         {
             if (DebugDrawLine != null)
-                DebugDrawLine(Utils.FromBVector3(from), Utils.FromBVector3(to), Utils.FromBVector3(color));
+                DebugDrawLine(BulletUtils.FromBVector3(from), BulletUtils.FromBVector3(to), BulletUtils.FromBVector3(color));
         }
 
         public void Init()

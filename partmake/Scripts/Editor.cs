@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Veldrid;
 using partmake.graphics;
+using System.IO;
 
 namespace partmake.script
 {
@@ -32,11 +33,10 @@ namespace partmake.script
             _planeIndexBuffer = primitives.Plane.IndexBuffer;
             _planeIndexCount = primitives.Plane.IndexLength;
         
-			ShaderSet ss = new ShaderSet(
-                    partmake.graphics.Shader.VSDefault,
-                    partmake.graphics.Shader.FSDefault, true);
-    		
-            
+    		ShaderSet ss = new ShaderSet(
+    			Path.Combine(Api.ScriptFolder, "Editor\\VtxLine.glsl"),
+    			Path.Combine(Api.ScriptFolder, "Editor\\PixLine.glsl"), false);
+                    
 			_projectionBuffer = G.ResourceFactory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _viewBuffer = G.ResourceFactory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _worldBuffer = G.ResourceFactory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
@@ -74,7 +74,7 @@ namespace partmake.script
     	}
     	        
     	List<Vector3> mousePts = new List<Vector3>();
-        void MouseHandler(LayoutVis.MouseCommand command, int btn, int X, int Y, Vector3 p0,
+        void MouseHandler(LayoutVis.MouseCommand command, int btn, Vector2 screenPos, Vector3 p0,
         	Vector3 p1, ref Matrix4x4 viewProj)
         {
         	Vector3 []snapDirs = new Vector3[3]
@@ -90,43 +90,72 @@ namespace partmake.script
 					Vector4 from4 = new Vector4(from, 1);				
 					Vector4 spt = Vector4.Transform(from4, viewProj);
 					spt /= spt.W;
-					fromWpt = new Vector2(G.WindowSize.X * (spt.X + 1) * 0.5f,
-						G.WindowSize.Y * (-spt.Y + 1) * 0.5f);
+					fromWpt = new Vector2(spt.X, spt.Y);
 				}
 				int idx = 0;
 				int minIdx = 0;
 				float minDist = 10000;
+				Vector2 minPt = Vector2.Zero;
 				foreach (Vector3 snapdir in snapDirs)
 				{
 					Vector4 from4 = new Vector4(from + snapdir, 1);				
 					Vector4 spt = Vector4.Transform(from4, viewProj);
 					spt /= spt.W;
-					Vector2 snapDir = new Vector2(G.WindowSize.X * (spt.X + 1) * 0.5f,
-						G.WindowSize.Y * (-spt.Y + 1) * 0.5f);
+					Vector2 snapDir = new Vector2(spt.X, spt.Y);
 					Vector2 closestPt =
-						partmake.graphics.Utils.ClosestPtOnLine(fromWpt, snapDir, new Vector2(X, Y));
-						float dlen = (closestPt - new Vector2(X, Y)).Length();
+						Utils.ClosestPtOnLine(fromWpt, snapDir, screenPos);
+						float dlen = (closestPt - screenPos).Length();
 					if (dlen < minDist)
 					{
 						minIdx = idx;
 						minDist = dlen;
+						minPt = closestPt;
 					}
 					idx++;
 				}
-				Api.WriteLine($"{minIdx} [{minDist}]");
-			}
+				if (minDist < 0.01f)
+				{
+					Vector3 dir = snapDirs[minIdx];
 
-        	Vector3 worldPos;
-        	partmake.graphics.Utils.IntersectPlane(p0, p1, Vector3.UnitY, Vector3.Zero, out worldPos);
-        	if (command == LayoutVis.MouseCommand.ButtonDown)
-        	{
-        		mousePts.Add(worldPos);
-		    }
-		    if (mousePts.Count > 0)
-		    {
-		    	
-		    }
-    		wposMouse = worldPos;
+					Matrix4x4 invViewProj;
+					Matrix4x4.Invert(viewProj, out invViewProj);
+					
+					Vector3 lookdir = GetLookDir(ref invViewProj);
+					Vector3 up = Vector3.Cross(lookdir, dir);
+					Vector3 nrm = Vector3.Cross(-up, dir);
+		        	Vector3 worldPos;
+		        	Vector3 mray0, mray1;
+		        	Utils.GetMouseWsRays(minPt, out mray0, out mray1, ref invViewProj);
+		        	Utils.IntersectPlane(mray0, mray1, nrm, mousePts[mousePts.Count - 1], out worldPos);
+		        	wposMouse = worldPos;					
+				}
+				
+			}
+			else
+			{
+	        	Vector3 worldPos;
+	        	partmake.graphics.Utils.IntersectPlane(p0, p1, Vector3.UnitY, Vector3.Zero, out worldPos);
+	        	if (command == LayoutVis.MouseCommand.ButtonDown)
+	        	{
+	        		mousePts.Add(worldPos);
+			    }
+			    if (mousePts.Count > 0)
+			    {
+			    	
+			    }
+	    		wposMouse = worldPos;
+	    	}
+        }
+                
+        Vector3 GetLookDir(ref Matrix4x4 invViewProj)
+        {
+			Vector4 wspt0 = Vector4.Transform(new Vector4(0,0,0,1), invViewProj);
+			wspt0 /= wspt0.W;
+			Vector4 wspt1 = Vector4.Transform(new Vector4(0,0,1,1), invViewProj);
+			wspt1 /= wspt1.W;
+			Vector4 lookDir = wspt1 - wspt0;
+			Vector3 lookDir3 = new Vector3(lookDir.X, lookDir.Y, lookDir.Z);
+			return Vector3.Normalize(lookDir3);
         }
         
         public void Draw(CommandList cl, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)

@@ -292,6 +292,18 @@ namespace partmake.graphics
             float distAlongLine = Vector2.Dot(pointC - pointA, dir);
             return pointA + dir * distAlongLine;
         }
+        public static void GetMouseWsRays(Vector2 screenPos, out Vector3 l0, out Vector3 l1, 
+            ref Matrix4x4 invViewProjPick)
+        {
+            Vector4 wpos0 = Vector4.Transform(new Vector4(screenPos.X, screenPos.Y, 0.0f, 1), invViewProjPick);
+            wpos0 /= (wpos0.W * G.WorldScale);
+            l0 = new Vector3(wpos0.X, wpos0.Y, wpos0.Z);
+
+            Vector4 wpos1 = Vector4.Transform(new Vector4(screenPos.X, screenPos.Y, 1.0f, 1), invViewProjPick);
+            wpos1 /= (wpos1.W * G.WorldScale);
+            l1 = new Vector3(wpos1.X, wpos1.Y, wpos1.Z);
+        }
+
     }
 
 }
