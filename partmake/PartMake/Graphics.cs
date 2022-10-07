@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Reflection;
 using System.IO.Compression;
 using System.Numerics;
+using System.Security.Cryptography;
 
 namespace partmake.graphics
 {
@@ -42,11 +43,44 @@ namespace partmake.graphics
         public static string FSDefault = "partmake.fs.glsl";
 
         static Dictionary<string, Shader> shaderCache = new Dictionary<string, Shader>();
+
+        static byte []ComputeMD5(string filename)
+        {
+            using (var md5 = MD5.Create())
+            {
+                using (var stream = File.OpenRead(filename))
+                {
+                    return md5.ComputeHash(stream);
+                }
+            }
+        }
+        static bool IsEqual(byte[] a1, byte[] a2)
+        {
+            if (a1.Length != a2.Length)
+                return false;
+
+            for (int i = 0; i < a1.Length; i++)
+                if (a1[i] != a2[i])
+                    return false;
+
+            return true;
+        }
         public static Shader GetShaderFromFile(string vtxpath, string pixpath)
         {
             string key = vtxpath + pixpath;
-            Shader outshader;
-            if (!shaderCache.TryGetValue(key, out outshader))
+            Shader outshader = null;
+            if (shaderCache.TryGetValue(key, out outshader))
+            {
+                byte[] vtxmd5 = ComputeMD5(vtxpath);
+                byte[] pixmd5 = ComputeMD5(pixpath);
+                if (!IsEqual(vtxmd5, outshader.vtxmd5) ||
+                    !IsEqual(pixmd5, outshader.pixmd5))
+                {
+                    shaderCache.Remove(key);
+                    outshader = null;
+                }
+            }
+            if (outshader == null)
             {
                 outshader = new Shader(vtxpath, pixpath);
                 shaderCache.Add(key, outshader);
@@ -69,10 +103,15 @@ namespace partmake.graphics
         byte[] vtxshaderBytes;
         byte[] pixshaderBytes;
         Veldrid.Shader[] shaders;
+        byte[] vtxmd5;
+        byte[] pixmd5;
 
         public Veldrid.Shader[] Shaders => shaders;
         Shader(string vtxpath, string pixpath)
         {
+            vtxmd5 = ComputeMD5(vtxpath);
+            pixmd5 = ComputeMD5(pixpath);            
+
             vtxshaderBytes = File.ReadAllBytes(Path.Combine(vtxpath));
             pixshaderBytes = File.ReadAllBytes(Path.Combine(pixpath));
             CrossCompileOptions cc = new CrossCompileOptions();

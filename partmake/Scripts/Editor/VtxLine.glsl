@@ -21,10 +21,18 @@ layout(location = 1) out vec3 fsin_normal;
 layout(location = 2) out vec4 fsin_Pos;
 
 void main()
-{
-    vec4 worldPosition = World * vec4(Position * vec3(1,5,1), 1);
-    vec4 viewPosition = View * worldPosition;
-    vec4 clipPosition = Projection * viewPosition;
+{	
+	vec3 pos = Position;
+	pos.y = 0;
+	mat4 wvp = Projection * View * World;
+	vec4 c0 = wvp * vec4(-1, 0, 0, 1);
+	vec4 c1 = wvp * vec4(1, 0, 0, 1);
+	c0 /= c0.w;
+	c1 /= c1.w;
+	vec2 dir = normalize(c1.xy - c0.xy);
+	vec2 crossdir = vec2(dir.y, -dir.x);
+    vec4 clipPosition = wvp * vec4(pos, 1);
+    clipPosition.xy += (Position.y * crossdir) * clipPosition.w * 0.05;
     gl_Position = clipPosition;
     fsin_texCoords = TexCoords;
     fsin_normal = Normal;
