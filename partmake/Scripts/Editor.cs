@@ -39,7 +39,7 @@ namespace partmake.script
                     
 			_projectionBuffer = G.ResourceFactory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _viewBuffer = G.ResourceFactory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
-            _worldBuffer = G.ResourceFactory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
+            _worldBuffer = G.ResourceFactory.CreateBuffer(new BufferDescription(80, BufferUsage.UniformBuffer));
             _materialBuffer = G.ResourceFactory.CreateBuffer(new BufferDescription(16, BufferUsage.UniformBuffer));
 
             
@@ -158,6 +158,12 @@ namespace partmake.script
 			return Vector3.Normalize(lookDir3);
         }
         
+        struct WorldBuffer
+        {
+        	public Matrix4x4 worldBuf;
+        	public float aspect;
+        }
+        
         public void Draw(CommandList cl, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
         	if (_pipeline == null)
@@ -173,18 +179,21 @@ namespace partmake.script
             
             foreach (Vector3 pt in mousePts)
             {
-			Matrix4x4 mat =
-                Matrix4x4.CreateScale(5f) *
-                Matrix4x4.CreateTranslation(pt) *
-                Matrix4x4.CreateScale(G.WorldScale);
-
-            cl.UpdateBuffer(_worldBuffer, 0, ref mat);
-            Vector4 color = new Vector4(0.5f, 0.5f, 1.0f, 1);
-            cl.UpdateBuffer(_materialBuffer, 0, ref color);
-            cl.SetVertexBuffer(0, _planeVertexBuffer);
-            cl.SetIndexBuffer(_planeIndexBuffer, IndexFormat.UInt16);
-            cl.DrawIndexed(_planeIndexCount,
-            	1, 0,0,0);            
+				Matrix4x4 mat =
+	                Matrix4x4.CreateScale(5f) *
+	                Matrix4x4.CreateTranslation(pt) *
+	                Matrix4x4.CreateScale(G.WorldScale);
+	
+				WorldBuffer wbuf = new WorldBuffer();
+				wbuf.worldBuf = mat;
+				wbuf.aspect = G.WindowSize.Y / G.WindowSize.X;
+	            cl.UpdateBuffer(_worldBuffer, 0, ref wbuf);
+	            Vector4 color = new Vector4(0.5f, 0.5f, 1.0f, 1);
+	            cl.UpdateBuffer(_materialBuffer, 0, ref color);
+	            cl.SetVertexBuffer(0, _planeVertexBuffer);
+	            cl.SetIndexBuffer(_planeIndexBuffer, IndexFormat.UInt16);
+	            cl.DrawIndexed(_planeIndexCount,
+	            	1, 0,0,0);            
             }
 			{
 			Matrix4x4 mat =
