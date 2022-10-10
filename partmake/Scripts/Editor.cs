@@ -74,6 +74,7 @@ namespace partmake.script
     	}
     	        
     	List<Vector3> mousePts = new List<Vector3>();
+    	int snapAxis = -1;
         void MouseHandler(LayoutVis.MouseCommand command, int btn, Vector2 screenPos, Vector3 p0,
         	Vector3 p1, ref Matrix4x4 viewProj)
         {
@@ -81,16 +82,17 @@ namespace partmake.script
 	        	{ Vector3.UnitX,
 	        	Vector3.UnitY,
 	        	Vector3.UnitZ };
+	        snapAxis = -1;
 			if (mousePts.Count > 0)
 			{
 				Vector3 from = mousePts[mousePts.Count - 1];
 				from *= G.WorldScale;
-				Vector2 fromWpt;
+				Vector4 spt;
+				Vector2 fromSpt;
 				{
 					Vector4 from4 = new Vector4(from, 1);				
-					Vector4 spt = Vector4.Transform(from4, viewProj);
-					spt /= spt.W;
-					fromWpt = new Vector2(spt.X, spt.Y);
+					spt = Vector4.Transform(from4, viewProj);
+					fromSpt = new Vector2(spt.X / spt.W, spt.Y / spt.W);
 				}
 				int idx = 0;
 				int minIdx = 0;
@@ -99,11 +101,11 @@ namespace partmake.script
 				foreach (Vector3 snapdir in snapDirs)
 				{
 					Vector4 from4 = new Vector4(from + snapdir, 1);				
-					Vector4 spt = Vector4.Transform(from4, viewProj);
-					spt /= spt.W;
-					Vector2 snapDir = new Vector2(spt.X, spt.Y);
+					Vector4 spt2 = Vector4.Transform(from4, viewProj);
+					spt2 /= spt2.W;
+					Vector2 snapDir = new Vector2(spt2.X, spt2.Y);
 					Vector2 closestPt =
-						Utils.ClosestPtOnLine(fromWpt, snapDir, screenPos);
+						Utils.ClosestPtOnLine(fromSpt, snapDir, screenPos);
 						float dlen = (closestPt - screenPos).Length();
 					if (dlen < minDist)
 					{
@@ -113,10 +115,10 @@ namespace partmake.script
 					}
 					idx++;
 				}
-				if (minDist < 0.01f)
+				if (minDist < 0.02f)
 				{
 					Vector3 dir = snapDirs[minIdx];
-
+					snapAxis = minIdx;
 					Matrix4x4 invViewProj;
 					Matrix4x4.Invert(viewProj, out invViewProj);
 					
@@ -128,6 +130,14 @@ namespace partmake.script
 		        	Utils.GetMouseWsRays(minPt, out mray0, out mray1, ref invViewProj);
 		        	Utils.IntersectPlane(mray0, mray1, nrm, mousePts[mousePts.Count - 1], out worldPos);
 		        	wposMouse = worldPos;					
+				}
+				else
+				{
+					Matrix4x4 invViewProj;
+					Matrix4x4.Invert(viewProj, out invViewProj);
+					Vector4 wptZ = Vector4.Transform(new Vector4(screenPos.X * spt.W, screenPos.Y * spt.W, spt.Z, spt.W), invViewProj);
+					wptZ /= wptZ.W;
+					wposMouse = new Vector3(wptZ.X, wptZ.Y, wptZ.Z) / G.WorldScale;
 				}
 				
 			}
@@ -164,6 +174,11 @@ namespace partmake.script
         	public float aspect;
         }
         
+        Vector4 []snapColors = new Vector4[3] {
+        	new Vector4(1,0,0,1),
+        	new Vector4(0,1,0,1),
+        	new Vector4(0,0,1,1)
+        };
         public void Draw(CommandList cl, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
         {
         	if (_pipeline == null)
@@ -239,7 +254,8 @@ namespace partmake.script
 				Matrix4x4.CreateTranslation(mid) *
                 Matrix4x4.CreateScale(G.WorldScale);
 	            cl.UpdateBuffer(_worldBuffer, 0, ref mat);
-	            Vector4 color = new Vector4(1, 0.5f, 0.5f, 1);
+	            Vector4 color = snapAxis >= 0 ? snapColors[snapAxis] : 
+	            	new Vector4(0.8f, 0.8f, 0.8f, 1);
 	            cl.UpdateBuffer(_materialBuffer, 0, ref color);
 	            cl.SetVertexBuffer(0, _planeVertexBuffer);
 	            cl.SetIndexBuffer(_planeIndexBuffer, IndexFormat.UInt16);

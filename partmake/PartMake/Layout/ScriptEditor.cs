@@ -89,6 +89,7 @@ namespace partmake
         private void TextArea_TextEntered(object sender, System.Windows.Input.TextCompositionEventArgs e)
         {
             char[] symbolTermChars = new char[] { ' ', '\t', '{', '(' };
+            List<string> members = null;
             if (e.Text == ".")
             {
                 int spaceOffset = this.Text.LastIndexOfAny(symbolTermChars, this.CaretOffset);
@@ -96,21 +97,7 @@ namespace partmake
                 if (len <= 0)
                     return;
                 string word = this.Text.Substring(spaceOffset + 1, len);
-                List<string> members = Engine.CodeComplete(this.Text, spaceOffset + 1, word, ScriptEngine.CodeCompleteType.Member);
-                completionWindow = new CompletionWindow(this.TextArea);
-                if (members != null)
-                {
-                    IList<ICompletionData> data = completionWindow.CompletionList.CompletionData;
-                    foreach (var member in members)
-                    {
-                        data.Add(new MyCompletionData(member, 0));
-                    }
-                    completionWindow.Show();
-                    completionWindow.Closed += delegate
-                    {
-                        completionWindow = null;
-                    };
-                }
+                members = Engine.CodeComplete(this.Text, spaceOffset + 1, word, ScriptEngine.CodeCompleteType.Member);
             }
             else if (e.Text == "(")
             {
@@ -119,21 +106,31 @@ namespace partmake
                 if (len <= 0)
                     return;
                 string word = this.Text.Substring(spaceOffset + 1, len);
-                List<string> members = Engine.CodeComplete(this.Text, spaceOffset + 1, word, ScriptEngine.CodeCompleteType.Function);
+                members = Engine.CodeComplete(this.Text, spaceOffset + 1, word, ScriptEngine.CodeCompleteType.Function);
+            }
+            else if (e.Text == " ")
+            {
+                int spaceOffset = this.Text.LastIndexOfAny(symbolTermChars, this.CaretOffset-2);
+                int len = this.CaretOffset - spaceOffset - 2;
+                if (len != 3 || this.Text.Substring(spaceOffset + 1, 3) != "new")
+                    return;
+                members = Engine.CodeComplete(this.Text, spaceOffset + 1, "new", ScriptEngine.CodeCompleteType.New);
+
+            }
+
+            if (members != null)
+            {
                 completionWindow = new CompletionWindow(this.TextArea);
-                if (members != null)
+                IList<ICompletionData> data = completionWindow.CompletionList.CompletionData;
+                foreach (var member in members)
                 {
-                    IList<ICompletionData> data = completionWindow.CompletionList.CompletionData;
-                    foreach (var member in members)
-                    {
-                        data.Add(new MyCompletionData(member, member.IndexOf('(') + 1));
-                    }
-                    completionWindow.Show();
-                    completionWindow.Closed += delegate
-                    {
-                        completionWindow = null;
-                    };
+                    data.Add(new MyCompletionData(member, 0));
                 }
+                completionWindow.Show();
+                completionWindow.Closed += delegate
+                {
+                    completionWindow = null;
+                };
             }
         }
 

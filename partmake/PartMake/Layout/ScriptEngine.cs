@@ -11,6 +11,8 @@ using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Windows;
 using partmake.script;
+using Amazon.Runtime;
+using System.Reflection.Metadata.Ecma335;
 
 namespace partmake
 {
@@ -140,7 +142,8 @@ namespace partmake
         public enum CodeCompleteType
         {
             Member,
-            Function
+            Function,
+            New
         }
 
         public List<string> CodeComplete(string codeToCompile, int position, string variable, CodeCompleteType ccType)
@@ -171,32 +174,49 @@ namespace partmake
 
             var semanticModel = compilation.GetSemanticModel(syntaxTree);
 
-            var syntaxNode = syntaxTree.GetRoot().DescendantNodes(new TextSpan(position, variable.Length))
-                .Where(n => n is ExpressionSyntax &&
-                n.Span.Start == position && n.Span.End == (position + variable.Length)).FirstOrDefault();
-            if (syntaxNode != null)
+            if (ccType == CodeCompleteType.New)
             {
-                if (ccType == CodeCompleteType.Member)
-                {
-                    var info = semanticModel.GetTypeInfo(syntaxNode as ExpressionSyntax);
-                    if (info.Type != null)
+                var allSymbols = semanticModel.LookupSymbols(position);
+                return allSymbols.Where(s => {
+                    if (s.IsDefinition && s.Kind == SymbolKind.NamedType)
                     {
-                        var hashset = info.Type.GetMembers().Select(m => m.Name).ToHashSet();
-                        hashset.Remove(".ctor");
-                        hashset.RemoveWhere((str) => { return str.StartsWith("get_") || str.StartsWith("set_"); });
-                        return hashset.ToList();
+                        INamedTypeSymbol nts = s as INamedTypeSymbol;
+                        if ((nts.TypeKind == TypeKind.Class || nts.TypeKind == TypeKind.Struct) &&
+                            nts.Constructors.Length > 0)
+                            return true;
                     }
-                }
-                else if (ccType == CodeCompleteType.Function)
+                    return false;        
+                }).Select(s => s.Name).ToList();
+            }
+            else
+            {
+                var syntaxNode = syntaxTree.GetRoot().DescendantNodes(new TextSpan(position, variable.Length))
+                    .Where(n => n is ExpressionSyntax &&
+                    n.Span.Start == position && n.Span.End == (position + variable.Length)).FirstOrDefault();
+                if (syntaxNode != null)
                 {
-                    var syminfo = semanticModel.GetSymbolInfo(syntaxNode);
-                    List<string> symlist = new List<string>();
-                    foreach (var sym in syminfo.CandidateSymbols)
+                    if (ccType == CodeCompleteType.Member)
                     {
-                        string symstr = sym.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-                        symlist.Add(symstr);
+                        var info = semanticModel.GetTypeInfo(syntaxNode as ExpressionSyntax);
+                        if (info.Type != null)
+                        {
+                            var hashset = info.Type.GetMembers().Select(m => m.Name).ToHashSet();
+                            hashset.Remove(".ctor");
+                            hashset.RemoveWhere((str) => { return str.StartsWith("get_") || str.StartsWith("set_"); });
+                            return hashset.ToList();
+                        }
                     }
-                    return symlist;
+                    else if (ccType == CodeCompleteType.Function)
+                    {
+                        var syminfo = semanticModel.GetSymbolInfo(syntaxNode);
+                        List<string> symlist = new List<string>();
+                        foreach (var sym in syminfo.CandidateSymbols)
+                        {
+                            string symstr = sym.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+                            symlist.Add(symstr);
+                        }
+                        return symlist;
+                    }
                 }
             }
             return null;
