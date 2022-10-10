@@ -15,6 +15,7 @@ using System.Xml;
 using System.IO.Packaging;
 using System.ComponentModel;
 using ICSharpCode.AvalonEdit.Search;
+using ICSharpCode.AvalonEdit.Folding;
 
 namespace partmake
 {
