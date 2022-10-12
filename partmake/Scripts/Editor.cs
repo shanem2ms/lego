@@ -73,8 +73,42 @@ namespace partmake.script
                 G.Swapchain.Framebuffer.OutputDescription));            
     	}
     	   	        
-    	static int SnapToDir(Vector3 fromOrig, Vector2 screenPos, Vector3 []snapDirs,
-    		ref Matrix4x4 viewProj, out Vector3 snapPos)
+        static bool SnapToPoint(Vector2 screenPos, Vector3 []snapPoints,
+    		ref Matrix4x4 viewProj, out Vector3 snapPos, out int snapIdx)
+    	{
+			int idx = 0;
+			int minIdx = 0;
+			float minDist = 10000;
+			Vector2 minPt = Vector2.Zero;
+			foreach (Vector3 snappt in snapPoints)
+			{
+	    		Vector3 from = snappt * G.WorldScale;
+				Vector4 from4 = new Vector4(from, 1);				
+				Vector4 spt = Vector4.Transform(from4, viewProj);
+				Vector2 fromSpt = new Vector2(spt.X / spt.W, spt.Y / spt.W);
+				float d = (fromSpt - screenPos).Length();
+				if (d < minDist)
+				{
+					minDist = d;
+					minIdx = idx;
+				}
+				idx++;
+			}
+			
+			if (minDist < 0.02f)
+			{
+				snapPos = snapPoints[minIdx];
+				snapIdx = minIdx;
+				return true;				
+			}
+			
+			snapPos = Vector3.Zero;
+			snapIdx = -1;
+			return false;
+    	}
+    	
+    	static bool SnapToDir(Vector3 fromOrig, Vector2 screenPos, Vector3 []snapDirs,
+    		ref Matrix4x4 viewProj, out Vector3 snapPos, out int snapIdx)
     	{
     		Vector3 from = fromOrig * G.WorldScale;
 			Vector4 spt;
@@ -119,12 +153,13 @@ namespace partmake.script
 	        	Utils.GetMouseWsRays(minPt, out mray0, out mray1, ref invViewProj);
 	        	Utils.IntersectPlane(mray0, mray1, nrm, fromOrig, out worldPos);
 	        	snapPos = worldPos;	
-	        	//Api.WriteLine($"{minIdx} {Pv(nrm)} {Pv(from)} {Pv(worldPos)}");
-	        	return minIdx;
+	        	snapIdx = minIdx;
+	        	return true;
 	        }
-	        else
-	        	snapPos = Vector3.Zero;
-        	return -1;
+	        
+        	snapPos = Vector3.Zero;
+        	snapIdx = -1;
+        	return false;
 		}
 		
 		static string Pv(Vector3 v)
@@ -145,8 +180,12 @@ namespace partmake.script
 			{
 				Vector3 from = mousePts[mousePts.Count - 1];
 				Vector3 snappos;
-				int snapIdx = SnapToDir(from, screenPos, snapDirs, ref viewProj, out snappos);
-				if (snapIdx >= 0)
+				int snapIdx;
+				if (SnapToPoint(screenPos, mousePts.ToArray(), ref viewProj, out snappos, out snapIdx))
+				{
+					wposMouse = snappos;
+				}
+				else if (SnapToDir(from, screenPos, snapDirs, ref viewProj, out snappos, out snapIdx))
 				{
 					wposMouse = snappos;
 					snapAxis = snapIdx;
