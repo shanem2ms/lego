@@ -7,6 +7,7 @@ using System.IO;
 
 namespace partmake.script
 {
+	using partmake.Layout.Topo;
     public class Script
     {
         private DeviceBuffer _planeVertexBuffer;
