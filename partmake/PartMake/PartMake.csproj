@@ -32,6 +32,8 @@
     <None Remove="DepthDownScale-vertex.glsl" />
     <None Remove="fs.glsl" />
     <None Remove="glsl.xshd" />
+    <None Remove="Layout\PixLine.glsl" />
+    <None Remove="Layout\VtxLine.glsl" />
     <None Remove="pick.glsl" />
     <None Remove="raycast.glsl" />
     <None Remove="unispace.ttf" />
@@ -47,6 +49,8 @@
     <EmbeddedResource Include="DepthDownScale-fragment.glsl" />
     <EmbeddedResource Include="DepthDownScale-vertex.glsl" />
     <EmbeddedResource Include="glsl.xshd" />
+    <EmbeddedResource Include="Layout\PixLine.glsl" />
+    <EmbeddedResource Include="Layout\VtxLine.glsl" />
     <EmbeddedResource Include="pick.glsl" />
     <EmbeddedResource Include="raycast.glsl" />
     <EmbeddedResource Include="fs.glsl" />

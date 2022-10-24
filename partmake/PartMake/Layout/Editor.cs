@@ -5,9 +5,8 @@ using Veldrid;
 using partmake.graphics;
 using System.IO;
 
-namespace partmake.script
+namespace partmake
 {
-	using partmake.Layout.Topo;
     public class Script
     {
         private DeviceBuffer _planeVertexBuffer;
@@ -22,21 +21,15 @@ namespace partmake.script
         private DeviceBuffer _materialBuffer;
         Vector3 wposMouse;
 
-        public void Run()
-        {                    	
-    		Api.MouseHandler = MouseHandler;
-    		Api.CustomDraw = Draw;
-        }
-        
+       
 		public void Gen()    
     	{
             _planeVertexBuffer = primitives.Plane.VertexBuffer;
             _planeIndexBuffer = primitives.Plane.IndexBuffer;
             _planeIndexCount = primitives.Plane.IndexLength;
         
-    		ShaderSet ss = new ShaderSet(
-    			Path.Combine(Api.ScriptFolder, "Editor\\VtxLine.glsl"),
-    			Path.Combine(Api.ScriptFolder, "Editor\\PixLine.glsl"), false);
+    		ShaderSet ss = new ShaderSet("partmake.VtxLine.glsl",
+    			"partmake.PixLine.glsl", true);
                     
 			_projectionBuffer = G.ResourceFactory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
             _viewBuffer = G.ResourceFactory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer));
