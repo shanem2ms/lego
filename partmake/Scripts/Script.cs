@@ -74,13 +74,14 @@ namespace partmake.script
     	}
     	        
     	List<Vector3> mousePts = new List<Vector3>();
-        void MouseHandler(LayoutVis.MouseCommand command, int btn, int X, int Y, Vector3 worldPos)
+        void MouseHandler(LayoutVis.MouseCommand command, int btn, Vector2 screenPos, 
+            Vector3 w0, Vector3 w1, ref Matrix4x4 viewProj)
         {
         	if (command == LayoutVis.MouseCommand.ButtonDown)
         	{
-        		mousePts.Add(worldPos);
+        		mousePts.Add(w0);
 		    }
-    		wposMouse = worldPos;
+    		wposMouse = w0;
         }
         
         public void Draw(CommandList cl, ref Matrix4x4 viewmat, ref Matrix4x4 projMat)
