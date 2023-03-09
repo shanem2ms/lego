@@ -501,22 +501,24 @@ namespace partmake
             HashSet<string> mbxFiles = new HashSet<string>();
             DirectoryInfo mbxdir = new DirectoryInfo(LDrawFolders.MdxFolder);
 
-            List<string> badlist = new List<string>();
-            foreach (var fi in mbxdir.GetFiles("*.json"))
+            if (mbxdir.Exists)
             {
-                //string pname = fi.Name.Substring(0, fi.Name.Length-5).ToLower();
-                Entry entry;
-                Match m = rgnums.Match(fi.Name);
-                string pname = m.Groups[0].Value;
-                if (partbyid.TryGetValue(pname, out entry))
+                List<string> badlist = new List<string>();
+                foreach (var fi in mbxdir.GetFiles("*.json"))
                 {
-                    entry.mbxFilePath = fi.Name;
-                    entry.mbxNum = rgnums.Match(fi.Name).Value;
+                    //string pname = fi.Name.Substring(0, fi.Name.Length-5).ToLower();
+                    Entry entry;
+                    Match m = rgnums.Match(fi.Name);
+                    string pname = m.Groups[0].Value;
+                    if (partbyid.TryGetValue(pname, out entry))
+                    {
+                        entry.mbxFilePath = fi.Name;
+                        entry.mbxNum = rgnums.Match(fi.Name).Value;
+                    }
+                    else
+                        badlist.Add(pname);
                 }
-                else
-                    badlist.Add(pname);
             }
-
             var stayGrps = lDrawGroups.Where(kv => kv.Value.Count > 100);
             Dictionary<string, List<Entry>> newGrps = new Dictionary<string, List<Entry>>(
                 lDrawGroups.Where(kv => kv.Value.Count > 10));
