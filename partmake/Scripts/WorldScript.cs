@@ -18,10 +18,11 @@ namespace partmake.script
     		Api.MouseHandler = MouseHandler;
         }
         
-        void MouseHandler(LayoutVis.MouseCommand command, int btn, int X, int Y, Vector3 worldPos)
+        void MouseHandler(LayoutVis.MouseCommand command, int btn, Vector2 screenPos, 
+            Vector3 w0, Vector3 w1, ref Matrix4x4 viewProj)
         {
         	if (command == LayoutVis.MouseCommand.ButtonDown)
-        		Api.WriteLine($"{worldPos}");
+        		Api.WriteLine($"{w0}");
         }
         
         bool doTerrainGen = true;
