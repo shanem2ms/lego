@@ -238,7 +238,7 @@ void GetLdrItem(ldr::Loader* pLoader, BrickThreadPool* threadPool,
     std::vector<unsigned char> &data)
 {
     if (sColors.size() == 0)
-        LoadColors("c:\\homep4\\lego\\ldraw");
+        LoadColors("c:\\lego\\ldraw");
     LdrModelHDL model;
     LdrResult result;
     if (threadPool != nullptr)

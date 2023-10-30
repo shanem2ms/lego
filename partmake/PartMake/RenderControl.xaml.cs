@@ -6,7 +6,7 @@ using Application = System.Windows.Forms.Application;
 using Veldrid;
 using Veldrid.Utilities;
 using Veldrid.Vk;
-using SampleBase;
+using VeldridBase;
 
 namespace partmake
 {

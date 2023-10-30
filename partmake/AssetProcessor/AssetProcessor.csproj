@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\SampleBase\KtxFile.cs" Link="KtxFile.cs" />
+    <Compile Include="..\VeldridBase\KtxFile.cs" Link="KtxFile.cs" />
   </ItemGroup>
 
   <ItemGroup>

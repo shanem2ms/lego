@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AssetProcessor", "AssetProc
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AssetPrimitives", "AssetPrimitives\AssetPrimitives.csproj", "{A4FD32D3-1C3F-4E8D-B681-428C3E1A39D3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SampleBase", "SampleBase\SampleBase.csproj", "{7AF8692A-B52B-438C-A980-3B6BBCF15DA8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VeldridBase", "VeldridBase\VeldridBase.csproj", "{7AF8692A-B52B-438C-A980-3B6BBCF15DA8}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PartMake", "PartMake\PartMake.csproj", "{575BF54D-32AB-4895-BE63-B38001C2E273}"
 EndProject

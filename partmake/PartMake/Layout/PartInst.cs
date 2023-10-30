@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using AssetPrimitives;
-using SampleBase;
+using VeldridBase;
 using System.Numerics;
 using Veldrid;
 using Veldrid.SPIRV;

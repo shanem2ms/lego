@@ -79,7 +79,7 @@
       <Private>False</Private>
       <CopyLocalSatelliteAssemblies>False</CopyLocalSatelliteAssemblies>
     </ProjectReference>
-    <ProjectReference Include="..\SampleBase\SampleBase.csproj" />
+    <ProjectReference Include="..\VeldridBase\VeldridBase.csproj" />
   </ItemGroup>
 
   <ItemGroup>

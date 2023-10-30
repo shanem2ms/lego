@@ -65,7 +65,7 @@ namespace partmake
             public bool HasMbx => mbxPath?.Length > 0;
 
         }
-        public static string Root = @"C:\homep4\lego";
+        public static string Root = @"C:\lego";
         static string ldrawFolder;
         public static string LDrawFolder => ldrawFolder ?? string.Empty;
         public static string MdxFolder => Path.Combine(LDrawFolder, "Mbx");
